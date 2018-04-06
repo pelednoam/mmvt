@@ -13,29 +13,31 @@ PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 
 # @utils.tryit()
-def plot_color_bar(data_max, data_min, color_map, ax=None, fol='', do_save=True, ticks=None,
-                   facecolor='black', ticks_font_size=10, title='', dpi=100, **kargs):
+def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True, cb_ticks=None,
+                   background_color='black', cb_ticks_font_size=10, cb_title='', colorbar_name='', dpi=100, **kargs):
     import matplotlib as mpl
 
-    if ',' in facecolor:
-        facecolor = [float(x) for x in facecolor.split(',')]
-    color_map_name = color_map if isinstance(color_map, str) else color_map.name
-    color_map = find_color_map(color_map)
+    if ',' in background_color:
+        background_color = [float(x) for x in background_color.split(',')]
+    color_map_name = colors_map if isinstance(colors_map, str) else colors_map.name
+    color_map = find_color_map(colors_map)
     if ax is None:
-        fig = plt.figure(dpi=dpi, facecolor=facecolor) #, figsize=(w, h))
+        fig = plt.figure(dpi=dpi, facecolor=background_color) #, figsize=(w, h))
         fig.canvas.draw()
         ax = plt.gca() #plt.subplot(199)
-        ax.tick_params(axis='y', colors='white' if facecolor in ['black', [0, 0, 0]] else 'black')
+        ax.tick_params(axis='y', colors='white' if background_color in ['black', [0, 0, 0]] else 'black')
     norm = mpl.colors.Normalize(vmin=data_min, vmax=data_max)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=color_map, norm=norm, orientation='vertical')#, ticks=color_map_bounds)
-    if ticks is not None:
-        cb.set_ticks(ticks)
-        cb.ax.tick_params(labelsize=ticks_font_size)
-    if title != '':
-        cb.ax.set_ylabel(title.strip(), color='white' if facecolor in ['black', [0, 0, 0]] else 'black')
+    if cb_ticks is not None:
+        cb.set_ticks(cb_ticks)
+        cb.ax.tick_params(labelsize=cb_ticks_font_size)
+    if cb_title != '':
+        cb.ax.set_ylabel(cb_title.strip(), color='white' if background_color in ['black', [0, 0, 0]] else 'black')
     resize_and_move_ax(ax, ddw=0.07, ddh=0.8)
+    if colorbar_name == '':
+        colorbar_name = '{}_colorbar.jpg'.format(color_map_name)
     if do_save:
-        fname = op.join(fol, '{}_colorbar.jpg'.format(color_map_name))
+        fname = op.join(fol, colorbar_name)
         plt.savefig(fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
     else:
         plt.show()
@@ -102,7 +104,7 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     # plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
 
 
-def combine_two_figures_with_cb(fname1, fname2, data_max, data_min, cb_cm, ticks=[], crop_figures=True,
+def combine_two_figures_with_cb(fname1, fname2, data_max, data_min, cb_cm, cb_ticks=[], crop_figures=True,
                                 background='black', cb_ticks_font_size=10):
     if crop_figures:
         crop_image(fname1, fname1, dx=150, dy=0, dw=50, dh=70)
@@ -110,11 +112,11 @@ def combine_two_figures_with_cb(fname1, fname2, data_max, data_min, cb_cm, ticks
     new_image_fname = op.join(utils.get_parent_fol(fname1), '{}_{}.{}'.format(
         utils.namebase(fname1), utils.namebase(fname2), utils.file_type(fname1)))
     combine_two_images(fname1, fname2, new_image_fname, facecolor=background, dpi=200, w_fac=1, h_fac=1)
-    if len(ticks) == 0:
-        ticks = [data_min, data_max]
+    if len(cb_ticks) == 0:
+        cb_ticks = [data_min, data_max]
     fol = utils.get_parent_fol(fname1)
-    plot_color_bar(data_max, data_min, cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background,
-                      ticks_font_size=cb_ticks_font_size)
+    plot_color_bar(data_max, data_min, cb_cm, do_save=True, cb_ticks=cb_ticks, fol=fol, background_color=background,
+                   cb_ticks_font_size=cb_ticks_font_size)
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(cb_cm))
     cb_img = Image.open(cb_fname)
     return combine_brain_with_color_bar(new_image_fname, cb_img, overwrite=True)
@@ -222,8 +224,8 @@ def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, backgrou
     if len(cb_ticks) == 0:
         cb_ticks = [data_min, data_max]
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
-    plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=cb_ticks, fol=fol,
-                   facecolor=background_color, ticks_font_size=cb_ticks_font_size, title=cb_title)
+    plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
+                   background_color=background_color, cb_ticks_font_size=cb_ticks_font_size, title=cb_title)
     cb_img = Image.open(cb_fname)
     # crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
     combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True, cb_ticks=cb_ticks)
@@ -236,8 +238,8 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
-    plot_color_bar(data_max, data_min, colors_map, do_save=True, ticks=cb_ticks, fol=fol,
-                   facecolor=background_color, ticks_font_size=cb_ticks_font_size, title=cb_title)
+    plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
+                   facecolor=background_color, cb_ticks_font_size=cb_ticks_font_size, title=cb_title)
     cb_img = Image.open(cb_fname)
     if add_cb:
         if crop_figures:
@@ -266,8 +268,8 @@ def combine_brain_with_color_bar(image_fname, cb_img=None, w_offset=10, overwrit
             cb_ticks = [cb_min, cb_max]
         fol = utils.get_parent_fol(image_fname)
         cb_fname = op.join(fol, '{}_colorbar.jpg'.format(cb_cm))
-        plot_color_bar(cb_max, cb_min, cb_cm, do_save=True, cb_ticks=cb_ticks, fol=fol, facecolor=background,
-                          ticks_font_size=cb_ticks_font_size)
+        plot_color_bar(cb_max, cb_min, cb_cm, do_save=True, cb_ticks=cb_ticks, fol=fol, background_color=background,
+                       cb_ticks_font_size=cb_ticks_font_size)
         cb_img = Image.open(cb_fname)
 
     background = Image.open(image_fname)
@@ -307,7 +309,7 @@ def combine_brain_with_color_bar_old(data_max, data_min, figure_fname, colors_ma
     ax_cb = plt.subplot(gs[:, -2:-1])
     ax_cb.tick_params(axis='y', colors='white' if facecolor=='black' else 'black')
     resize_and_move_ax(ax_cb, dy=dy, dx=dx, ddh=ddh, ddw=ddw)
-    plot_color_bar(data_max, data_min, colors_map, ax_cb, ticks=ticks)
+    plot_color_bar(data_max, data_min, colors_map, ax_cb, cb_ticks=ticks)
     plt.savefig(image_fname, facecolor=fig.get_facecolor(), transparent=True)
     plt.close()
     image = Image.open(image_fname)
@@ -387,6 +389,7 @@ if __name__ is '__main__':
     parser.add_argument('--w_fac', required=False, default=2, type=float)
     parser.add_argument('--h_fac', required=False, default=3/2, type=float)
     parser.add_argument('--background_color', required=False, default='black')
+    parser.add_argument('--colorbar_name', required=False, default='')
     parser.add_argument('--cb_title', required=False, default='')
     parser.add_argument('--cb_ticks', required=False, default='', type=au.float_arr_type)
     parser.add_argument('--cb_ticks_font_size', required=False, default=10, type=int)

@@ -3,6 +3,7 @@ import os.path as op
 import glob
 import numpy as np
 import mmvt_utils as mu
+import colors_utils as cu
 
 
 # PERC_FORMATS = {0:'{:.0f}', 1:'{:.1f}', 2:'{:.2f}', 3:'{:.3f}', 4:'{:.4f}', 5:'{:.5f}'}
@@ -43,6 +44,56 @@ def set_colorbar_default_cm():
 
 def get_cm():
     return ColorbarPanel.cm
+
+
+def save_colorbar(min_val=None, max_val=None, color_map=None, ticks_num=None, ticks_font_size=None, prec=None,
+                  title=None, background_color_name=None, colorbar_name='', fol=''):
+    org_colorbar_min, org_colorbar_max  = (get_colorbar_min(), get_colorbar_max())
+    org_background_color = _addon().get_panels_background_color()
+    if min_val is None:
+        min_val = get_colorbar_min()
+    if max_val is None:
+        max_val = get_colorbar_max()
+    if color_map is None:
+        color_map = get_colormap_name()
+    if ticks_num is None:
+        ticks_num = get_colorbar_ticks_num()
+    if ticks_font_size is None:
+        ticks_font_size = get_cb_ticks_font_size()
+    if prec is None:
+        prec = get_colorbar_prec()
+    if title is None:
+        title = get_colorbar_title()
+    if background_color_name is None:
+        background_color_rgb = _addon().get_background_rgb_string()
+    else:
+        background_color_rgb = ','.join([str(x) for x in cu.name_to_rgb(background_color_name)])
+    if colorbar_name == '':
+        colorbar_name = '{}_colorbar.jpg'.format(color_map)
+    else:
+        if not colorbar_name.endswith('.jpg'):
+            colorbar_name = '{}.jpg'.format(colorbar_name)
+    if fol == '' or not op.isdir(fol):
+        fol = _addon().get_output_path()
+    cb_ticks = ','.join(get_colorbar_ticks(ticks_num, prec, min_val, max_val))
+    cb_ticks = cb_ticks.replace('-', '*') # Bug in argparse. todo: change the , to space
+    flags = '--colorbar_name "{}" --data_max "{}" --data_min "{}" --colors_map {} --background_color {} '.format(
+        colorbar_name, max_val, min_val, color_map, background_color_rgb) + \
+        '--cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} --fol "{}"'.format(
+            title, cb_ticks, ticks_font_size, fol)
+    mu.run_mmvt_func('src.utils.figures_utils', 'plot_color_bar', flags=flags)
+
+    set_colorbar_max_min(org_colorbar_max, org_colorbar_min, force_update=True)
+    _addon().set_panels_background_color(org_background_color)
+
+
+def set_colorbar_background_color(color_name):
+    color_rgb = cu.name_to_rgb(color_name)
+    _addon().set_panels_background_color(color_rgb)
+
+
+def get_colorbar_ticks_num():
+    return bpy.context.scene.cb_ticks_num
 
 
 def colorbar_values_are_locked():
@@ -162,11 +213,15 @@ def _set_colorbar_min_max(field, val, prec):
         print('_set_colorbar_min_max: field error ({})! must be max / min!'.format(field))
 
 
-def get_colorbar_ticks(ticks_num=2, prec=None):
+def get_colorbar_ticks(ticks_num=2, prec=None, cb_min=None, cb_max=None):
+    if cb_min is None:
+        cb_min = get_colorbar_min()
+    if cb_max is None:
+        cb_max = get_colorbar_max()
     if prec is None:
         prec = bpy.context.scene.colorbar_prec
-    step = (get_colorbar_max() - get_colorbar_min()) / (ticks_num - 1)
-    ticks = np.arange(get_colorbar_min(), get_colorbar_max() + step, step)
+    step = (cb_max - cb_min) / (ticks_num - 1)
+    ticks = np.arange(cb_min, cb_max + step, step)
     return [str(mu.round_n_digits(x, prec)) for x in ticks]
     # return [PERC_FORMATS[prec].format(x) for x in ticks]
 

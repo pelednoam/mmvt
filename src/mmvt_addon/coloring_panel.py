@@ -1413,6 +1413,10 @@ def calc_stc_minmax(meg_min_max_prec=None, stc_name=''):
     return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len
 
 
+def get_meg_data_minmax():
+    return (ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max)
+
+
 @mu.tryit()
 def plot_fmri_file(fmri_template_fname):
     fmri_template_fname_no_hemi = mu.remove_hemi_template(mu.namebase(fmri_template_fname))

@@ -93,7 +93,7 @@ def render_image_blender(subject_fname):
     if args.inflated:
         mmvt.show_inflated()
         mmvt.set_inflated_ratio(args.inflated_ratio)
-    mmvt.set_background_color(args.background_color)
+    mmvt.set_background_color_name(args.background_color)
     mmvt.set_lighting(args.lighting)
     for image_name, camera in zip(args.image_name, args.camera):
         if camera == '':

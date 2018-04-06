@@ -235,6 +235,7 @@ get_no_plotting = coloring_panel.get_no_plotting
 set_no_plotting = coloring_panel.set_no_plotting
 plot_fmri = coloring_panel.plot_fmri
 init_labels_colorbar = coloring_panel.init_labels_colorbar
+get_meg_data_minmax = coloring_panel.get_meg_data_minmax
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 filter = filter_panel
 find_obj_with_val = filter_panel.find_obj_with_val
@@ -275,6 +276,8 @@ get_save_views_with_cb = render_panel.get_save_views_with_cb
 save_views_with_cb = render_panel.save_views_with_cb
 get_save_split_views = render_panel.get_save_split_views
 set_save_split_views = render_panel.set_save_split_views
+set_background_color_name = render_panel.set_background_color_name
+get_background_rgb_string = render_panel.get_background_rgb_string
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide = show_hide_panel
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
@@ -335,6 +338,8 @@ cursor_is_snapped = appearance_panel.cursor_is_snapped
 set_cursor_pos = appearance_panel.set_cursor_pos
 flat_map_exists = appearance_panel.flat_map_exists
 move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
+set_panels_background_color = appearance_panel.set_panels_background_color
+get_panels_background_color = appearance_panel.get_panels_background_color
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 play = play_panel
 set_play_type = play_panel.set_play_type
@@ -381,6 +386,7 @@ set_colorbar_defaults = colorbar_panel.set_colorbar_defaults
 set_colorbar_default_cm = colorbar_panel.set_colorbar_default_cm
 change_colorbar_default_cm = colorbar_panel.change_colorbar_default_cm
 get_colorbar_ticks = colorbar_panel.get_colorbar_ticks
+get_colorbar_ticks_num = colorbar_panel.get_colorbar_ticks_num
 get_cb_ticks_num = colorbar_panel.get_cb_ticks_num
 set_cb_ticks_num = colorbar_panel.set_cb_ticks_num
 get_cb_ticks_font_size = colorbar_panel.get_cb_ticks_font_size

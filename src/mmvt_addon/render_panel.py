@@ -43,13 +43,14 @@ def camera_files_update(self, context):
 
 
 def background_color_update(self, context):
-    if bpy.context.scene.background_color == 'white':
-        bpy.data.worlds['World'].horizon_color = [1.0, 1.0, 1.0]
+    color_rgb = [1.0, 1.0, 1.0] if bpy.context.scene.background_color == 'white' else [.0, .0, .0]
+    if is_camera_view():
+        bpy.data.worlds['World'].horizon_color = color_rgb
     else:
-        bpy.data.worlds['World'].horizon_color = [.0, .0, .0]
+        _addon().set_panels_background_color(color_rgb)
 
 
-def set_background_color(color):
+def set_background_color_name(color):
     if color in ['white', 'black']:
         bpy.context.scene.background_color = color
     else:
@@ -122,7 +123,7 @@ def exit_from_camera_view():
     camera_mode('ORTHO')
 
 
-def change_background_color(new_color=(0.227, 0.227, 0.227)):
+def set_background_color_name(new_color=(0.227, 0.227, 0.227)):
     bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = new_color
 
 
@@ -237,7 +238,8 @@ def render_draw(self, context):
             col.prop(context.scene, "X_location", text='X location')
             col.prop(context.scene, "Y_location", text='Y location')
             col.prop(context.scene, "Z_location", text='Z location')
-    # else:
+    else:
+        layout.prop(context.scene, "background_color", expand=True)
         # layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
 
@@ -439,7 +441,7 @@ def init_rendering(inflated, inflated_ratio, transparency, light_layers_depth, l
         _addon().set_inflated_ratio(inflated_ratio)
     else:
         _addon().show_pial()
-    set_background_color(background_color)
+    set_background_color_name(background_color)
     set_lighting(lighting)
 
 
@@ -793,7 +795,7 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
 
 
 def get_background_rgb_string():
-    background = bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient
+    background = _addon().get_panels_background_color()
     return ','.join([str(background.__getattribute__(x)) for x in ('r', 'g', 'b')])
 
 

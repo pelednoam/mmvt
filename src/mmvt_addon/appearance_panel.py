@@ -49,6 +49,14 @@ def panels_background_color_update(self, context):
         bpy.context.scene.panels_background_color
 
 
+def set_panels_background_color(color_rgb):
+    bpy.context.scene.panels_background_color = color_rgb
+
+
+def get_panels_background_color():
+    return tuple(bpy.context.scene.panels_background_color)
+
+
 def show_hide_meg_sensors(do_show=True):
     bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
 

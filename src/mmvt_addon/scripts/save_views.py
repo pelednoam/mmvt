@@ -160,8 +160,8 @@ def post_blender_call(args):
         fol = utils.get_fname_folder(files[0][0])
         cb_fname = op.join(fol, '{}_colorbar.jpg'.format(args.cb_cm))
         # if not op.isfile(cb_fname):
-        fu.plot_color_bar(data_max, data_min, args.cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background,
-                          ticks_font_size=args.cb_ticks_font_size)
+        fu.plot_color_bar(data_max, data_min, args.cb_cm, do_save=True, ticks=ticks, fol=fol, background_color=background,
+                          cb_ticks_font_size=args.cb_ticks_font_size)
         cb_img = Image.open(cb_fname)
         for files_coup in files:
             hemi = 'rh' if utils.namebase(files_coup[0]).startswith('rh') else 'lh'
@@ -187,7 +187,7 @@ def post_blender_call(args):
         fol = utils.get_fname_folder(images_names[0])
         cb_fname = op.join(fol, '{}_colorbar.jpg'.format(args.cb_cm))
         if not op.isfile(cb_fname):
-            fu.plot_color_bar(data_max, data_min, args.cb_cm, do_save=True, ticks=ticks, fol=fol, facecolor=background)
+            fu.plot_color_bar(data_max, data_min, args.cb_cm, do_save=True, ticks=ticks, fol=fol, background_color=background)
         cb_img = Image.open(cb_fname)
         for fig_name in images_names:
             fu.combine_brain_with_color_bar(fig_name, cb_img, overwrite=True)
