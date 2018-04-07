@@ -123,8 +123,11 @@ def exit_from_camera_view():
     camera_mode('ORTHO')
 
 
-def set_background_color_name(new_color=(0.227, 0.227, 0.227)):
-    bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = new_color
+def set_background_color(new_color=(0.227, 0.227, 0.227)):
+    if isinstance(new_color, str):
+        set_background_color_name(new_color)
+    else:
+        bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = new_color
 
 
 def camera_mode(view=None):
@@ -658,6 +661,8 @@ def set_save_split_views(val=True):
 # todo: do something with the overwrite flag
 def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=None, render_images=False, quality=0,
                    img_name_prefix='', add_colorbar=None, cb_ticks_num=None, cb_ticks_font_size=None, overwrite=True):
+    if not render_images:
+        _addon().change_to_solid_brain()
     if add_colorbar is None:
         add_colorbar = bpy.context.scene.save_views_with_cb
     if cb_ticks_num is None:
