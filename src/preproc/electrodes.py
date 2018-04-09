@@ -16,6 +16,7 @@ from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
 from src.utils import matlab_utils as mu
 from src.utils import preproc_utils as pu
+from src.utils import geometry_utils as gu
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
@@ -529,6 +530,46 @@ def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
         groups_pos = sorted(groups_pos)
         sorted_groups[hemi] = [group_pos[1] for group_pos in groups_pos]
     return sorted_groups
+
+
+@pu.tryit_ret_bool
+def find_electrodes_hemis(subject, bipolar, sigma=0):
+    from scipy.spatial.distance import cdist
+    from collections import Counter
+
+    in_dural = {}
+    elcs_groups = {}
+    groups = defaultdict(list)
+    sorted_groups = dict(rh=[], lh=[])
+
+    electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
+    dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
+    if dural_verts is None:
+        return False
+    for hemi in ['rh', 'lh']:
+        dists = cdist(electrodes_t1_tkreg, dural_verts[hemi])
+        close_verts_indices = np.argmin(dists, axis=1)
+        in_dural[hemi] = [gu.point_in_mesh(u, dural_verts[hemi][vert_ind], dural_normals[hemi][vert_ind], sigma)
+                          for u, vert_ind in zip(electrodes_t1_tkreg, close_verts_indices)]
+    hemis = {elc_name:'rh' if in_dural['rh'][ind] else 'lh' if in_dural['lh'][ind] else 'un' for ind, elc_name in
+             enumerate(electrodes)}
+    for elc_name in electrodes:
+        elc_group = utils.elec_group(elc_name, bipolar)
+        elcs_groups[elc_name] = elc_group
+        groups[elc_group].append(elc_name)
+    groups_hemis = {group:Counter([hemis[elc] for elc in electrodes]).most_common()[0][0]
+                    for group, electrodes in groups.items()}
+    for group, group_hemi in groups_hemis.items():
+        if group_hemi == 'un':
+            hem = input("Couldn't detect the hemisphere for {}. r/l? ".format(group))
+            while hem not in ['r', 'l']:
+                hem = input('r/l? ')
+            groups_hemis[group] = '{}h'.format(hem)
+    for hemi in utils.HEMIS:
+        sorted_groups[hemi] = [group for group, group_hemi in groups_hemis.items() if group_hemi == hemi]
+    print(sorted_groups)
+    utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
+    return True
 
 
 @pu.tryit_ret_bool
@@ -1100,9 +1141,12 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_dist_mat'):
         flags['calc_dist_mat'] = calc_dist_mat(subject, bipolar=args.bipolar)
 
-    if utils.should_run(args, 'sort_electrodes_groups'):
-        flags['sort_electrodes_groups'] = sort_electrodes_groups(
-            subject, args.bipolar, args.all_in_hemi, args.ask_for_hemis, do_plot=args.do_plot)
+    # if utils.should_run(args, 'sort_electrodes_groups'):
+    #     flags['sort_electrodes_groups'] = sort_electrodes_groups(
+    #         subject, args.bipolar, args.all_in_hemi, args.ask_for_hemis, do_plot=args.do_plot)
+
+    if utils.should_run(args, 'find_electrodes_hemis'):
+        flags['find_electrodes_hemis'] = find_electrodes_hemis(subject, args.bipolar, args.sigma)
 
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         flags['create_electrode_data_file'] = create_electrode_data_file(
@@ -1160,6 +1204,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--input_matlab_fname', help='', required=False, default='')
     parser.add_argument('--normalize_data', help='normalize_data', required=False, default=1, type=au.is_true)
     parser.add_argument('--preload', help='preload', required=False, default=1, type=au.is_true)
+    parser.add_argument('--sigma', help='surf sigma', required=False, default=0, type=float)
 
     parser.add_argument('--start_time', help='', required=False, default='0:00:00')
     parser.add_argument('--end_time', help='', required=False, default='')

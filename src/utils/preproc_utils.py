@@ -191,8 +191,7 @@ def get_links():
 def tryit_ret_bool(func):
     def wrapper(*args, **kwargs):
         try:
-            func(*args, **kwargs)
-            retval = True
+            retval = func(*args, **kwargs)
         except:
             print('Error in {}!'.format(func.__name__))
             print(traceback.format_exc())

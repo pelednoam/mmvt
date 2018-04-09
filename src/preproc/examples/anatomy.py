@@ -4,6 +4,7 @@ from src.preproc import anatomy as anat
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
+from gooey import Gooey
 
 
 def get_subject_files_using_sftp(args):
@@ -132,7 +133,10 @@ def get_subject_files_from_server(args):
     pu.run_on_subjects(args, anat.main)
 
 
-if __name__ == '__main__':
+# https://github.com/chriskiehl/Gooey
+# @Gooey
+def main():
+    import collections
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
@@ -140,7 +144,13 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')
     parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,
                         default='/space/thibault/1/users/npeled/subjects/{subject}')
-    parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('-f', '--function', help='function name', required=True,
+                        choices=[f_name for f_name, f in globals().items() if isinstance(f, collections.Callable)
+                                 if f_name not in ['Gooey', 'main']])
     args = utils.Bag(au.parse_parser(parser))
     # for subject in args.subject:
-    locals()[args.function](args)
+    globals()[args.function](args)
+
+
+if __name__ == '__main__':
+    main()

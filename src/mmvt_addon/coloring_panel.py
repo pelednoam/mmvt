@@ -8,6 +8,7 @@ from collections import defaultdict, OrderedDict
 import glob
 import traceback
 from functools import partial
+import re
 
 try:
     import bpy
@@ -1125,9 +1126,13 @@ def color_manually():
     objects_names, colors, data = defaultdict(list), defaultdict(list), defaultdict(list)
     values = []
     coloring_objects, coloring_labels = False, False
-    rand_colors = cu.get_distinct_colors(30)
     # labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
     coloring_name = '{}.csv'.format(bpy.context.scene.coloring_files)
+    no_colors_lines_num = sum(
+        [1 for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name))if len(line) == 1])
+    rand_colors = itertools.cycle(mu.get_distinct_colors(no_colors_lines_num))
+    subs_names = [o.name for o in bpy.data.objects['Subcortical_structures'].children]
+    cortex_labels_names = [o.name for o in bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children]
     other_atals_labels = defaultdict(list)
     if coloring_name.startswith('_labels_'):
         atlas = coloring_name.split('_')[2]
@@ -1136,16 +1141,28 @@ def color_manually():
     else:
         obj_type = ''
         coloring_objects = True
+        atlas = ''
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
+        if line[0].startswith('atlas'):
+            atlas = line[0].split('=')[-1].strip()
+            atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
+            atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
+            atlas_labels = [l.name for l in atlas_labels_rh + atlas_labels_lh]
+            if len(atlas_labels_rh) + len(atlas_labels_lh) == 0:
+                print("Couldn't find any labels for atlas {}!".format(atlas))
+                return
+            continue
         if len(line) == 0 or line[0][0] == '#':
             continue
-        if len(line) >= 2:
+        if len(line) >= 1:
             obj_name = line[0]
-        if isinstance(line[1], str):
+        if len(line) == 1 or line[1] == '':
+            color_name = ''
+        elif isinstance(line[1], str):
             color_name = line[1]
         if len(line) >= 4 and all([mu.is_float(x) for x in line[1:4]]):
             color_name = line[1:4]
-        if isinstance(color_name, str):
+        if isinstance(color_name, str) and color_name != '':
             color_rgb = cu.name_to_rgb(color_name)
         # Check if the color is already in RBG
         elif len(color_name) == 3:
@@ -1165,26 +1182,54 @@ def color_manually():
         if not coloring_labels:
             obj_type = mu.check_obj_type(obj_name)
         if obj_type is None:
-            # check if the obj_name is an existing label with a different delim/pos
-            delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
-            if delim != '' and pos != '' and hemi != '' and label != obj_name:
-                labels_delim, labels_pos, labels_label, _ = mu.get_hemi_delim_and_pos(
-                    bpy.data.objects['Cortex-lh'].children[0].name)
-                label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
-                obj_type = mu.check_obj_type(label_obj_name)
+            # Check if the obj_name is an sub-cortical
+            obj_name = '_'.join(re.split('\W+', obj_name))
+            object_added = False
+            for sub_name in subs_names:
+                if obj_name.lower() in '_'.join(re.split('\W+', sub_name)).lower():
+                    obj_type = mu.OBJ_TYPE_SUBCORTEX
+                    objects_names[obj_type].append(sub_name)
+                    colors[obj_type].append(color_rgb)
+                    data[obj_type].append(1.)
+                    object_added = True
+            for cortex_labels_name in cortex_labels_names:
+                if obj_name.lower() in '_'.join(re.split('\W+', cortex_labels_name)).lower():
+                    hemi = mu.get_hemi_from_fname(cortex_labels_name)
+                    obj_type = mu.OBJ_TYPE_CORTEX_LH if hemi == 'lh' else mu.OBJ_TYPE_CORTEX_RH
+                    objects_names[obj_type].append(cortex_labels_name)
+                    colors[obj_type].append(color_rgb)
+                    data[obj_type].append(1.)
+                    object_added = True
+            if obj_type is None and atlas == '':
+                # check if the obj_name is an existing label with a different delim/pos
+                delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
+                if delim != '' and pos != '' and hemi != '' and label != obj_name:
+                    labels_delim, labels_pos, labels_label, _ = mu.get_hemi_delim_and_pos(
+                        bpy.data.objects['Cortex-lh'].children[0].name)
+                    label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
+                    obj_type = mu.check_obj_type(label_obj_name)
             if obj_type is None:
                 # Check if this is a label from another atlas
-                if len(line) >= 3 and isinstance(line[2], str):
-                    atlas = line[2]
+                if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
+                    if atlas == '':
+                        atlas = line[2]
                     labels_fol = mu.get_atlas_labels_fol(atlas)
+                    atlas_label_found = False
                     if labels_fol != '':
-                        other_atals_labels[atlas].append((obj_name, color_rgb))
+                        for atlas_label_name in atlas_labels:
+                            if obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
+                                other_atals_labels[atlas].append((atlas_label_name, color_rgb))
+                                atlas_label_found = True
+                                object_added = True
+                        if not atlas_label_found:
+                            other_atals_labels[atlas].append((obj_name, color_rgb))
+                            object_added = True
                 continue
         # if isinstance(color_name, str) and color_name.startswith('mark'):
         #     import filter_panel
         #     filter_panel.filter_roi_func(obj_name, mark=color_name)
         # else:
-        if obj_type is not None:
+        if obj_type is not None and not object_added:
             objects_names[obj_type].append(obj_name)
             colors[obj_type].append(color_rgb)
             data[obj_type].append(1.)
@@ -1194,7 +1239,7 @@ def color_manually():
     elif coloring_labels:
         plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
     for atlas, labels_tup in other_atals_labels.items():
-        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas)
+        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas, atlas_labels_rh, atlas_labels_lh)
     if len(values) > 0:
         _addon().set_colorbar_max_min(np.max(values), np.min(values))
     _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
@@ -2018,9 +2063,10 @@ def plot_label(label, color=''):
         _addon().show_activity()
 
 
-def plot_labels(labels_names, colors, atlas):
-    atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
-    atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
+def plot_labels(labels_names, colors, atlas, atlas_labels_rh=None, atlas_labels_lh=None):
+    if atlas_labels_rh is None or atlas_labels_lh is None:
+        atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
+        atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
     atlas_labels = atlas_labels_rh + atlas_labels_lh
     if len(atlas_labels) == 0:
         print("Couldn't find the atlas! ({})".format(atlas))
