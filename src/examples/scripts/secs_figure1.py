@@ -22,7 +22,7 @@ def run(mmvt):
     mmvt.render.set_output_path(new_path)
     for stc_name in ['stc_mag', 'stc_grad', 'stc_eeg', 'stc_plot']:
         mmvt.coloring.plot_stc(stc_name, cb_percentiles=(0, 99), cm='hot')
-        mmvt.render.save_all_views((mmvt.ROT_SAGITTAL_LEFT, mmvt.ROT_MEDIAL_LEFT), render_images=False, quality=60,
+        mmvt.render.save_all_views((mmvt.ROT_SAGITTAL_LEFT, mmvt.ROT_MEDIAL_LEFT), render_images=True, quality=60,
                                    img_name_prefix=stc_name, add_colorbar=False)
         meg_data_min, meg_data_max = mmvt.coloring.get_meg_data_minmax()
         meg_data_min, meg_data_max= round(meg_data_min / 10.0) * 10, round(meg_data_max / 10.0) * 10
