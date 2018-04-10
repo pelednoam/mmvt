@@ -237,11 +237,11 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     fol = utils.get_fname_folder(lh_figure_fname)
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
-    cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
-    plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
-                   facecolor=background_color, cb_ticks_font_size=cb_ticks_font_size, title=cb_title)
-    cb_img = Image.open(cb_fname)
     if add_cb:
+        cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
+        plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
+                       facecolor=background_color, cb_ticks_font_size=cb_ticks_font_size, title=cb_title)
+        cb_img = Image.open(cb_fname)
         if crop_figures:
             crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=50, dh=70)
             crop_image(rh_figure_fname, rh_figure_fname, dx=150 + 50, dy=0, dw=0, dh=70)

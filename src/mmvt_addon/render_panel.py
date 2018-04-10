@@ -34,6 +34,10 @@ def finish_rendering():
     # logging.handlers[0].flush()
 
 
+def view_distance_update(self, context):
+    mu.get_view3d_region().view_distance = bpy.context.scene.view_distance
+
+
 def reading_from_rendering_stdout_func():
     return RenderingMakerPanel.background_rendering
 
@@ -44,10 +48,8 @@ def camera_files_update(self, context):
 
 def background_color_update(self, context):
     color_rgb = [1.0, 1.0, 1.0] if bpy.context.scene.background_color == 'white' else [.0, .0, .0]
-    if is_camera_view():
-        bpy.data.worlds['World'].horizon_color = color_rgb
-    else:
-        _addon().set_panels_background_color(color_rgb)
+    bpy.data.worlds['World'].horizon_color = color_rgb
+    context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = color_rgb
 
 
 def set_background_color_name(color):
@@ -130,6 +132,36 @@ def set_background_color(new_color=(0.227, 0.227, 0.227)):
         bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = new_color
 
 
+def switch_to_object_mode(area=None):
+    if area is None:
+        area = bpy.data.screens['Neuro'].areas[1]
+    area.spaces[0].region_3d.view_perspective = 'ORTHO'
+    mu.select_all_brain(False)
+    bpy.data.cameras['Camera'].lens = 35
+    _addon().change_to_solid_brain()
+
+
+def switch_to_camera_mode(area=None):
+    if area is None:
+        area = bpy.data.screens['Neuro'].areas[1]
+    _addon().change_to_rendered_brain()
+    bpy.data.objects['Camera'].select = True
+    bpy.context.scene.objects.active = bpy.data.objects['Camera']
+    ob = bpy.context.object
+    bpy.context.scene.camera = ob
+    for region in area.regions:
+        if region.type == 'WINDOW':
+            override = bpy.context.copy()
+            override['area'] = area
+            override["region"] = region
+            mu.select_all_brain(True)
+            bpy.ops.view3d.camera_to_view(override)
+            bpy.ops.view3d.camera_to_view_selected(override)
+            bpy.data.cameras['Camera'].lens = 32
+            grab_camera()
+            break
+
+
 def camera_mode(view=None):
     area = bpy.data.screens['Neuro'].areas[1]
     if view is None:
@@ -137,27 +169,9 @@ def camera_mode(view=None):
     else:
         view = 'ORTHO' if view == 'CAMERA' else 'CAMERA'
     if view == 'CAMERA':
-        area.spaces[0].region_3d.view_perspective = 'ORTHO'
-        mu.select_all_brain(False)
-        bpy.data.cameras['Camera'].lens = 35
-        _addon().change_to_solid_brain()
+        switch_to_object_mode(area)
     else:
-        _addon().change_to_rendered_brain()
-        bpy.data.objects['Camera'].select = True
-        bpy.context.scene.objects.active = bpy.data.objects['Camera']
-        ob = bpy.context.object
-        bpy.context.scene.camera = ob
-        for region in area.regions:
-            if region.type == 'WINDOW':
-                override = bpy.context.copy()
-                override['area'] = area
-                override["region"] = region
-                mu.select_all_brain(True)
-                bpy.ops.view3d.camera_to_view(override)
-                bpy.ops.view3d.camera_to_view_selected(override)
-                bpy.data.cameras['Camera'].lens = 32
-                grab_camera()
-                break
+        switch_to_camera_mode(area)
 
 
 def grab_camera(self=None, do_save=True, overwrite=True):
@@ -243,6 +257,8 @@ def render_draw(self, context):
             col.prop(context.scene, "Y_location", text='Y location')
             col.prop(context.scene, "Z_location", text='Z location')
     else:
+        if not bpy.context.scene.save_selected_view:
+            layout.prop(context.scene, 'view_distance', text='View distance')
         layout.prop(context.scene, "background_color", expand=True)
         # layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
@@ -296,6 +312,7 @@ bpy.types.Scene.background_color = bpy.props.EnumProperty(
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
 bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.view_distance = bpy.props.FloatProperty(default=20, update=view_distance_update)
 
 
 class SaveColorbar(bpy.types.Operator):
@@ -552,6 +569,7 @@ def render_in_background(image_name, image_fol, camera_fname, hide_subcorticals,
         cmd, read_stderr=False, read_stdin=False, stdout_func=reading_from_rendering_stdout_func)
     # mu.run_command_in_new_thread(cmd, queues=False)
 
+
 def _save_image():
     if not bpy.context.scene.save_split_views:
         save_image(view_selected=bpy.context.scene.save_selected_view,
@@ -587,9 +605,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
         else:
             index = 0
 
-    if not _addon().is_solid():
-        _addon().change_to_solid_brain()
-    exit_from_camera_view()
+    switch_to_object_mode()
     index = bpy.context.scene.frame_current if index == -1 else index
     mu.show_only_render(True)
     fol = bpy.path.abspath(bpy.context.scene.output_path)
@@ -603,13 +619,14 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     if view_selected:
         _addon().view_all()
         # todo: Understand when zoom(-1) is needed
-        if not _addon().subcorticals_are_hiding():
-            _addon().zoom(-1)
+        # if not _addon().subcorticals_are_hiding():
+        #     _addon().zoom(-1)
         # mu.select_all_brain(True)
         # bpy.ops.view3d.camera_to_view_selected(view3d_context)
         # mu.view_selected()
     if zoom_val != 0:
         _addon().zoom(zoom_val)
+    # _addon().zoom(1)
     bpy.ops.render.opengl(view3d_context, write_still=True)
     if add_colorbar:
         add_colorbar_to_image(image_name, cb_ticks_num, cb_ticks_font_size)
@@ -669,11 +686,15 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=N
         cb_ticks_num = bpy.context.scene.cb_ticks_num
     if cb_ticks_font_size is None:
         cb_ticks_font_size = bpy.context.scene.cb_ticks_font_size
+
+    _addon().show_hemis()
     if not bpy.context.scene.save_split_views:
         rot_lh_axial = False if rot_lh_axial is None else rot_lh_axial
         _save_all_views(views, inflated_ratio_in_file_name, rot_lh_axial, render_images, quality,  img_name_prefix,
                         add_colorbar, cb_ticks_num, cb_ticks_font_size, overwrite)
     else:
+        if views is None:
+            views = list(set(_addon().ANGLES_DICT.keys()) - set([_addon().ROT_MEDIAL_LEFT, _addon().ROT_MEDIAL_RIGHT]))
         images_names = []
         rot_lh_axial = True if rot_lh_axial is None else rot_lh_axial
         org_hide = {hemi: mu.get_hemi_obj(hemi).hide for hemi in mu.HEMIS}
@@ -697,6 +718,7 @@ def save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=N
             new_image_fname = op.join(fol, mu.namebase_with_ext(files_coup[0])[3:])
             combine_two_images_and_add_colorbar(
                 coup['lh'], coup['rh'], new_image_fname, cb_ticks_num, cb_ticks_font_size)
+    _addon().show_hemis()
 
 
 def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=True, render_images=False, quality=0,
@@ -733,7 +755,7 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         _addon().show_hemi('lh')
 
     if views is None:
-        views = list(_addon().ANGLES_DICT.keys()) + [_addon().ROT_MEDIAL_LEFT, _addon().ROT_MEDIAL_RIGHT]
+        views = list(_addon().ANGLES_DICT.keys()) # + [_addon().ROT_MEDIAL_LEFT, _addon().ROT_MEDIAL_RIGHT]
     else:
         views = list(map(int, views))
     inf_r = bpy.context.scene.inflating
@@ -755,7 +777,7 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         hemi = ''
     else:
         mu.write_to_stderr('You need to show at least one hemi')
-    org_view_ang = mu.get_view3d_region().view_rotation
+    org_view_ang = tuple(mu.get_view3d_region().view_rotation)
     images_names = []
     for view in views:
         view_name = _addon().view_name(view)
@@ -807,6 +829,7 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
             '--add_cb {} --cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} '.format(
                 bpy.context.scene.save_views_with_cb, _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size) + \
             '--crop_figures 1 --remove_original_figures 1'
+    print('Combining {} and {}'.format(lh_figure_fname, rh_figure_fname))
     mu.run_mmvt_func(
         'src.utils.figures_utils', 'combine_two_images_and_add_colorbar', flags=flags)
 
