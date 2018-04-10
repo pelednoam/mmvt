@@ -941,7 +941,8 @@ def init(addon):
     grab_camera(overwrite=False)
     update_camera_files()
     bpy.context.scene.in_camera_view = False
-    bpy.context.scene.save_selected_view = True
+    bpy.context.scene.save_selected_view = False
+    bpy.context.scene.view_distance = 17.36
     # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
