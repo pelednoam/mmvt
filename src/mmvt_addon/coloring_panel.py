@@ -1181,7 +1181,8 @@ def color_manually():
         #     color_name = color_name[0]
         if not coloring_labels:
             obj_type = mu.check_obj_type(obj_name)
-        if obj_type is None:
+        # todo: support coloring of corticals objects and atlas labels
+        if obj_type is None or atlas != '' and obj_type in (mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH):
             # Check if the obj_name is an sub-cortical
             obj_name = '_'.join(re.split('\W+', obj_name))
             object_added = False
@@ -1192,6 +1193,32 @@ def color_manually():
                     colors[obj_type].append(color_rgb)
                     data[obj_type].append(1.)
                     object_added = True
+            if object_added:
+                continue
+            # Check if this is a label from another atlas
+            if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
+                if atlas == '':
+                    atlas = line[2]
+                other_atals_labels, object_added = find_atlas_labels(
+                    obj_name, atlas, atlas_labels, color_rgb, other_atals_labels)
+                # labels_fol = mu.get_atlas_labels_fol(atlas)
+                # if labels_fol != '':
+                #     for atlas_label_name in atlas_labels:
+                #         if obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
+                #             other_atals_labels[atlas].append((atlas_label_name, color_rgb))
+                #             object_added = True
+                    # if not atlas_label_found:
+                    #     other_atals_labels[atlas].append((obj_name, color_rgb))
+                    #     object_added = True
+            if object_added:
+                continue
+
+            other_atals_labels, object_added = find_atlas_labels(
+                obj_name, bpy.context.scene.atlas, cortex_labels_names, color_rgb, other_atals_labels)
+            if object_added:
+                continue
+
+            # todo: merge these two cases
             for cortex_labels_name in cortex_labels_names:
                 if obj_name.lower() in '_'.join(re.split('\W+', cortex_labels_name)).lower():
                     hemi = mu.get_hemi_from_fname(cortex_labels_name)
@@ -1200,6 +1227,8 @@ def color_manually():
                     colors[obj_type].append(color_rgb)
                     data[obj_type].append(1.)
                     object_added = True
+            if object_added:
+                continue
             if obj_type is None and atlas == '':
                 # check if the obj_name is an existing label with a different delim/pos
                 delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
@@ -1208,26 +1237,7 @@ def color_manually():
                         bpy.data.objects['Cortex-lh'].children[0].name)
                     label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
                     obj_type = mu.check_obj_type(label_obj_name)
-            if obj_type is None:
-                # Check if this is a label from another atlas
-                if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
-                    if atlas == '':
-                        atlas = line[2]
-                    labels_fol = mu.get_atlas_labels_fol(atlas)
-                    atlas_label_found = False
-                    if labels_fol != '':
-                        for atlas_label_name in atlas_labels:
-                            if obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
-                                other_atals_labels[atlas].append((atlas_label_name, color_rgb))
-                                atlas_label_found = True
-                                object_added = True
-                        if not atlas_label_found:
-                            other_atals_labels[atlas].append((obj_name, color_rgb))
-                            object_added = True
-                continue
-        # if isinstance(color_name, str) and color_name.startswith('mark'):
-        #     import filter_panel
-        #     filter_panel.filter_roi_func(obj_name, mark=color_name)
+
         # else:
         if obj_type is not None and not object_added:
             objects_names[obj_type].append(obj_name)
@@ -1238,8 +1248,12 @@ def color_manually():
         color_objects(objects_names, colors, data)
     elif coloring_labels:
         plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
+    ColoringMakerPanel.labels_plotted = []
     for atlas, labels_tup in other_atals_labels.items():
-        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas, atlas_labels_rh, atlas_labels_lh)
+        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas, atlas_labels_rh, atlas_labels_lh,
+                    do_plot=False)
+    if len(other_atals_labels) > 0:
+        _plot_labels()
     if len(values) > 0:
         _addon().set_colorbar_max_min(np.max(values), np.min(values))
     _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
@@ -1249,6 +1263,17 @@ def color_manually():
             bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas)
         print('Running {}'.format(cmd))
         mu.run_command_in_new_thread(cmd, False)
+
+
+def find_atlas_labels(obj_name, atlas, atlas_labels, color_rgb, other_atals_labels):
+    labels_fol = mu.get_atlas_labels_fol(atlas)
+    object_added = False
+    if labels_fol != '':
+        for atlas_label_name in atlas_labels:
+            if obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
+                other_atals_labels[atlas].append((atlas_label_name, color_rgb))
+                object_added = True
+    return other_atals_labels, object_added
 
 
 def color_objects(objects_names, colors, data):
@@ -2053,18 +2078,26 @@ def plot_label(label, color=''):
     else:
         color = list(bpy.context.scene.labels_color) if color == '' else color
         ColoringMakerPanel.labels_plotted.append((label, color))
-        hemi_verts_num = {hemi: ColoringMakerPanel.faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
-        data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
-        for label, color in ColoringMakerPanel.labels_plotted:
-            label.vertices = label.vertices[label.vertices < hemi_verts_num[label.hemi]]
-            data[label.hemi][label.vertices] = [1, *color]
-        for hemi in mu.HEMIS:
-            color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
-        _addon().show_activity()
+        _plot_labels()
 
 
-def plot_labels(labels_names, colors, atlas, atlas_labels_rh=None, atlas_labels_lh=None):
-    if atlas_labels_rh is None or atlas_labels_lh is None:
+def _plot_labels(labels_plotted_tuple=None, faces_verts=None):
+    if labels_plotted_tuple is None:
+        labels_plotted_tuple = ColoringMakerPanel.labels_plotted
+    if faces_verts is None:
+        faces_verts = ColoringMakerPanel.faces_verts
+    hemi_verts_num = {hemi: faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
+    data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
+    for label, color in labels_plotted_tuple:
+        label.vertices = label.vertices[label.vertices < hemi_verts_num[label.hemi]]
+        data[label.hemi][label.vertices] = [1, *color]
+    for hemi in mu.HEMIS:
+        color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
+    _addon().show_activity()
+
+
+def plot_labels(labels_names, colors, atlas, atlas_labels_rh=None, atlas_labels_lh=None, do_plot=True):
+    if atlas_labels_rh is None or atlas_labels_lh is None or atlas == bpy.context.scene.atlas:
         atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
         atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
     atlas_labels = atlas_labels_rh + atlas_labels_lh
@@ -2098,7 +2131,10 @@ def plot_labels(labels_names, colors, atlas, atlas_labels_rh=None, atlas_labels_
     # todo: check if bpy.context.scene.color_rois_homogeneously
     for label, color in zip(labels, colors):
         print('color {}: {}'.format(label, color))
-        plot_label(label, color)
+        # plot_label(label, color)
+        ColoringMakerPanel.labels_plotted.append((label, color))
+    if do_plot:
+        _plot_labels()
 
 
 def check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas):
@@ -2292,11 +2328,13 @@ def draw(self, context):
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
             layout.prop(context.scene, 'plot_label_contour', text='Plot labels as contour')
         if len(ColoringMakerPanel.labels_plotted) > 0:
-            layout.label(text='Labels plotted:')
-            box = layout.box()
-            col = box.column()
-            for label, color in ColoringMakerPanel.labels_plotted:
-                mu.add_box_line(col, label.name, percentage=1)
+            layout.prop(context.scene, 'show_labels_plotted', text='Show labels list')
+            if bpy.context.scene.show_labels_plotted:
+                layout.label(text='Labels plotted:')
+                box = layout.box()
+                col = box.column()
+                for label, color in ColoringMakerPanel.labels_plotted:
+                    mu.add_box_line(col, label.name, percentage=1)
 
     # layout.label(text="Choose labels' folder")
     # row = layout.row(align=True)
@@ -2345,6 +2383,7 @@ bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
 bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.show_labels_plotted = bpy.props.BoolProperty(default=True, description="Show labels list")
 bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
 # bpy.types.Scene.set_current_time = bpy.props.IntProperty(name="Current time:", min=0,
 #                                                          max=bpy.data.scenes['Scene'].frame_preview_end,
