@@ -1143,6 +1143,10 @@ def color_manually():
         coloring_objects = True
         atlas = ''
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
+        if len(line) == 0 or line[0][0] == '#':
+            continue
+        object_added = False
+        atlas_labels = []
         if line[0].startswith('atlas'):
             atlas = line[0].split('=')[-1].strip()
             atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
@@ -1151,8 +1155,6 @@ def color_manually():
             if len(atlas_labels_rh) + len(atlas_labels_lh) == 0:
                 print("Couldn't find any labels for atlas {}!".format(atlas))
                 return
-            continue
-        if len(line) == 0 or line[0][0] == '#':
             continue
         if len(line) >= 1:
             obj_name = line[0]
@@ -1185,7 +1187,6 @@ def color_manually():
         if obj_type is None or atlas != '' and obj_type in (mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH):
             # Check if the obj_name is an sub-cortical
             obj_name = '_'.join(re.split('\W+', obj_name))
-            object_added = False
             for sub_name in subs_names:
                 if obj_name.lower() in '_'.join(re.split('\W+', sub_name)).lower():
                     obj_type = mu.OBJ_TYPE_SUBCORTEX
@@ -1197,10 +1198,9 @@ def color_manually():
                 continue
             # Check if this is a label from another atlas
             if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
-                if atlas == '':
-                    atlas = line[2]
+                line_atlas = line[2]
                 other_atals_labels, object_added = find_atlas_labels(
-                    obj_name, atlas, atlas_labels, color_rgb, other_atals_labels)
+                    obj_name, line_atlas, color_rgb, other_atals_labels)
                 # labels_fol = mu.get_atlas_labels_fol(atlas)
                 # if labels_fol != '':
                 #     for atlas_label_name in atlas_labels:
@@ -1214,7 +1214,7 @@ def color_manually():
                 continue
 
             other_atals_labels, object_added = find_atlas_labels(
-                obj_name, bpy.context.scene.atlas, cortex_labels_names, color_rgb, other_atals_labels)
+                obj_name, bpy.context.scene.atlas, color_rgb, other_atals_labels, cortex_labels_names)
             if object_added:
                 continue
 
@@ -1265,12 +1265,17 @@ def color_manually():
         mu.run_command_in_new_thread(cmd, False)
 
 
-def find_atlas_labels(obj_name, atlas, atlas_labels, color_rgb, other_atals_labels):
+def find_atlas_labels(obj_name, atlas, color_rgb, other_atals_labels, atlas_labels=None):
     labels_fol = mu.get_atlas_labels_fol(atlas)
     object_added = False
     if labels_fol != '':
+        if atlas_labels is None:
+            atlas_labels = [l.name for l in mu.read_labels_from_annots(atlas)]
+        delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
+        labels_delim, labels_pos, labels_label, _ = mu.get_hemi_delim_and_pos(atlas_labels[0])
+        label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
         for atlas_label_name in atlas_labels:
-            if obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
+            if label_obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
                 other_atals_labels[atlas].append((atlas_label_name, color_rgb))
                 object_added = True
     return other_atals_labels, object_added

@@ -251,7 +251,7 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     else:
         if crop_figures:
             crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=150, dh=0)
-            crop_image(rh_figure_fname, dx=150, dy=0, dw=150, dh=0)
+            crop_image(rh_figure_fname, rh_figure_fname, dx=150, dy=0, dw=150, dh=0)
         combine_two_images(lh_figure_fname, rh_figure_fname, new_image_fname, facecolor=background_color)
     if remove_original_figures:
         if lh_figure_fname != new_image_fname:
