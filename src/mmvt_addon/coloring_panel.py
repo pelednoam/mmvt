@@ -1142,19 +1142,18 @@ def color_manually():
         obj_type = ''
         coloring_objects = True
         atlas = ''
+    # atlas_labels_rh, atlas_labels_lh = {}, {}
     for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
         if len(line) == 0 or line[0][0] == '#':
             continue
         object_added = False
-        atlas_labels = []
         if line[0].startswith('atlas'):
             atlas = line[0].split('=')[-1].strip()
-            atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
-            atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
-            atlas_labels = [l.name for l in atlas_labels_rh + atlas_labels_lh]
-            if len(atlas_labels_rh) + len(atlas_labels_lh) == 0:
-                print("Couldn't find any labels for atlas {}!".format(atlas))
-                return
+            # atlas_labels_rh[atlas] = mu.read_labels_from_annots(atlas, hemi='rh')
+            # atlas_labels_lh[atlas] = mu.read_labels_from_annots(atlas, hemi='lh')
+            # if len(atlas_labels_rh[atlas]) + len(atlas_labels_lh[atlas]) == 0:
+            #     print("Couldn't find any labels for atlas {}!".format(atlas))
+            #     return
             continue
         if len(line) >= 1:
             obj_name = line[0]
@@ -1198,7 +1197,7 @@ def color_manually():
                 continue
             # Check if this is a label from another atlas
             if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
-                line_atlas = line[2]
+                line_atlas = line[2] if len(line) >= 3 and isinstance(line[2], str) else atlas
                 other_atals_labels, object_added = find_atlas_labels(
                     obj_name, line_atlas, color_rgb, other_atals_labels)
                 # labels_fol = mu.get_atlas_labels_fol(atlas)
@@ -1250,8 +1249,8 @@ def color_manually():
         plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
     ColoringMakerPanel.labels_plotted = []
     for atlas, labels_tup in other_atals_labels.items():
-        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas, atlas_labels_rh, atlas_labels_lh,
-                    do_plot=False)
+        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas,
+                    do_plot=False) # atlas_labels_rh[atlas], atlas_labels_lh[atlas],
     if len(other_atals_labels) > 0:
         _plot_labels()
     if len(values) > 0:
@@ -1274,6 +1273,7 @@ def find_atlas_labels(obj_name, atlas, color_rgb, other_atals_labels, atlas_labe
         delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
         labels_delim, labels_pos, labels_label, _ = mu.get_hemi_delim_and_pos(atlas_labels[0])
         label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
+        label_obj_name = '_'.join(re.split('\W+', label_obj_name)).lower()
         for atlas_label_name in atlas_labels:
             if label_obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
                 other_atals_labels[atlas].append((atlas_label_name, color_rgb))
@@ -2101,8 +2101,8 @@ def _plot_labels(labels_plotted_tuple=None, faces_verts=None):
     _addon().show_activity()
 
 
-def plot_labels(labels_names, colors, atlas, atlas_labels_rh=None, atlas_labels_lh=None, do_plot=True):
-    if atlas_labels_rh is None or atlas_labels_lh is None or atlas == bpy.context.scene.atlas:
+def plot_labels(labels_names, colors, atlas, atlas_labels_rh=[], atlas_labels_lh=[], do_plot=True):
+    if len(atlas_labels_rh) == 0 and len(atlas_labels_lh) == 0: # or atlas == bpy.context.scene.atlas:
         atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
         atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
     atlas_labels = atlas_labels_rh + atlas_labels_lh
