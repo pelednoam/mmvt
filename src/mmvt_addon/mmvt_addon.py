@@ -725,7 +725,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
             bpy.data.objects[hemi].hide = True
             bpy.data.objects[hemi].hide_render = True
     set_colorbar_defaults()
-    mmvt_utils.center_view()
+    # mmvt_utils.center_view()
 
 
 # @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))

@@ -111,7 +111,7 @@ def combine_two_figures_with_cb(fname1, fname2, data_max, data_min, cb_cm, cb_ti
         crop_image(fname2, fname2, dx=150 + 50, dy=0, dw=0, dh=70)
     new_image_fname = op.join(utils.get_parent_fol(fname1), '{}_{}.{}'.format(
         utils.namebase(fname1), utils.namebase(fname2), utils.file_type(fname1)))
-    combine_two_images(fname1, fname2, new_image_fname, facecolor=background, dpi=200, w_fac=1, h_fac=1)
+    combine_two_images(fname1, fname2, new_image_fname, facecolor=background, dpi=400, w_fac=1, h_fac=1)
     if len(cb_ticks) == 0:
         cb_ticks = [data_min, data_max]
     fol = utils.get_parent_fol(fname1)
