@@ -519,6 +519,16 @@ def get_max_time_steps(default_val=2500):
         except:
             print('No deep electrodes data')
 
+    if not found:
+        try:
+            functional_maps = bpy.data.objects['Functional maps']
+            for obj in functional_maps.children:
+                if obj.name.startswith('connections') and obj.animation_data is not None:
+                    fcurves = parent_obj.animation_data.action.fcurves
+            bpy.types.Scene.maximal_time_steps = len(fcurves[0].keyframe_points)
+            found = True
+        except:
+            pass
     try:
         if not found:
             bpy.types.Scene.maximal_time_steps = default_val
