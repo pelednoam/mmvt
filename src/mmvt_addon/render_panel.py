@@ -795,7 +795,7 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         save_medial_views()
     # todo: doesn't work
     mu.rotate_view3d(org_view_ang)
-    mu.center_view()
+    # mu.center_view()
     return images_names
 
 
@@ -943,6 +943,7 @@ def init(addon):
     bpy.context.scene.in_camera_view = False
     bpy.context.scene.save_selected_view = False
     bpy.context.scene.view_distance = 17.36
+    bpy.context.scene.render.resolution_percentage = 100
     # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))

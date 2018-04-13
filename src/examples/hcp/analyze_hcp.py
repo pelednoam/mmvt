@@ -236,8 +236,6 @@ def init(subject, task):
     return args, hcp_params
 
 if __name__ == '__main__':
-
-
     # https://db.humanconnectome.org/
     subject = '100307'
     # task = 'task_working_memory'
@@ -245,5 +243,5 @@ if __name__ == '__main__':
     args, hcp_params = init(subject, task)
     # analyze_task(subject, args, hcp_params)
     # analyze_rest(subject, args, hcp_params, calc_rest_from_raw=True, calc_rest_from_epochs=False)
-    calc_meg_connectivity(args)
+    # calc_meg_connectivity(args)
     # test_apply_ica(dict(hcp_path=HCP_DIR, subject=subject, data_type='rest'))

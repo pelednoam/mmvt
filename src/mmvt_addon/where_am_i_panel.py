@@ -419,7 +419,7 @@ def update_slices(modality='mri', ratio=1, images=None):
     necessary_images = set(['axial.png', 'coronal.png', 'sagital.png', 'Render Result', 'device.jpg'])
     extra_images = set([img.name for img in bpy.data.images]) - necessary_images
     for img_name in extra_images:
-        bpy.data.images.remove(bpy.data.images[img_name])
+        bpy.data.images.remove(bpy.data.images[img_name], do_unlink=True)
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':
             override = bpy.context.copy()

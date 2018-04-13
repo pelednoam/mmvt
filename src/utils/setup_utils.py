@@ -238,3 +238,21 @@ def get_parent_fol(curr_dir='', levels=1):
     for _ in range(levels - 1):
         parent_fol = get_parent_fol(parent_fol)
     return parent_fol
+
+
+def is_admin():
+    if not is_windows():
+        return False
+    import ctypes
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+
+def set_admin():
+    if not is_windows:
+        return
+    import ctypes
+    import sys
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
