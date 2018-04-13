@@ -199,7 +199,10 @@ def electode_was_manually_selected(selected_electrode_name):
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
     group = ElecsPanel.groups[selected_electrode_name]
     # It's enough to update the lead to update also the elecctrode, according to bpy.context.active_object
-    bpy.context.scene.leads = group
+    try:
+        bpy.context.scene.leads = group
+    except:
+        print("Can't update the selected electrode ({})".format(selected_electrode_name))
 
 
 def color_electrodes(current_electrode, prev_electrode):
