@@ -264,7 +264,7 @@ def install_blender_reqs(gui=True):
             if choose_folder:
                 fol = utils.choose_folder_gui(blender_parent_fol, 'Blender bin folder') if gui else input()
                 if fol != '':
-                    blender_bin_fol = fol
+                    blender_bin_fol = glob.glob(op.join(fol, '2.7?', 'python'))[-1]
             if blender_bin_fol == '':
                 return
         else:
