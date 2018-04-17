@@ -86,13 +86,14 @@ def init(addon):
                       if mu.namebase(f) not in scripts_files_names]
     if len(scripts_files) == 0:
         return None
-    sys.path.append(op.join(mu.get_parent_fol(user_fol), 'scripts'))
     sys.path.append(op.join(mu.get_mmvt_code_root(), 'src', 'examples', 'scripts'))
+    sys.path.append(op.join(mu.get_parent_fol(user_fol), 'scripts'))
     scripts_files = [f for f in scripts_files if check_script(mu.namebase(f))]
     files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
     scripts_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=scripts_items, description="scripts files")
     bpy.context.scene.scripts_files = files_names[0]
+    bpy.context.scene.scripts_overwrite = True
     register()
     ScriptsPanel.init = True
 

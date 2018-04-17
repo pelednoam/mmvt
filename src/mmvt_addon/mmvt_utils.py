@@ -1662,6 +1662,18 @@ def set_graph_att(att, val):
                         bpy.context.scene[att] = val
 
 
+def get_view3d_contexts(only_neuro=True):
+    for screen in bpy.data.screens:
+        areas = bpy.data.screens['Neuro'].areas if only_neuro else screen.areas
+        for area in areas:
+            for region in area.regions:
+                if region.type == 'WINDOW':
+                    override = bpy.context.copy()
+                    override['area'] = area
+                    override["region"] = region
+                    yield override
+
+
 def get_view3d_context():
     area = bpy.data.screens['Neuro'].areas[1]
     for region in area.regions:
@@ -1672,21 +1684,56 @@ def get_view3d_context():
             return override
 
 
-def center_view():
-    v3d_context = get_view3d_context()
-    bpy.ops.view3d.view_center_cursor(v3d_context)
-    v3d = bpy.context.space_data
-    if v3d and v3d.type == "VIEW_3D":
-        rv3d = v3d.region_3d
-        current_cloc = v3d.cursor_location.xyz
-        v3d.cursor_location = (0, 0, 0)
-        bpy.ops.view3d.view_center_cursor()
-        v3d.cursor_location = current_cloc
+def center_view(y=0, z=2):
+    current_cursor_pos = tuple(bpy.context.scene.cursor_location)
+    view_distance = bpy.context.scene.view_distance
+    cursor_is_snapped = bpy.context.scene.cursor_is_snapped
+    bpy.context.scene.cursor_is_snapped = False
+    bpy.context.scene.cursor_location = (0, y, z)
+    for v3d_context in get_view3d_contexts():
+        try:
+            bpy.ops.view3d.view_center_cursor(v3d_context)
+            break
+        except Exception as e:
+            pass
     else:
-        if v3d is None:
-            print('center_view: bpy.context.space_data is None')
-        if v3d.type != "VIEW_3D":
-            print('center_view: Not the right context')
+        print('center_view: No context was found!')
+    bpy.context.scene.cursor_location = current_cursor_pos
+    bpy.context.scene.view_distance = view_distance
+    bpy.context.scene.cursor_is_snapped = cursor_is_snapped
+    # bpy.ops.view3d.view_center_cursor(v3d_context)
+    # v3d = bpy.context.space_data
+    # if v3d and v3d.type == "VIEW_3D":
+    #     rv3d = v3d.region_3d
+    #     current_cloc = v3d.cursor_location.xyz
+    #     v3d.cursor_location = (0, 0, 0)
+    #     bpy.ops.view3d.view_center_cursor()
+    #     v3d.cursor_location = current_cloc
+    # else:
+    #     if v3d is None:
+    #         print('center_view: bpy.context.space_data is None')
+    #     if v3d.type != "VIEW_3D":
+    #         print('center_view: Not the right context ({})'.format(v3d.type))
+
+
+# def find_center():
+#     bpy.data.objects['inflated_lh'].hide_select = not val
+#     bpy.data.objects['inflated_lh'].select = val
+#     bpy.data.objects['inflated_rh'].hide_select = not val
+#     bpy.data.objects['inflated_rh'].select = val
+#     if not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
+#         select_hierarchy('Subcortical_fmri_activity_map', val)
+#         if not val:
+#             for child in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+#                 child.hide_select = True
+#
+#
+#     if bpy.data.objects.get(obj) is not None:
+#         bpy.data.objects[obj].select = select_parent
+#         for child in bpy.data.objects[obj].children:
+#             if val:
+#                 child.hide_select = False
+#             child.select = val
 
 # def get_view3d_region():
 #     area = bpy.data.screens['Neuro'].areas[1]

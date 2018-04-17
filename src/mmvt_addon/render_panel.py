@@ -8,7 +8,10 @@ from functools import partial
 import traceback
 import logging
 import mmvt_utils as mu
+import importlib
+importlib.reload(mu)
 import re
+import types
 
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
@@ -36,6 +39,14 @@ def finish_rendering():
 
 def view_distance_update(self, context):
     mu.get_view3d_region().view_distance = bpy.context.scene.view_distance
+
+
+def get_view_distance():
+    return bpy.context.scene.view_distance
+
+
+def set_view_distance(val):
+    bpy.context.scene.view_distance = val
 
 
 def reading_from_rendering_stdout_func():
@@ -259,6 +270,7 @@ def render_draw(self, context):
     else:
         if not bpy.context.scene.save_selected_view:
             layout.prop(context.scene, 'view_distance', text='View distance')
+            layout.prop(bpy.context.scene.render, 'resolution_percentage', 'Resolution')
         layout.prop(context.scene, "background_color", expand=True)
         # layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
@@ -627,6 +639,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     if zoom_val != 0:
         _addon().zoom(zoom_val)
     # _addon().zoom(1)
+    # mu.center_view()
     bpy.ops.render.opengl(view3d_context, write_still=True)
     if add_colorbar:
         add_colorbar_to_image(image_name, cb_ticks_num, cb_ticks_font_size)
@@ -787,16 +800,33 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
+        center_view(view, hemi)
         image_fname = save_render_image(
             img_name, quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
+        print(image_fname, view, hemi)
         images_names.append(image_fname)
     # if not mu.get_hemi_obj('rh').hide and not mu.get_hemi_obj('lh').hide:
     if views is None:
         save_medial_views()
     # todo: doesn't work
     mu.rotate_view3d(org_view_ang)
-    # mu.center_view()
+    mu.center_view()
     return images_names
+
+
+def center_view(view, hemi):
+    if _addon().is_pial():
+        z = 80 if view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR) else 3
+        if view == _addon().ROT_SAGITTAL_LEFT and hemi == 'rh':
+            y = -3
+        elif view == _addon().ROT_SAGITTAL_RIGHT and hemi == 'lh':
+            y = -3
+        else:
+            y = 0
+    else:
+        z = 80 if view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR) else 2
+        y = 0
+    mu.center_view(y, z)
 
 
 def add_colorbar_to_image(image_fname, cb_ticks_num=None, cb_ticks_font_size=None):
@@ -912,6 +942,14 @@ def update_camera_files():
         bpy.context.scene.camera_files = 'camera'
 
 
+def get_resolution_percentage():
+    return bpy.context.scene.render.resolution_percentage
+
+
+def set_resolution_percentage(val):
+    bpy.context.scene.render.resolution_percentage = val
+
+
 class RenderingMakerPanel(bpy.types.Panel):
     bl_space_type = "GRAPH_EDITOR"
     bl_region_type = "UI"
@@ -927,6 +965,7 @@ class RenderingMakerPanel(bpy.types.Panel):
 
     def draw(self, context):
         render_draw(self, context)
+
 
 
 def init(addon):

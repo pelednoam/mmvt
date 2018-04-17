@@ -17,10 +17,11 @@ def run(mmvt, overwrite):
     new_output_fol = op.join(mmvt.utils.get_user_fol(), 'reports', report.task_name.replace(' ', '_'))
     mmvt.utils.make_dir(new_output_fol)
     mmvt.render.set_output_path(new_output_fol)
+    mmvt.render.set_resolution_percentage(50)
 
     # Get the report necessary files. If exist, move them to a backup folder
-    if not overwrite:
-        report_files = [op.join(new_output_fol, f) for f in mmvt.get_report_files()]
+    report_files = [op.join(new_output_fol, f) for f in mmvt.get_report_files()]
+    if overwrite:
         if any(op.isfile(f) for f in report_files):
             mmvt.utils.make_dir(op.join(new_output_fol, 'backup'))
         for f in report_files:
@@ -41,24 +42,27 @@ def run(mmvt, overwrite):
     # Set a threshold and plot the fmri activity
     mmvt.coloring.set_lower_threshold(2)
     mmvt.coloring.set_use_abs_threshold(False)  # No negative values
-    mmvt.coloring.plot_fmri()
+    # mmvt.coloring.plot_fmri()
 
     # Save figures for pial and inflated without the subcorticals
-    mmvt.render.save_views_with_cb()
-    mmvt.render.set_save_split_views()
-    mmvt.show_hide.hide_subcorticals()
-    views = [mmvt.ROT_SAGITTAL_LEFT, mmvt.ROT_SAGITTAL_RIGHT, mmvt.ROT_AXIAL_INFERIOR]
-    mmvt.render.save_all_views(views)
-    mmvt.appearance.show_inflated()
-    mmvt.render.save_all_views(views)
+    if overwrite:
+        mmvt.render.save_views_with_cb()
+        mmvt.render.set_save_split_views()
+        mmvt.show_hide.hide_subcorticals()
+        views = [mmvt.ROT_SAGITTAL_LEFT, mmvt.ROT_SAGITTAL_RIGHT, mmvt.ROT_AXIAL_INFERIOR]
+        mmvt.render.set_view_distance(15)
+        mmvt.render.save_all_views(views)
+        mmvt.appearance.show_inflated()
+        mmvt.render.set_view_distance(21)
+        mmvt.render.save_all_views(views)
 
-    # Wait until all the files are created
-    now = time.time()
-    while not all([op.isfile(f) for f in report_files]):
-        time.sleep(0.1)
-        if time.time() - now > MAX_TIME_TO_WAIT_FOR_FILES:
-            print('Not all the files exist!')
-            return
+        # Wait until all the files are created
+        now = time.time()
+        while not all([op.isfile(f) for f in report_files]):
+            time.sleep(0.1)
+            if time.time() - now > MAX_TIME_TO_WAIT_FOR_FILES:
+                print('Not all the files exist!')
+                return
 
     # Wait for all the figures to get finalized
     time.sleep(TIME_TO_WAIT_FOR_FINALIZED)

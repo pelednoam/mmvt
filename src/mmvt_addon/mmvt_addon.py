@@ -92,6 +92,8 @@ import labels_panel
 importlib.reload(labels_panel)
 import scripts_panel
 importlib.reload(scripts_panel)
+# import three_d_view_panel
+# importlib.reload(three_d_view_panel)
 import moshes_panel
 importlib.reload(moshes_panel)
 # import logo_panel
@@ -277,6 +279,10 @@ set_save_split_views = render_panel.set_save_split_views
 set_background_color_name = render_panel.set_background_color_name
 set_background_color = render_panel.set_background_color
 get_background_rgb_string = render_panel.get_background_rgb_string
+get_resolution_percentage = render_panel.get_resolution_percentage
+set_resolution_percentage = render_panel.set_resolution_percentage
+get_view_distance = render_panel.get_view_distance
+set_view_distance = render_panel.set_view_distance
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Show Hide links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 show_hide = show_hide_panel
 show_hide_hierarchy = show_hide_panel.show_hide_hierarchy
@@ -479,6 +485,8 @@ set_report_name = reports_panel.set_report_name
 get_report_name = reports_panel.get_report_name
 get_report_files = reports_panel.get_report_files
 get_report_fields = reports_panel.get_report_fields
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ three_d_view_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# three_d = three_d_view_panel
 
 
 def get_max_time_steps(default_val=2500):
@@ -698,7 +706,7 @@ def get_panels(first_time=False):
     panels = [data_panel, appearance_panel, show_hide_panel, selection_panel, coloring_panel, colorbar_panel, play_panel, filter_panel,
             render_panel, freeview_panel, transparency_panel, where_am_i_panel, search_panel, load_results_panel,
             electrodes_panel, streaming_panel, stim_panel, fMRI_panel, meg_panel, connections_panel, vertex_data_panel, dti_panel,
-            slicer_panel, skull_panel, reports_panel, labels_panel, scripts_panel, pizco_panel, moshes_panel] #, , dell_panel)
+            slicer_panel, skull_panel, reports_panel, labels_panel, scripts_panel, three_d_view_panel, pizco_panel, moshes_panel] #, , dell_panel)
     # dell_exist = op.isfile(op.join(mmvt_utils.get_parent_fol(__file__), 'dell', 'find_electrodes_in_ct.py'))
     # if not mmvt_utils.IS_WINDOWS and not first_time and dell_exist:
     #     panels.append(dell_panel)
@@ -735,7 +743,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
             bpy.data.objects[hemi].hide = True
             bpy.data.objects[hemi].hide_render = True
     set_colorbar_defaults()
-    # mmvt_utils.center_view()
+    mmvt_utils.center_view()
 
 
 # @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))

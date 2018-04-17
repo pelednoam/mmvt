@@ -14,7 +14,8 @@ PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 
 # @utils.tryit()
 def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True, cb_ticks=None,
-                   background_color='black', cb_ticks_font_size=10, cb_title='', colorbar_name='', dpi=100, **kargs):
+                   background_color='black', cb_ticks_font_size=10, cb_title='', colorbar_name='', dpi=100,
+                   h=None, w=None, **kargs):
     import matplotlib as mpl
 
     if ',' in background_color:
@@ -22,7 +23,10 @@ def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True
     color_map_name = colors_map if isinstance(colors_map, str) else colors_map.name
     color_map = find_color_map(colors_map)
     if ax is None:
-        fig = plt.figure(dpi=dpi, facecolor=background_color) #, figsize=(w, h))
+        if h is not None:
+            fig = plt.figure(dpi=dpi, facecolor=background_color, figsize=(w, h))
+        else:
+            fig = plt.figure(dpi=dpi, facecolor=background_color) #, figsize=(w, h))
         fig.canvas.draw()
         ax = plt.gca() #plt.subplot(199)
         ax.tick_params(axis='y', colors='white' if background_color in ['black', [0, 0, 0]] else 'black')
@@ -238,15 +242,21 @@ def combine_two_images_and_add_colorbar(lh_figure_fname, rh_figure_fname, new_im
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
     if add_cb:
-        cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
-        plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
-                       facecolor=background_color, cb_ticks_font_size=cb_ticks_font_size, title=cb_title)
-        cb_img = Image.open(cb_fname)
         if crop_figures:
-            crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=50, dh=70)
-            crop_image(rh_figure_fname, rh_figure_fname, dx=150 + 50, dy=0, dw=0, dh=70)
+            # crop_image(lh_figure_fname, lh_figure_fname, dx=150, dy=0, dw=50, dh=70)
+            # crop_image(rh_figure_fname, rh_figure_fname, dx=150 + 50, dy=0, dw=0, dh=70)
+            crop_image(lh_figure_fname, lh_figure_fname, dx=100, dy=0, dw=50, dh=0)
+            crop_image(rh_figure_fname, rh_figure_fname, dx=100, dy=0, dw=0, dh=0)
+
         combine_two_images(lh_figure_fname, rh_figure_fname, new_image_fname, facecolor=background_color,
                            dpi=200, w_fac=1, h_fac=1)
+
+        cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
+        _, img_height = Image.open(lh_figure_fname).size
+        plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
+                       facecolor=background_color, cb_ticks_font_size=cb_ticks_font_size, title=cb_title) # h=img_height*0.7, w=img_height*0.2
+        cb_img = Image.open(cb_fname)
+
         combine_brain_with_color_bar(new_image_fname, cb_img, overwrite=True, cb_ticks=cb_ticks)
     else:
         if crop_figures:
