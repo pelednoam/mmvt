@@ -2776,8 +2776,8 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_c
     return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
 
 
-def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_name='', precentiles=(1, 99),
-                     func_name='', norm_data=True):
+def calc_labels_func(subject, task, atlas, em, func=None, tmin=None, tmax=None, times=None,
+                     labels_data_output_name='', precentiles=(1, 99), func_name='', norm_data=True):
     if func is None:
         func = utils.wrapped_partial(np.mean, axis=1)
     if func_name == '':
@@ -2788,7 +2788,16 @@ def calc_labels_func(subject, task, atlas, em, func=None, labels_data_output_nam
     data, labels = [], []
     for hemi in utils.HEMIS:
         d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
-        data = func(d.data) if len(data) == 0 else np.concatenate((data, func(d.data)))
+        hemi_data = d.data
+        if times is not None and len(times) == 2 and times[1] > times[0]:
+            taxis = np.arange()
+            if tmin is not None and tmax is not None:
+                hemi_data = hemi_data[tmin:tmax]
+            elif tmin is not None:
+                hemi_data = hemi_data[tmin:]
+            elif tmax is not None:
+                hemi_data = hemi_data[:tmax]
+        data = func(hemi_data) if len(data) == 0 else np.concatenate((data, func(hemi_data)))
         labels.extend(d.names)
     if labels_data_output_name == '':
         labels_data_output_name = '{}_{}_{}{}'.format(d.conditions[0], atlas, func_name, '_norm' if norm_data else '')

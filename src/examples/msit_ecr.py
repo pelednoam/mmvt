@@ -47,9 +47,9 @@ def meg_preproc(args):
             overwrite_stc=True,
             overwrite_labels_data=True
         ))
-        meg.call_main(args)
+        # meg.call_main(args)
     #
-    # for subject in args.subject:
+    for subject in args.subject:
     #     meg_dir = op.join(MMVT_DIR, subject, 'meg')
     #     # meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
     #     #                   op.join(meg_dir, '{}_ecr-{}-rh.stc'.format(subject, inv_method)),
@@ -59,7 +59,8 @@ def meg_preproc(args):
     #         op.join(meg_dir, 'labels_data_ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')),
     #         op.join(meg_dir, 'labels_data_msit-ecr_{}_{}_{}.npz'.format(atlas, em, '{hemi}')), norm_data=True)
     #
-    #     meg.calc_labels_func(subject, 'msit-ecr', atlas, em, norm_data=True)
+        times = None
+        meg.calc_labels_func(subject, 'msit', atlas, em, tmin=0, tmax=0.5, times=(-2, 4), norm_data=False)
     #     meg.calc_labels_power_bands(subject, 'msit', atlas, em)
     #     meg.calc_labels_power_bands(subject, 'ecr', atlas, em)
     #     meg.calc_labels_power_bands_diff(subject, 'msit', 'ecr', norm_data=True)
