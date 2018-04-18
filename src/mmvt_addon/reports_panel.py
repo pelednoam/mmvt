@@ -1,8 +1,10 @@
 import bpy
+import os
 import os.path as op
 import glob
 import re
 from collections import defaultdict
+import subprocess
 import mmvt_utils as mu
 
 
@@ -18,17 +20,15 @@ def _addon():
 
 
 def wkhtmltopdf_exist():
-    import subprocess
-    import sys
-    import os
     wkhtmltopdf_bin_path = op.join(mu.get_parent_fol(mu.get_user_fol()), 'reports')
-    if not op.isfile(op.join(wkhtmltopdf_bin_path, 'wkhtmltopdf')):
+    wkhtmltopdf_bin_name = 'wkhtmltopdf.exe' if _addon().utils.is_windows() else 'wkhtmltopdf'
+    if not op.isfile(op.join(wkhtmltopdf_bin_path, wkhtmltopdf_bin_name)):
         print("Reports panel: Can't find wkhtmltopdf!" + \
             'Please download wkhtmltopdf ({}) and put it in {}'.format(
             'https://github.com/JazzCore/python-pdfkit/wiki/Installing-wkhtmltopdf', wkhtmltopdf_bin_path))
         return False
     os.environ["PATH"] += os.pathsep + wkhtmltopdf_bin_path
-    if sys.platform == 'win32':
+    if _addon().utils.is_windows():
         wkhtmltopdf = subprocess.Popen(
             ['where', 'wkhtmltopdf'], stdout=subprocess.PIPE).communicate()[0].strip()
     else:
@@ -188,13 +188,13 @@ class ReportsPanel(bpy.types.Panel):
 
 
 def init(addon):
+    ReportsPanel.addon = addon
     if not PDFKIT_EXIST:
         print('reports_panel: no pdfkit')
         return None
     if not wkhtmltopdf_exist():
         print('reports_panel: no wkhtmltopdf')
         return None
-    ReportsPanel.addon = addon
     user_fol = mu.get_user_fol()
     reports_files = glob.glob(op.join(mu.get_parent_fol(user_fol), 'reports', '*.html'))
     if len(reports_files) == 0:
