@@ -800,7 +800,7 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
         _addon().rotate_view(view)
         if hemi == 'lh' and rot_lh_axial and view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR):
             _addon().rotate_brain(dz=180)
-        center_view(view, hemi)
+        mu.center_view()
         image_fname = save_render_image(
             img_name, quality, render_images, add_colorbar, cb_ticks_num, cb_ticks_font_size)
         print(image_fname, view, hemi)
@@ -814,19 +814,19 @@ def _save_all_views(views=None, inflated_ratio_in_file_name=False, rot_lh_axial=
     return images_names
 
 
-def center_view(view, hemi):
-    if _addon().is_pial():
-        z = 80 if view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR) else 3
-        if view == _addon().ROT_SAGITTAL_LEFT and hemi == 'rh':
-            y = -3
-        elif view == _addon().ROT_SAGITTAL_RIGHT and hemi == 'lh':
-            y = -3
-        else:
-            y = 0
-    else:
-        z = 80 if view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR) else 2
-        y = 0
-    mu.center_view(y, z)
+# def center_view(view, hemi):
+#     if _addon().is_pial():
+#         z = 80 if view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR) else 3
+#         if view == _addon().ROT_SAGITTAL_LEFT and hemi == 'rh':
+#             y = -3
+#         elif view == _addon().ROT_SAGITTAL_RIGHT and hemi == 'lh':
+#             y = -3
+#         else:
+#             y = 0
+#     else:
+#         z = 80 if view in (_addon().ROT_AXIAL_SUPERIOR, _addon().ROT_AXIAL_INFERIOR) else 2
+#         y = 0
+#     mu.center_view(y, z)
 
 
 def add_colorbar_to_image(image_fname, cb_ticks_num=None, cb_ticks_font_size=None):

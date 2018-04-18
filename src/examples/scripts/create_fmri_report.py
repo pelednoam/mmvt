@@ -42,7 +42,7 @@ def run(mmvt, overwrite):
     # Set a threshold and plot the fmri activity
     mmvt.coloring.set_lower_threshold(2)
     mmvt.coloring.set_use_abs_threshold(False)  # No negative values
-    # mmvt.coloring.plot_fmri()
+    mmvt.coloring.plot_fmri()
 
     # Save figures for pial and inflated without the subcorticals
     if overwrite:

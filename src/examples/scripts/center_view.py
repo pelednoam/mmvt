@@ -1,4 +1,4 @@
 
 
 def run(mmvt):
-    mmvt.utils.center_view(4)
+    mmvt.utils.center_view()

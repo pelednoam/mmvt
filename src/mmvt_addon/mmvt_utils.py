@@ -1684,36 +1684,21 @@ def get_view3d_context():
             return override
 
 
-def center_view(y=0, z=2):
-    current_cursor_pos = tuple(bpy.context.scene.cursor_location)
-    view_distance = bpy.context.scene.view_distance
-    cursor_is_snapped = bpy.context.scene.cursor_is_snapped
-    bpy.context.scene.cursor_is_snapped = False
-    bpy.context.scene.cursor_location = (0, y, z)
+def call_3d_view_func(func):
     for v3d_context in get_view3d_contexts():
         try:
-            bpy.ops.view3d.view_center_cursor(v3d_context)
+            func(v3d_context)
             break
         except Exception as e:
             pass
     else:
         print('center_view: No context was found!')
-    bpy.context.scene.cursor_location = current_cursor_pos
+
+
+def center_view():
+    view_distance = bpy.context.scene.view_distance
+    call_3d_view_func(bpy.ops.view3d.view_all)
     bpy.context.scene.view_distance = view_distance
-    bpy.context.scene.cursor_is_snapped = cursor_is_snapped
-    # bpy.ops.view3d.view_center_cursor(v3d_context)
-    # v3d = bpy.context.space_data
-    # if v3d and v3d.type == "VIEW_3D":
-    #     rv3d = v3d.region_3d
-    #     current_cloc = v3d.cursor_location.xyz
-    #     v3d.cursor_location = (0, 0, 0)
-    #     bpy.ops.view3d.view_center_cursor()
-    #     v3d.cursor_location = current_cloc
-    # else:
-    #     if v3d is None:
-    #         print('center_view: bpy.context.space_data is None')
-    #     if v3d.type != "VIEW_3D":
-    #         print('center_view: Not the right context ({})'.format(v3d.type))
 
 
 # def find_center():
