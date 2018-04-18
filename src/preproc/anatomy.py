@@ -1427,6 +1427,9 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(subject)
 
+    if utils.should_run(args, 'create_pial_volume_mask'):
+        flags['create_pial_volume_mask'] = create_pial_volume_mask(subject)
+
     if utils.should_run(args, 'create_new_subject_blend_file'):
         flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
             subject, args.atlas, args.overwrite_blend, args.ask_if_overwrite_blend)
@@ -1469,9 +1472,6 @@ def main(subject, remote_subject_dir, args, flags):
         flags['morph_labels_from_fsaverage'] = morph_labels_from_fsaverage(
             subject, args.atlas, args.template_subject, args.overwrite_morphing_labels, args.fs_labels_fol,
             args.n_jobs)
-
-    if 'create_pial_volume_mask' in args.function:
-        flags['create_pial_volume_mask'] = create_pial_volume_mask(subject)
 
     return flags
 
