@@ -1304,7 +1304,7 @@ def create_pial_volume_mask(subject, overwrite=True):
         hemi_voxels = np.rint(utils.apply_trans(ras_tkr2vox, pial_verts[hemi])).astype(int)
         for vox in tqdm(hemi_voxels):
             pial_vol[tuple(vox)] = 1
-    print('{:.2f}% voxels are pial'.format(len(np.where(pial_vol)[0])/(256*256)))
+    print('{:.2f}% voxels are pial'.format(len(np.where(pial_vol)[0])/(t1_data.shape[0] * t1_data.shape[1])))
     np.save(output_fname, pial_vol)
     return op.isfile(output_fname)
 
