@@ -21,14 +21,14 @@ def _addon():
 
 def wkhtmltopdf_exist():
     wkhtmltopdf_bin_path = op.join(mu.get_parent_fol(mu.get_user_fol()), 'reports')
-    wkhtmltopdf_bin_name = 'wkhtmltopdf.exe' if _addon().utils.is_windows() else 'wkhtmltopdf'
+    wkhtmltopdf_bin_name = 'wkhtmltopdf.exe' if mu.is_windows() else 'wkhtmltopdf'
     if not op.isfile(op.join(wkhtmltopdf_bin_path, wkhtmltopdf_bin_name)):
         print("Reports panel: Can't find wkhtmltopdf!" + \
             'Please download wkhtmltopdf ({}) and put it in {}'.format(
             'https://github.com/JazzCore/python-pdfkit/wiki/Installing-wkhtmltopdf', wkhtmltopdf_bin_path))
         return False
     os.environ["PATH"] += os.pathsep + wkhtmltopdf_bin_path
-    if _addon().utils.is_windows():
+    if mu.is_windows():
         wkhtmltopdf = subprocess.Popen(
             ['where', 'wkhtmltopdf'], stdout=subprocess.PIPE).communicate()[0].strip()
     else:
