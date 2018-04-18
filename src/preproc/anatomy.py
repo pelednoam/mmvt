@@ -1258,22 +1258,23 @@ def get_image_data(image_data, order, flips, ii, pos):
     return data
 
 
-def save_images_data_and_header(subject):
-    def get_data_and_header(subject, image_name):
-        # print('Loading header and data for {}, {}'.format(subject, modality))
-        utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-        fname = op.join(MMVT_DIR, subject, 'freeview', image_name)
-        if not op.isfile(fname):
-            subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', image_name)
-            if op.isfile(subjects_fname):
-                shutil.copy(subjects_fname, fname)
-            else:
-                print("Can't find subject's {}!".format(image_name))
-                return None, None
-        header = nib.load(fname)
-        data = header.get_data()
-        return data, header
+def get_data_and_header(subject, image_name):
+    # print('Loading header and data for {}, {}'.format(subject, modality))
+    utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
+    fname = op.join(MMVT_DIR, subject, 'freeview', image_name)
+    if not op.isfile(fname):
+        subjects_fname = op.join(SUBJECTS_DIR, subject, 'mri', image_name)
+        if op.isfile(subjects_fname):
+            shutil.copy(subjects_fname, fname)
+        else:
+            print("Can't find subject's {}!".format(image_name))
+            return None, None
+    header = nib.load(fname)
+    data = header.get_data()
+    return data, header
 
+
+def save_images_data_and_header(subject):
     modalities = {'T1.mgz':'mri', 'T2.mgz':'t2'}
     for image_name in modalities.keys():
         data, header = get_data_and_header(subject, image_name)
@@ -1287,6 +1288,25 @@ def save_images_data_and_header(subject):
             print('save_images_data_and_header: saving {}'.format(output_fname))
             np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
     return op.isfile(op.join(MMVT_DIR, subject, 'freeview', 'mri_data.npz'))
+
+
+def create_pial_volume_mask(subject, overwrite=True):
+    output_fname = op.join(MMVT_DIR, subject, 'freeview', 'pial_vol_mask.npy')
+    if op.isfile(output_fname) and not overwrite:
+        return True
+    pial_verts = utils.load_surf(subject, MMVT_DIR, SUBJECTS_DIR)
+    t1_data, t1_header = get_data_and_header(subject, 'T1.mgz')
+    if t1_header is None:
+        return False
+    ras_tkr2vox = np.linalg.inv(t1_header.get_header().get_vox2ras_tkr())
+    pial_vol = np.zeros(t1_data.shape, dtype=np.uint8)
+    for hemi in utils.HEMIS:
+        hemi_voxels = np.rint(utils.apply_trans(ras_tkr2vox, pial_verts[hemi])).astype(int)
+        for vox in tqdm(hemi_voxels):
+            pial_vol[tuple(vox)] = 1
+    print('{:.2f}% voxels are pial'.format(len(np.where(pial_vol)[0])/(256*256)))
+    np.save(output_fname, pial_vol)
+    return op.isfile(output_fname)
 
 
 def create_skull_surfaces(subject, surfaces_fol_name='bem', verts_in_ras=True):
@@ -1449,6 +1469,9 @@ def main(subject, remote_subject_dir, args, flags):
         flags['morph_labels_from_fsaverage'] = morph_labels_from_fsaverage(
             subject, args.atlas, args.template_subject, args.overwrite_morphing_labels, args.fs_labels_fol,
             args.n_jobs)
+
+    if 'create_pial_volume_mask' in args.function:
+        flags['create_pial_volume_mask'] = create_pial_volume_mask(subject)
 
     return flags
 

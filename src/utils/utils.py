@@ -1979,5 +1979,15 @@ def calc_bands_power(x, dt, bands):
     return power
 
 
+def unique_rows(x):
+    return np.vstack({tuple(row) for row in x})
+    # or:
+    _x = np.ascontiguousarray(x).view(np.dtype((np.void, x.dtype.itemsize * x.shape[1])))
+    _, idx = np.unique(_x, return_index=True)
+    return x[idx]
+    # or, in numpy 1.13
+    return np.unique(x, axis=0)
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))
