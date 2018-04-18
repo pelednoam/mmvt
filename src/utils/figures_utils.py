@@ -79,33 +79,33 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
                        facecolor='black', w_fac=1, h_fac=1, **kargs):
     image1 = Image.open(figure1_fname)
     image2 = Image.open(figure2_fname)
-    if comb_dim==PICS_COMB_HORZ:
+    if comb_dim == PICS_COMB_HORZ:
         new_img_width = image1.size[0] + image2.size[0]
         new_img_height = max(image1.size[1], image2.size[1])
     else:
         new_img_width = max(image1.size[0], image2.size[0])
         new_img_height = image1.size[1] + image2.size[1]
-    w, h = new_img_width / dpi * w_fac, new_img_height / dpi * h_fac
-    fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
-    fig.canvas.draw()
 
-    gs = gridspec.GridSpec(1, 2)
-    gs.update(wspace=0, hspace=0)  # set the spacing between axes.
-    for g, image in zip(gs, (image1, image2)):
-        ax = plt.subplot(g)
-        ax.imshow(image)
-        ax.axis('off')
-    plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
+    new_im = Image.new('RGB', (new_img_width, new_img_height))
+    new_im.paste(image1, (0, 0))
+    if comb_dim == PICS_COMB_HORZ:
+        new_im.paste(image1, (image1.size[0], 0))
+    else:
+        new_im.paste(image1, (0, image1.size[1]))
+    new_im.save(new_image_fname)
 
-    # if comb_dim == PICS_COMB_HORZ:
-    #     ax1 = plt.subplot(121)
-    #     ax2 = plt.subplot(122)
-    # else:
-    #     ax1 = plt.subplot(211)
-    #     ax2 = plt.subplot(212)
-    # ax1.imshow(image1)
-    # ax2.imshow(image2)
-    # plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True)
+    # w, h = new_img_width / dpi * w_fac, new_img_height / dpi * h_fac
+    # fig = plt.figure(figsize=(w, h), dpi=dpi, facecolor=facecolor)
+    # fig.canvas.draw()
+    #
+    # gs = gridspec.GridSpec(1, 2)
+    # gs.update(wspace=0, hspace=0)  # set the spacing between axes.
+    # for g, image in zip(gs, (image1, image2)):
+    #     ax = plt.subplot(g)
+    #     ax.imshow(image)
+    #     ax.axis('off')
+    # plt.savefig(new_image_fname, facecolor=fig.get_facecolor(), transparent=True, bbox_inches='tight')
+
 
 
 def combine_two_figures_with_cb(fname1, fname2, data_max, data_min, cb_cm, cb_ticks=[], crop_figures=True,

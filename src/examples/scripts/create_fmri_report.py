@@ -4,6 +4,8 @@ import time
 
 MAX_TIME_TO_WAIT_FOR_FILES = 60  # minute
 TIME_TO_WAIT_FOR_FINALIZED = 1
+PIAL_VIEW_DISTANCE = 18 #15
+INFLATED_VIEW_DISTANCE = 25 #21
 
 
 def run(mmvt, overwrite):
@@ -50,10 +52,10 @@ def run(mmvt, overwrite):
         mmvt.render.set_save_split_views()
         mmvt.show_hide.hide_subcorticals()
         views = [mmvt.ROT_SAGITTAL_LEFT, mmvt.ROT_SAGITTAL_RIGHT, mmvt.ROT_AXIAL_INFERIOR]
-        mmvt.render.set_view_distance(15)
+        mmvt.render.set_view_distance(PIAL_VIEW_DISTANCE)
         mmvt.render.save_all_views(views)
         mmvt.appearance.show_inflated()
-        mmvt.render.set_view_distance(21)
+        mmvt.render.set_view_distance(INFLATED_VIEW_DISTANCE)
         mmvt.render.save_all_views(views)
 
         # Wait until all the files are created
