@@ -89,9 +89,9 @@ def combine_two_images(figure1_fname, figure2_fname, new_image_fname, comb_dim=P
     new_im = Image.new('RGB', (new_img_width, new_img_height))
     new_im.paste(image1, (0, 0))
     if comb_dim == PICS_COMB_HORZ:
-        new_im.paste(image1, (image1.size[0], 0))
+        new_im.paste(image2, (image1.size[0], 0))
     else:
-        new_im.paste(image1, (0, image1.size[1]))
+        new_im.paste(image2, (0, image1.size[1]))
     new_im.save(new_image_fname)
 
     # w, h = new_img_width / dpi * w_fac, new_img_height / dpi * h_fac

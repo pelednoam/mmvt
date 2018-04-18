@@ -105,6 +105,7 @@ def reports_files_update(self, context):
     bpy.types.Scene.reports_fields = bpy.props.EnumProperty(
         items=reports_items, update=reports_fields_update)
     parse_report_files_from_text(report_text)
+    bpy.context.scene.report_use_script = bpy.context.scene.reports_files in _addon().get_scripts_names()
     # bpy.context.scene.reports_files = reports_items[0]
 
 
@@ -152,7 +153,9 @@ def reports_draw(self, context):
             for file_name in ReportsPanel.files[bpy.context.scene.reports_files]:
                 if not op.isfile(op.join(_addon().get_output_path(), file_name)):
                     mu.add_box_line(col, file_name, '', 1)
-    if len(missing_files) == 0:
+    if context.scene.report_use_script:
+        layout.prop(context.scene, 'report_use_script', text='Use script')
+    if len(missing_files) == 0 or context.scene.report_use_script:
         layout.operator(CreateReport.bl_idname, text="Create report", icon='STYLUS_PRESSURE')
 
 
@@ -162,13 +165,17 @@ class CreateReport(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        create_report()
+        if bpy.context.scene.report_use_script:
+            _addon().run_script(bpy.context.scene.reports_files)
+        else:
+            create_report()
         return {'PASS_THROUGH'}
 
 
 bpy.types.Scene.reports_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.reports_fields = bpy.props.EnumProperty(items=[], update=reports_fields_update)
 bpy.types.Scene.reports_field_value = bpy.props.StringProperty(update=reports_field_value_update)
+bpy.types.Scene.report_use_script = bpy.props.BoolProperty(False)
 
 
 class ReportsPanel(bpy.types.Panel):
@@ -205,6 +212,7 @@ def init(addon):
     bpy.types.Scene.reports_files = bpy.props.EnumProperty(
         items=reports_items, description="reports files", update=reports_files_update)
     bpy.context.scene.reports_files = files_names[0]
+    bpy.context.scene.report_use_script = files_names[0] in _addon().get_scripts_names()
     register()
     ReportsPanel.init = True
 

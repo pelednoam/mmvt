@@ -485,8 +485,9 @@ set_report_name = reports_panel.set_report_name
 get_report_name = reports_panel.get_report_name
 get_report_files = reports_panel.get_report_files
 get_report_fields = reports_panel.get_report_fields
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ three_d_view_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# three_d = three_d_view_panel
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ scripts_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+get_scripts_names = scripts_panel.get_scripts_names
+run_script = scripts_panel.run_script
 
 
 def get_max_time_steps(default_val=2500):

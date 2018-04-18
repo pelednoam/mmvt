@@ -27,7 +27,9 @@ def check_script(script_name):
         return False
 
 
-def run_script():
+def run_script(script_name=''):
+    if script_name != '':
+        bpy.context.scene.scripts_files = script_name
     try:
         script_name = bpy.context.scene.scripts_files.replace(' ', '_')
         run_func, params_num = ScriptsPanel.funcs[script_name]
@@ -38,6 +40,10 @@ def run_script():
     except:
         print("run_script: Can't run {}!".format(script_name))
         print(traceback.format_exc())
+
+
+def get_scripts_names():
+    return ScriptsPanel.scripts_names
 
 
 def scripts_draw(self, context):
@@ -71,6 +77,7 @@ class ScriptsPanel(bpy.types.Panel):
     addon = None
     init = False
     funcs = {}
+    scripts_names = []
 
     def draw(self, context):
         if ScriptsPanel.init:
@@ -89,11 +96,15 @@ def init(addon):
     sys.path.append(op.join(mu.get_mmvt_code_root(), 'src', 'examples', 'scripts'))
     sys.path.append(op.join(mu.get_parent_fol(user_fol), 'scripts'))
     scripts_files = [f for f in scripts_files if check_script(mu.namebase(f))]
-    files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
+    ScriptsPanel.scripts_names = files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
     scripts_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=scripts_items, description="scripts files")
     bpy.context.scene.scripts_files = files_names[0]
     bpy.context.scene.scripts_overwrite = True
+    try:
+        bpy.context.scene.report_use_script = bpy.context.scene.reports_files in ScriptsPanel.scripts_names
+    except:
+        pass
     register()
     ScriptsPanel.init = True
 
