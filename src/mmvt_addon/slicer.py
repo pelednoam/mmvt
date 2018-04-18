@@ -120,9 +120,10 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             self[modality].cross[ii] = cross
             d = get_image_data(s.data, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num,
                                smooth)
-            if s.pial_vol_mask is not None:
+            if s.pial_vol_mask is not None and bpy.context.scene.slices_show_pial:
                 pial_vol_mask_data = get_image_data(
-                    s.pial_vol_mask, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num, smooth)
+                    s.pial_vol_mask, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num,
+                    smooth)
             else:
                 pial_vol_mask_data = None
             # todo: Should do that step in the state init
@@ -230,7 +231,7 @@ def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom
         colors[128:128 + zoom_factor, 128:128 + zoom_factor] = [1, 0, 0]
 
     if pial_vol_mask_data is not None:
-        colors[np.where(pial_vol_mask_data)] = [0, 1, 0]
+        colors[np.where(pial_vol_mask_data)] = tuple(bpy.context.scene.slices_show_pial_color)
 
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
