@@ -5,7 +5,7 @@ import os.path as op
 def run(mmvt):
     screen = bpy.data.screens['Neuro']
     perspectives = ['sagital', 'coronal', 'axial']
-    images_names = ['{}.png'.format(pres) for pres in perspectives]
+    images_names = ['{}.{}'.format(pres, mmvt.render.get_figure_format()) for pres in perspectives]
     ind = 0
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':

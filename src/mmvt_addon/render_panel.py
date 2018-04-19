@@ -219,7 +219,9 @@ def render_draw(self, context):
         row.prop(context.scene, 'cb_ticks_font_size', text="size")
     layout.prop(context.scene, 'save_split_views', text="Split views")
     layout.prop(context.scene, 'save_selected_view')
-    layout.prop(context.scene, 'output_path')
+    split = layout.row().split(percentage=0.7)
+    split.column().prop(context.scene, 'output_path')
+    split.column().prop(bpy.context.scene.render.image_settings, 'file_format', text='')
 
     view = bpy.data.screens['Neuro'].areas[1].spaces[0].region_3d.view_perspective
     icon = 'SCENE' if view == 'ORTHO' else 'MESH_MONKEY'
@@ -270,7 +272,7 @@ def render_draw(self, context):
     else:
         if not bpy.context.scene.save_selected_view:
             layout.prop(context.scene, 'view_distance', text='View distance')
-            layout.prop(bpy.context.scene.render, 'resolution_percentage', 'Resolution')
+            layout.prop(bpy.context.scene.render, 'resolution_percentage', text='Resolution')
         layout.prop(context.scene, "background_color", expand=True)
         # layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
@@ -448,8 +450,8 @@ class CombinePerspectives(bpy.types.Operator):
 def combine_four_brain_perspectives():
     data_min, data_max = _addon().get_colorbar_max_min()
     background = bpy.context.scene.background_color
-    figure_name = 'splitted_lateral_medial_{}_{}.png'.format(
-        'inflated' if _addon().is_inflated() else 'pial', background)
+    figure_name = 'splitted_lateral_medial_{}_{}.{}'.format(
+        'inflated' if _addon().is_inflated() else 'pial', background, _addon().get_figure_format())
     figure_fname = op.join(mu.get_user_fol(), 'figures', figure_name)
     colors_map = _addon().get_colormap().replace('-', '_')
     x_left_crop, x_right_crop, y_top_crop, y_buttom_crop = (300, 300, 0, 0)
@@ -520,7 +522,8 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     current_frame = bpy.context.scene.frame_current
     camera_fnames = [camera_fname] if isinstance(camera_fname, str) else camera_fname
     if image_name == '':
-        images_names = ['{}_{}.png'.format(mu.namebase(camera_fname).replace('camera', ''), current_frame)
+        images_names = ['{}_{}.{}'.format(mu.namebase(camera_fname).replace('camera', ''),
+                        current_frame, _addon().get_figure_format())
                         for camera_fname in  camera_fnames]
         images_names = [n[1:] if n.startswith('_') else n for n in images_names]
     else:
@@ -528,8 +531,8 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
     image_fname = op.join(image_fol, images_names[0])
     if op.isfile(image_fname):
-        files = glob.glob(op.join(image_fol, '{}_*.png'.format(mu.namebase(image_fname))))
-        image_fname = op.join(image_fol, '{}_{}.png'.format(mu.namebase(image_fname), len(files)))
+        files = glob.glob(op.join(image_fol, '{}_*.{}'.format(mu.namebase(image_fname, get_figure_format()))))
+        image_fname = op.join(image_fol, '{}_{}.{}'.format(mu.namebase(image_fname), len(files), get_figure_format()))
     if op.isfile(image_fname):
         print('{} already exist!'.format(image_fname))
         return ''
@@ -610,7 +613,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
         view_selected = bpy.context.scene.save_selected_view
     if index == -1:
         fol = bpy.path.abspath(bpy.context.scene.output_path)
-        files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.png'.format(image_type)))]
+        files = [mu.namebase(f) for f in glob.glob(op.join(fol, '{}*.{}'.format(image_type, get_figure_format())))]
         files_with_numbers = sum([len(re.findall('\d+', f)) for f in files])
         if files_with_numbers > 0:
             index = max([int(re.findall('\d+', f)[0]) for f in files]) + 1 if len(files) > 0 else 0
@@ -622,9 +625,9 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     mu.show_only_render(True)
     fol = bpy.path.abspath(bpy.context.scene.output_path)
     if add_index_to_name:
-        image_name = op.join(fol, '{}_{}.png'.format(image_type, index))
+        image_name = op.join(fol, '{}_{}.{}'.format(image_type, index, get_figure_format()))
     else:
-        image_name = op.join(fol, '{}.png'.format(image_type))
+        image_name = op.join(fol, '{}.{}'.format(image_type, get_figure_format()))
     print('Image saved in {}'.format(image_name))
     bpy.context.scene.render.filepath = image_name
     view3d_context = mu.get_view3d_context()
@@ -647,9 +650,13 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
     #     _addon().zoom(1)
     return image_name
 
-# todo: understand how to change the file_format to png in code
-# def get_figure_format():
-#     render.image_settings.file_format
+
+def get_figure_format():
+    return bpy.context.scene.render.image_settings.file_format
+
+
+def set_figure_format(val):
+    bpy.context.scene.render.image_settings.file_format = val
 
 
 def get_output_path():

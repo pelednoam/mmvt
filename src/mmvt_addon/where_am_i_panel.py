@@ -409,14 +409,16 @@ def plot_closest_label_contour(label, hemi):
 def update_slices(modality='mri', ratio=1, images=None):
     screen = bpy.data.screens['Neuro']
     perspectives = ['sagital', 'coronal', 'axial']
-    images_names = ['{}.png'.format(pres) for pres in perspectives]
+    images_names = ['{}.{}'.format(pres, _addon().get_figure_format()) for pres in perspectives]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
     # if modality == 'mri':
     #     necessary_images = set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
     # elif modality == 'ct':
     #     necessary_images = set(['ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
-    necessary_images = set(['axial.png', 'coronal.png', 'sagital.png', 'Render Result', 'device.jpg'])
+    ftype = _addon().get_figure_format()
+    necessary_images = set(['axial.{}'.format(ftype), 'coronal.{}'.format(ftype), 'sagital.{}'.format(ftype),
+                            'Render Result', 'device.{}'.format(ftype)])
     extra_images = set([img.name for img in bpy.data.images]) - necessary_images
     for img_name in extra_images:
         bpy.data.images.remove(bpy.data.images[img_name], do_unlink=True)
@@ -444,7 +446,9 @@ def update_slices(modality='mri', ratio=1, images=None):
 
 
 def init_slices():
-    extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result']) - set(['coronal.png', 'axial.png', 'sagital.png'])
+    ftype = _addon().get_figure_format()
+    extra_images = set([img.name for img in bpy.data.images]) - set(['Render Result']) - \
+                   set(['coronal.{}'.format(ftype), 'axial.{}'.format(ftype), 'sagital.{}'.format(ftype)])
     try:
         for img_name in extra_images:
             if img_name in bpy.data.images:
@@ -591,7 +595,7 @@ def slices_were_clicked(active_image, pos):
     if WhereAmIPanel.slicer_state.mri is None:
         return
     modality = bpy.context.scene.slices_modality
-    images_names = ['{}.png'.format(persp) for persp in ['sagital', 'coronal', 'axial']]
+    images_names = ['{}.{}'.format(persp, _addon().get_figure_format()) for persp in ['sagital', 'coronal', 'axial']]
     # images_names = ['mri_sagital.png', 'mri_coronal.png', 'mri_axial.png']
     WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
     print('Image {} was click in {}'.format(active_image.name, pos))

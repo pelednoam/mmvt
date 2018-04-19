@@ -324,7 +324,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
         # plt.legend(loc='best')
         plt.xlabel('Time (ms)')
         # plt.title('Coherence')
-        image_fname = op.join(image_fol, 'g.png')
+        image_fname = op.join(image_fol, 'g.{}'.format(_addon().get_figure_format()))
         fig.savefig(image_fname)
         # mu.save(ax, op.join(image_fol, 'plt.pkl'))
         # if plot_time:
@@ -590,7 +590,8 @@ def play_panel_draw(context, layout):
     layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
     files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
-                              glob.glob(op.join(bpy.context.scene.output_path, '*.png'))])
+                              glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(
+                                  _addon().get_figure_format())))])
     if files_with_numbers > 0:
         if not CreateMovie.running:
             layout.operator(CreateMovie.bl_idname, text="Create Movie", icon='RENDER_ANIMATION')

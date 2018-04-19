@@ -253,7 +253,7 @@ def add_cross_to_pixels(pixels, max_sizes, cross, extra):
 
 # def create_image(data, sizes, max_sizes, clim, colors_ratio, prespective, colormap, horz_cross, vert_corss, extra):
 def create_image(pixels, max_sizes, prespective):
-    image_name = '{}.png'.format(prespective)
+    image_name = '{}.{}'.format(prespective, bpy.context.scene.render.image_settings.file_format)
     if image_name not in bpy.data.images:
         image = bpy.data.images.new(image_name, width=max_sizes[0], height=max_sizes[1])
     else:
