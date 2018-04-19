@@ -28,7 +28,7 @@ def run(mmvt):
     o.data.vertex_colors.new()
 
 
-def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
+def write_ply_file(verts, faces, ply_file_name):
     verts_num = verts.shape[0]
     faces_num = faces.shape[0]
     faces = faces.astype(np.int)
@@ -38,6 +38,3 @@ def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
     with open(ply_file_name, 'ab') as f:
         np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
         np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
-    if write_also_npz:
-        np.savez('{}.npz'.format(op.splitext(ply_file_name)[0]), verts=verts, faces=faces)
-    return True
