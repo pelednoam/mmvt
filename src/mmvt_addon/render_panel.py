@@ -531,7 +531,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
     image_fname = op.join(image_fol, images_names[0])
     if op.isfile(image_fname):
-        files = glob.glob(op.join(image_fol, '{}_*.{}'.format(mu.namebase(image_fname, get_figure_format()))))
+        files = glob.glob(op.join(image_fol, '{}_*.{}'.format(mu.namebase(image_fname), get_figure_format())))
         image_fname = op.join(image_fol, '{}_{}.{}'.format(mu.namebase(image_fname), len(files), get_figure_format()))
     if op.isfile(image_fname):
         print('{} already exist!'.format(image_fname))

@@ -45,6 +45,9 @@ mris_flatten = 'mris_flatten {hemi}.inflated.patch {hemi}.flat.patch'
 mri_robust_register = 'mri_robust_register --mov {source_fname} --dst {target_fname} --lta {lta_fname} ' + \
                       '--satit --vox2vox --mapmov {output_fname} --cost {cost_function}'
 
+# Creating the seghead surface
+mkheadsurf = 'mkheadsurf -subjid {subject} -srcvol T1.mgz'
+
 
 @utils.check_for_freesurfer
 def project_on_surface(subject, volume_file, surf_output_fname, target_subject=None, overwrite_surf_data=False,
