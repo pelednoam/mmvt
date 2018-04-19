@@ -2485,6 +2485,20 @@ def matlab_cell_str_to_list(cell_arr):
         ret_list = [cell_arr[ind][0][0].astype(str) for ind in range(len(cell_arr))]
     return ret_list
 
+
+def write_ply_file(verts, faces, ply_file_name):
+    ply_header = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\n' + \
+                 'property float z\nelement face {}\nproperty list uchar int vertex_index\nend_header\n'
+    verts_num = verts.shape[0]
+    faces_num = faces.shape[0]
+    faces = faces.astype(np.int)
+    faces_for_ply = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
+    with open(ply_file_name, 'w') as f:
+        f.write(ply_header.format(verts_num, faces_num))
+    with open(ply_file_name, 'ab') as f:
+        np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
+        np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:

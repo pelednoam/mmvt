@@ -86,35 +86,39 @@ def import_hemis_for_functional_maps(base_path):
             surf_name = mu.namebase(ply_fname).split(sep='.')[1]
             if surf_name == 'inflated':
                 obj_name = '{}_{}'.format(surf_name, obj_name)
-                mu.change_layer(_addon().INFLATED_ACTIVITY_LAYER)
+                # mu.change_layer(_addon().INFLATED_ACTIVITY_LAYER)
+                layer = _addon().INFLATED_ACTIVITY_LAYER
             elif surf_name == 'pial':
-                mu.change_layer(_addon().ACTIVITY_LAYER)
+                # mu.change_layer(_addon().ACTIVITY_LAYER)
+                layer = _addon().ACTIVITY_LAYER
             else:
                 raise Exception('The surface type {} is not supported!'.format(surf_name))
             if bpy.data.objects.get(obj_name) is None:
-                bpy.ops.import_mesh.ply(filepath=op.join(base_path, 'surf', ply_fname))
-                cur_obj = bpy.context.selected_objects[0]
-                cur_obj.select = True
-                bpy.ops.object.shade_smooth()
-                cur_obj.scale = [0.1] * 3
-                cur_obj.hide = False
-                cur_obj.name = obj_name
-                # if surf_name == 'inflated':
-                #     cur_obj.active_material = bpy.data.materials['Inflated_Activity_map_mat']
-                #     # cur_obj.location[0] += 5.5 if obj_name == 'inflated_rh' else -5.5
-                # else:
-                cur_obj.active_material = bpy.data.materials['Activity_map_mat']
-                cur_obj.parent = bpy.data.objects["Functional maps"]
-                cur_obj.hide_select = True
-                cur_obj.data.vertex_colors.new()
-                # cur_obj.data.vertex_colors.new('blank')
-                # for vert in cur_obj.data.vertex_colors['blank'].data:
-                #     vert.color = (1.0, 1.0, 1)
+                load_ply(op.join(base_path, 'surf', ply_fname), obj_name, layer=layer)
         except:
             mu.log_err('Error in importing {}'.format(ply_fname), logging)
 
     _addon().create_inflated_curv_coloring()
     bpy.ops.object.select_all(action='DESELECT')
+
+
+def load_ply(ply_fname, obj_name, parent_name='Functional maps', material_name='Activity_map_mat',
+             layer=None):
+    if layer is None:
+        layer = _addon().INFLATED_ACTIVITY_LAYER
+    mu.change_layer(layer)
+    bpy.ops.import_mesh.ply(filepath=ply_fname)
+    cur_obj = bpy.context.selected_objects[0]
+    cur_obj.select = True
+    bpy.ops.object.shade_smooth()
+    cur_obj.scale = [0.1] * 3
+    cur_obj.hide = False
+    cur_obj.name = obj_name
+    cur_obj.active_material = bpy.data.materials[material_name]
+    cur_obj.parent = bpy.data.objects[parent_name]
+    cur_obj.hide_select = True
+    cur_obj.data.vertex_colors.new()
+    return cur_obj
 
 
 def create_subcortical_activity_mat(name):
