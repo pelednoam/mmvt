@@ -634,9 +634,9 @@ def fix_scale():
         for sub_obj in bpy.data.objects['Subcortical_structures'].children:
             for i in range(3):
                 sub_obj.scale[i] = 0.1
-    _fix_scale('eeg_helmet')
-    for skull_type in ['inner_skull', 'outer_skull']:
-        _fix_scale(skull_type)
+
+    for obj_name in ['inner_skull', 'outer_skull', 'eeg_helmet', 'seghead']:
+        _fix_scale(obj_name)
     # _fix_scale('skull_plane')
 
 

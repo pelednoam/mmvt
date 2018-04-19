@@ -164,7 +164,8 @@ def is_linux():
 def namebase(fname):
     name_with_ext = fname.split(op.sep)[-1]
     if not name_with_ext.endswith('nii.gz'):
-        return '.'.join(name_with_ext.split('.')[:-1])
+        ret = '.'.join(name_with_ext.split('.')[:-1])
+        return ret if ret != '' else name_with_ext
     else:
         return name_with_ext[:-len('.nii.gz')]
 
