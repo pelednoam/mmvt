@@ -9,6 +9,9 @@ PLY_HEADER = 'ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproper
 
 def run(mmvt):
     surf_fname = op.join(mmvt.utils.get_subjects_dir(), mmvt.utils.get_user(), 'surf', 'lh.seghead')
+    if not op.isfile(surf_fname):
+        print("Can't find the seghead surface! ({})".format(surf_fname))
+        return
     ply_fname = op.join(mmvt.utils.get_user_fol(), 'surf', 'seghead.ply')
     if not op.isfile(ply_fname):
         verts, faces = nib_fs.read_geometry(surf_fname)
