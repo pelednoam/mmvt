@@ -118,6 +118,9 @@ def load_ply(ply_fname, obj_name, parent_name='Functional maps', material_name='
         cur_obj.active_material = bpy.data.materials[material_name]
     else:
         cur_obj.active_material = bpy.data.materials[material_name].copy()
+        if bpy.data.materials.get(new_material_name) is not None:
+            bpy.data.materials[new_material_name].use_fake_user = False
+            bpy.data.materials.remove(bpy.data.materials[new_material_name], do_unlink=True)
         cur_obj.active_material.name = new_material_name
 
     cur_obj.parent = bpy.data.objects[parent_name]

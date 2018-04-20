@@ -928,6 +928,19 @@ def create_inflated_curv_coloring():
         print(traceback.format_exc())
 
 
+def get_obj_color_data(obj, color, val=1):
+    if isinstance(obj, str):
+        obj = bpy.data.objects.get(obj, None)
+    if obj is None:
+        print("set_color_for_obj: Can't find {}".format(obj))
+        return
+    data = np.ones((len(obj.data.vertices), 4)) * val
+    if isinstance(color, str):
+        color = cu.name_to_rgb(color)
+    data[:, 1:] = color
+    return data
+
+
 def calc_colors(vert_values, data_min, colors_ratio, cm=None):
     if cm is None:
         cm = _addon().get_cm()
@@ -965,12 +978,20 @@ def set_activity_values(cur_obj, values):
                 else:
                     print('vert_ind {} > len(values) ({}) in mesh {}'.format(vert_ind, len(values), mesh_name))
 
+
 # @mu.timeit
-def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold=0, override_current_mat=True, data_min=None,
+def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
                               coloring_layer='Col', check_valid_verts=True):
     if isinstance(cur_obj, str):
         cur_obj = bpy.data.objects[cur_obj]
+    if lookup is None:
+        lookup_fnames = glob.glob(
+            op.join(mu.get_user_fol(), '**', '{}_faces_verts.npy'.format(cur_obj.name)), recursive=True)
+        if len(lookup_fnames) == 0:
+            print("activity_map_obj_coloring: Can't find the lookup file for {}".format(cur_obj))
+            return False
+        lookup = np.load(lookup_fnames[0])
 
     mesh = cur_obj.data
     scn = bpy.context.scene
