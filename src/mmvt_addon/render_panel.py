@@ -652,7 +652,7 @@ def save_image(image_type='image', view_selected=None, index=-1, zoom_val=0, add
 
 
 def get_figure_format():
-    return bpy.context.scene.render.image_settings.file_format
+    return str(bpy.context.scene.render.image_settings.file_format).lower()
 
 
 def set_figure_format(val):
