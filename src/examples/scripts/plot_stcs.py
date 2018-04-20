@@ -1,5 +1,8 @@
 import os.path as op
 
+STCS_NAMES = ['stc_mag', 'stc_grad', 'stc_eeg', 'stc_plot']
+CM = 'hot'
+
 
 def run(mmvt):
     # todo: save the orginal state, not only the background color
@@ -17,11 +20,11 @@ def run(mmvt):
     mmvt.render.set_save_split_views(False)
     mmvt.coloring.set_lower_threshold(0)
 
-    new_path = op.join(org_path, 'secs_figures')
+    new_path = op.join(org_path, 'stcs_figures')
     mmvt.utils.make_dir(new_path)
     mmvt.render.set_output_path(new_path)
-    for stc_name in ['stc_mag', 'stc_grad', 'stc_eeg', 'stc_plot']:
-        mmvt.coloring.plot_stc(stc_name, cb_percentiles=(0, 99), cm='hot')
+    for stc_name in STCS_NAMES:
+        mmvt.coloring.plot_stc(stc_name, cb_percentiles=(0, 99), cm=CM)
         mmvt.render.save_all_views((mmvt.ROT_SAGITTAL_LEFT, mmvt.ROT_MEDIAL_LEFT), render_images=True, quality=60,
                                    img_name_prefix=stc_name, add_colorbar=False)
         meg_data_min, meg_data_max = mmvt.coloring.get_meg_data_minmax()
