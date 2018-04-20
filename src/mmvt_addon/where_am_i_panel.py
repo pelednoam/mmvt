@@ -602,7 +602,7 @@ def slices_were_clicked(active_image, pos):
     WhereAmIPanel.slices_cursor_pos[active_image.name] = pos
     print('Image {} was click in {}'.format(active_image.name, pos))
     # print(active_image.name, pos)
-    image_ind = images_names.index(active_image.name)
+    image_ind = images_names.index(active_image.name.lower())
     new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state, modality)
     if modality == 'ct':
         new_pial_ras = apply_trans(_ct_trans().vox2ras, np.array([new_pos_vox]))[0]

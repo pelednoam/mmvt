@@ -325,6 +325,26 @@ def calc_faces_verts_dic(subject, atlas, overwrite=False):
     return len(errors) == 0
 
 
+@utils.tryit()
+def load_bem_surfaces(subject, overwrite=False):
+    watershed_files = ['brain_surface', 'inner_skull_surface', 'outer_skin_surface', 'outer_skull_surface']
+    watershed_file_names = [op.join(SUBJECTS_DIR, subject, 'bem', 'watershed', '{}_{}'.format(subject, watershed_name))
+                            for watershed_name in watershed_files]
+    if not all([op.isfile(f) for f in watershed_file_names]):
+        print('Not all the watershed files exist!')
+        return False
+    ret = True
+    for surf_fname, watershed_name in zip(watershed_file_names, watershed_files):
+        ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.ply'.format(watershed_name))
+        if not op.isfile(ply_fname) or overwrite:
+            verts, faces = nib_fs.read_geometry(surf_fname)
+            utils.write_ply_file(verts, faces, ply_fname)
+        faces_verts_fname = op.join(MMVT_DIR, subject, 'surf', '{}_faces_verts.npy'.format(watershed_name))
+        utils.calc_ply_faces_verts(verts, faces, faces_verts_fname, overwrite, watershed_name)
+        ret = ret and op.isfile(ply_fname) and op.isfile(faces_verts_fname)
+    return ret
+
+
 def check_ply_files(subject):
     ply_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.ply')
     npz_subject = op.join(SUBJECTS_DIR, subject, 'surf', '{}.pial.npz')
@@ -1467,6 +1487,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'check_labels' in args.function:
         flags['check_labels'] = check_labels(subject, args.atlas)
+
+    if 'load_bem_surfaces' in args.function:
+        flags['cheload_bem_surfacesck_labels'] = load_bem_surfaces(subject, args.overwrite)
 
     if 'morph_labels_from_fsaverage' in args.function:
         flags['morph_labels_from_fsaverage'] = morph_labels_from_fsaverage(

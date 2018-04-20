@@ -14,3 +14,5 @@ def run(mmvt):
         mmvt.utils.write_ply_file(verts, faces, ply_fname)
     mmvt.data.load_ply(ply_fname, 'seghead', new_material_name='seghead_mat')
     mmvt.appearance.set_transparency('seghead_mat', 1)
+    mmvt.appearance.set_layers_depth_trans('seghead_mat', 10)
+

@@ -7,7 +7,7 @@ def _addon():
 
 def appearance_update(self=None, context=None):
     _addon().make_brain_solid_or_transparent()
-    _addon().update_layers()
+    _addon().set_layers_depth_trans()
 
 
 def set_brain_transparency(val):
@@ -47,7 +47,7 @@ class UpdateAppearance(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         _addon().make_brain_solid_or_transparent()
-        _addon().update_layers()
+        _addon().set_layers_depth_trans()
         return {"FINISHED"}
 
 

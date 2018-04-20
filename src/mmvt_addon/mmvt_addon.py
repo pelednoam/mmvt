@@ -129,6 +129,7 @@ ANGLES_NAMES_DICT = show_hide_panel.ANGLES_NAMES_DICT
  ROT_AXIAL_INFERIOR, ROT_MEDIAL_LEFT, ROT_MEDIAL_RIGHT) = range(8)
 
 utils = mmvt_utils
+colors = colors_utils
 scene = bpy.context.scene
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Data links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 data = data_panel
@@ -322,7 +323,7 @@ show_hide_connections = appearance_panel.show_hide_connections
 change_to_rendered_brain = appearance_panel.change_to_rendered_brain
 change_to_solid_brain = appearance_panel.change_to_solid_brain
 make_brain_solid_or_transparent = appearance_panel.make_brain_solid_or_transparent
-update_layers = appearance_panel.update_layers
+set_layers_depth_trans = appearance_panel.set_layers_depth_trans
 update_solidity = appearance_panel.update_solidity
 connections_visible = appearance_panel.connections_visible
 show_hide_connections = appearance_panel.show_hide_connections
@@ -348,6 +349,7 @@ move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
 set_panels_background_color = appearance_panel.set_panels_background_color
 get_panels_background_color = appearance_panel.get_panels_background_color
 set_transparency = appearance_panel.set_transparency
+set_layers_depth_trans = appearance_panel.set_layers_depth_trans
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 play = play_panel
 set_play_type = play_panel.set_play_type

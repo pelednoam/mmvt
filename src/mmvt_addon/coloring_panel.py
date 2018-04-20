@@ -966,9 +966,12 @@ def set_activity_values(cur_obj, values):
                     print('vert_ind {} > len(values) ({}) in mesh {}'.format(vert_ind, len(values), mesh_name))
 
 # @mu.timeit
-def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold, override_current_mat, data_min=None,
+def activity_map_obj_coloring(cur_obj, vert_values, lookup, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
                               coloring_layer='Col', check_valid_verts=True):
+    if isinstance(cur_obj, str):
+        cur_obj = bpy.data.objects[cur_obj]
+
     mesh = cur_obj.data
     scn = bpy.context.scene
 

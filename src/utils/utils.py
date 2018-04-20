@@ -76,6 +76,7 @@ is_float = mu.is_float
 get_fname_folder = mu.get_fname_folder
 change_fname_extension = mu.change_fname_extension
 copy_file = mu.copy_file
+namebase = mu.namebase
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -646,14 +647,14 @@ def namebase_sep(fname):
         return name_with_ext[:-len('nii.gz')]
 
 
-def namebase(fname):
-    if 'nii.gz' not in fname:
-        return op.splitext(op.basename(fname))[0]
-    else:
-        nb = fname
-        while '.' in nb:
-            nb = op.splitext(op.basename(nb))[0]
-        return nb
+# def namebase(fname):
+#     if 'nii.gz' not in fname:
+#         return op.splitext(op.basename(fname))[0]
+#     else:
+#         nb = fname
+#         while '.' in nb:
+#             nb = op.splitext(op.basename(nb))[0]
+#         return nb
 
 
 def file_type_sep(fname):

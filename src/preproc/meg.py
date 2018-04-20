@@ -588,34 +588,39 @@ def check_bem(mri_subject, args={}):
             mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
             {'bem': ['*-bem-sol.fif']}, args)
     if not op.isfile(bem_fname):
-        bem_files = ['brain.surf', 'inner_skull.surf', 'outer_skin.surf', 'outer_skull.surf']
-        watershed_files = ['{}_brain_surface', '{}_inner_skull_surface', '{}_outer_skin_surface',
-                           '{}_outer_skull_surface']
-        bem_fol = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem')
-        bem_files_exist = np.all([op.isfile(op.join(bem_fol, bem_fname)) for bem_fname in bem_files])
-        if not bem_files_exist:
-            prepare_subject_folder(
-                mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
-                {'bem': [f for f in bem_files]}, args)
-        watershed_files_exist = np.all(
-            [op.isfile(op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
-             watershed_files])
-        if not bem_files_exist and not watershed_files_exist:
-            err_msg = '''BEM files don't exist, you should create it first using mne_watershed_bem.
-                For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
-                mne_watershed_bem.
-                You can take a look here:
-                http://perso.telecom-paristech.fr/~gramfort/mne/MRC/mne_anatomical_workflow.pdf '''
-            raise Exception(err_msg)
-        if not bem_files_exist and watershed_files_exist:
-            for bem_file, watershed_file in zip(bem_files, watershed_files):
-                utils.remove_file(bem_file)
-                shutil.copy(op.join(bem_fol, 'watershed', watershed_file.format(mri_subject)),
-                            op.join(bem_fol, bem_file))
+        prepare_bem_surfaces(mri_subject)
         model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
         bem = mne.make_bem_solution(model)
         mne.write_bem_solution(BEM, bem)
     return op.isfile(bem_fname)
+
+
+def prepare_bem_surfaces(mri_subject):
+    bem_files = ['brain.surf', 'inner_skull.surf', 'outer_skin.surf', 'outer_skull.surf']
+    watershed_files = ['{}_brain_surface', '{}_inner_skull_surface', '{}_outer_skin_surface',
+                       '{}_outer_skull_surface']
+    bem_fol = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem')
+    bem_files_exist = np.all([op.isfile(op.join(bem_fol, bem_fname)) for bem_fname in bem_files])
+    if not bem_files_exist:
+        prepare_subject_folder(
+            mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
+            {'bem': [f for f in bem_files]}, args)
+    watershed_files_exist = np.all(
+        [op.isfile(op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
+         watershed_files])
+    if not bem_files_exist and not watershed_files_exist:
+        err_msg = '''BEM files don't exist, you should create it first using mne_watershed_bem.
+            For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
+            mne_watershed_bem.
+            You can take a look here:
+            http://perso.telecom-paristech.fr/~gramfort/mne/MRC/mne_anatomical_workflow.pdf '''
+        raise Exception(err_msg)
+    if not bem_files_exist and watershed_files_exist:
+        for bem_file, watershed_file in zip(bem_files, watershed_files):
+            utils.remove_file(bem_file)
+            shutil.copy(op.join(bem_fol, 'watershed', watershed_file.format(mri_subject)),
+                        op.join(bem_fol, bem_file))
+    return [op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject)) for watershed_fname in watershed_files]
 
 
 def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', sub_corticals_codes_file='',

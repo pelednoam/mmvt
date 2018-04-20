@@ -195,6 +195,10 @@ def change_fname_extension(fname, new_extension):
     return op.join(get_fname_folder(fname), '{}.{}'.format(namebase(fname), new_extension))
 
 
+def get_obj(obj_name):
+    return bpy.data.objects.get(obj_name, None)
+
+
 @functools.lru_cache(maxsize=None)
 def file_fol():
     return os.path.dirname(bpy.data.filepath)

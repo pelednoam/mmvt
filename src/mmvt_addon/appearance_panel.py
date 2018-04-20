@@ -438,10 +438,12 @@ def set_transparency(material_name='Activity_map_mat', val=None):
         val = 1 - val
     bpy.data.materials[material_name].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = val
 
-def update_layers():
+
+def set_layers_depth_trans(material_name='Activity_map_mat', depth=None):
     # depth = bpy.context.scene.appearance_depth_slider if bpy.context.scene.appearance_depth_Bool else 0
-    depth = bpy.context.scene.appearance_depth_slider
-    bpy.data.materials['Activity_map_mat'].node_tree.nodes["layers_depth"].inputs[1].default_value = depth
+    if depth is None:
+        depth = bpy.context.scene.appearance_depth_slider
+    bpy.data.materials[material_name].node_tree.nodes["layers_depth"].inputs[1].default_value = depth
 
 
 def appearance_draw(self, context):
@@ -487,7 +489,7 @@ def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
 
 def update_solidity(self, context):
     make_brain_solid_or_transparent()
-    update_layers()
+    set_layers_depth_trans()
 
 
 def is_view_3d():
