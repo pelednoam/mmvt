@@ -103,7 +103,7 @@ def import_hemis_for_functional_maps(base_path):
 
 
 def load_ply(ply_fname, obj_name, parent_name='Functional maps', material_name='Activity_map_mat',
-             layer=None):
+             layer=None, new_material_name=''):
     if layer is None:
         layer = _addon().INFLATED_ACTIVITY_LAYER
     mu.change_layer(layer)
@@ -114,7 +114,12 @@ def load_ply(ply_fname, obj_name, parent_name='Functional maps', material_name='
     cur_obj.scale = [0.1] * 3
     cur_obj.hide = False
     cur_obj.name = obj_name
-    cur_obj.active_material = bpy.data.materials[material_name]
+    if new_material_name == '':
+        cur_obj.active_material = bpy.data.materials[material_name]
+    else:
+        cur_obj.active_material = bpy.data.materials[material_name].copy()
+        cur_obj.active_material.name = new_material_name
+
     cur_obj.parent = bpy.data.objects[parent_name]
     cur_obj.hide_select = True
     cur_obj.data.vertex_colors.new()

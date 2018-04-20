@@ -347,6 +347,7 @@ flat_map_exists = appearance_panel.flat_map_exists
 move_cursor_according_to_vert = appearance_panel.move_cursor_according_to_vert
 set_panels_background_color = appearance_panel.set_panels_background_color
 get_panels_background_color = appearance_panel.get_panels_background_color
+set_transparency = appearance_panel.set_transparency
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Play links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 play = play_panel
 set_play_type = play_panel.set_play_type

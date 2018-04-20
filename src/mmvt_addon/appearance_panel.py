@@ -421,13 +421,22 @@ def is_rendered():
 
 
 def make_brain_solid_or_transparent():
-    bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
-        'Fac'].default_value = bpy.context.scene.appearance_solid_slider
+    # bpy.data.materials['Activity_map_mat'].node_tree.nodes['transparency_node'].inputs[
+    #     'Fac'].default_value = bpy.context.scene.appearance_solid_slider
+    set_transparency()
     if 'subcortical_activity_mat' in bpy.data.materials:
-        subcortical_mat = bpy.data.materials['subcortical_activity_mat']
-        subcortical_mat.node_tree.nodes['transparency_node'].inputs['Fac'].default_value = \
-            bpy.context.scene.appearance_solid_slider
+        set_transparency('subcortical_activity_mat')
+        # subcortical_mat = bpy.data.materials['subcortical_activity_mat']
+        # subcortical_mat.node_tree.nodes['transparency_node'].inputs['Fac'].default_value = \
+        #     bpy.context.scene.appearance_solid_slider
 
+
+def set_transparency(material_name='Activity_map_mat', val=None):
+    if val is None:
+        val = bpy.context.scene.appearance_solid_slider
+    else:
+        val = 1 - val
+    bpy.data.materials[material_name].node_tree.nodes['transparency_node'].inputs['Fac'].default_value = val
 
 def update_layers():
     # depth = bpy.context.scene.appearance_depth_slider if bpy.context.scene.appearance_depth_Bool else 0

@@ -11,4 +11,5 @@ def run(mmvt):
     if not op.isfile(ply_fname):
         verts, faces = nib_fs.read_geometry(surf_fname)
         mmvt.utils.write_ply_file(verts, faces, ply_fname)
-    mmvt.data.load_ply(ply_fname, 'seghead')
+    mmvt.data.load_ply(ply_fname, 'seghead', new_material_name='seghead_mat')
+    mmvt.appearance.set_transparency('seghead_mat', 1)
