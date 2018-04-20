@@ -412,16 +412,18 @@ def update_slices(modality='mri', ratio=1, images=None):
     images_names = ['{}.{}'.format(pres, _addon().get_figure_format()) for pres in perspectives]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
-    # if modality == 'mri':
-    #     necessary_images = set(['mri_axial.png', 'mri_coronal.png', 'mri_sagital.png', 'Render Result'])
-    # elif modality == 'ct':
-    #     necessary_images = set(['ct_axial.png', 'ct_coronal.png', 'ct_sagital.png', 'Render Result'])
-    ftype = _addon().get_figure_format()
-    necessary_images = set(['axial.{}'.format(ftype), 'coronal.{}'.format(ftype), 'sagital.{}'.format(ftype),
-                            'Render Result', 'device.{}'.format(ftype)])
-    extra_images = set([img.name for img in bpy.data.images]) - necessary_images
-    for img_name in extra_images:
-        bpy.data.images.remove(bpy.data.images[img_name], do_unlink=True)
+    # slice_images = [img.name for img in bpy.data.images if img.name.startswith('sagital')]
+    # if len(slice_images) > 0:
+    #     ftype = mu.file_type(slice_images[0]).lower()
+    # else:
+    #     ftype = _addon().get_figure_format()
+
+    # not sure why, the following code can crashes Blender
+    # necessary_images = set(['axial.{}'.format(ftype), 'coronal.{}'.format(ftype), 'sagital.{}'.format(ftype),
+    #                         'Render Result', 'device.{}'.format(ftype)])
+    # extra_images = set([img.name for img in bpy.data.images]) - necessary_images
+    # for img_name in list(extra_images):
+    #     bpy.data.images.remove(bpy.data.images[img_name], do_unlink=True)
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':
             override = bpy.context.copy()
