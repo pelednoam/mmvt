@@ -51,7 +51,7 @@ mkheadsurf = 'mkheadsurf -subjid {subject} -srcvol T1.mgz'
 
 @utils.check_for_freesurfer
 def project_on_surface(subject, volume_file, surf_output_fname, target_subject=None, overwrite_surf_data=False,
-                       modality='fmri', subjects_dir='', mmvt_dir=''):
+                       modality='fmri', subjects_dir='', mmvt_dir='', **kargs):
     if target_subject is None:
         target_subject = subject
     if subjects_dir == '':
@@ -83,7 +83,7 @@ def project_on_surface(subject, volume_file, surf_output_fname, target_subject=N
 
 
 @utils.check_for_freesurfer
-def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False):
+def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, projfrac=0.5, print_only=False, **kargs):
     temp_output = output_fname is None
     if output_fname is None:
         output_fname = mktemp(prefix="pysurfer-v2s", suffix='.mgz')
@@ -100,7 +100,7 @@ def project_pet_volume_data(subject, volume_fname, hemi, output_fname=None, proj
 def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
                         projmeth="frac", projsum="avg", projarg=[0, 1, .1],
                         surf="white", smooth_fwhm=3, mask_label=None,
-                        target_subject=None, output_fname=None, verbose=None):
+                        target_subject=None, output_fname=None, verbose=None, **kargs):
     """Sample MRI volume onto cortical manifold.
     Note: this requires Freesurfer to be installed with correct
     SUBJECTS_DIR definition (it uses mri_vol2surf internally).
@@ -199,7 +199,7 @@ def project_volume_data(filepath, hemi, reg_file=None, subject_id=None,
 
 
 # https://github.com/nipy/PySurfer/blob/master/surfer/io.py
-def read_scalar_data(filepath):
+def read_scalar_data(filepath, **kargs):
     """Load in scalar data from an image.
     Parameters
     ----------
@@ -258,7 +258,7 @@ def read_scalar_data(filepath):
 
 
 def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig.mgz',
-        subject_contrast_file_name='sig_subject.mgz', print_only=False):
+        subject_contrast_file_name='sig_subject.mgz', print_only=False, **kargs):
     mni305_sig_file = os.path.join(volue_fol, volume_fname)
     subject_sig_file = os.path.join(volue_fol, subject_contrast_file_name)
     rs = utils.partial_run_script(locals(), print_only=print_only)
@@ -271,7 +271,7 @@ def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig
 
 
 @utils.tryit(None)
-def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
+def transform_subject_to_mni_coordinates(subject, coords, subjects_dir, **kargs):
     import mne.transforms
     talairach_fname = op.join(subjects_dir, subject, 'mri', 'transforms', 'talairach.xfm')
     if op.isfile(talairach_fname):
@@ -284,7 +284,7 @@ def transform_subject_to_mni_coordinates(subject, coords, subjects_dir):
     # TalXFM: subject/orig/transforms/talairach.xfm Norig: mri_info --vox2ras orig.mgz Torig: mri_info --vox2ras-tkr orig.mgz
 
 
-def transform_subject_to_ras_coordinates(subject, coords, subjects_dir):
+def transform_subject_to_ras_coordinates(subject, coords, subjects_dir, **kargs):
     t1_fname = op.join(subjects_dir, subject, 'mri', 'T1.mgz')
     if op.isfile(t1_fname):
         ndim = coords.ndim
@@ -301,7 +301,7 @@ def transform_subject_to_ras_coordinates(subject, coords, subjects_dir):
         return None
 
 
-def apply_trans(trans, points):
+def apply_trans(trans, points, **kargs):
     if points.ndim == 1:
         points = points.reshape((1, 3))
     points = np.hstack((points, np.ones((len(points), 1))))
@@ -319,7 +319,8 @@ def apply_trans(trans, points):
 #     return to_subject_coords
 
 
-def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, subjects_dir, return_trans=False):
+def transform_subject_to_subject_coordinates(
+        from_subject, to_subject, coords, subjects_dir, return_trans=False, **kargs):
     t1_from_fname = op.join(subjects_dir, from_subject, 'mri', 'T1.mgz')
     t1_to_fname = op.join(subjects_dir, to_subject, 'mri', 'T1.mgz')
     if op.isfile(t1_from_fname) and op.isfile(t1_to_fname):
@@ -350,7 +351,8 @@ def transform_subject_to_subject_coordinates(from_subject, to_subject, coords, s
 
 
 @utils.check_for_freesurfer
-def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True, print_only=False):
+def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', overwrite_annot_file=True,
+                           print_only=False, **kargs):
     '''
     Creates the annot file by using the freesurfer mris_ca_label function
 
@@ -387,7 +389,7 @@ def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', 
     return annot_files_exist
 
 
-def check_env_var(var_name, var_val):
+def check_env_var(var_name, var_val, **kargs):
     if var_val == '':
         var_val = os.environ.get(var_name, '')
         if var_val  == '':
@@ -396,7 +398,7 @@ def check_env_var(var_name, var_val):
 
 @utils.check_for_freesurfer
 def aseg_to_srf(subject, subjects_dir, output_fol, region_id, lookup, mask_fname, norm_fname,
-                overwrite_subcortical_objs=False):
+                overwrite_subcortical_objs=False, **kargs):
     ret = True
     tmp_fol = op.join(subjects_dir, subject, 'tmp', utils.rand_letters(6))
     utils.make_dir(tmp_fol)
@@ -433,13 +435,13 @@ def aseg_to_srf(subject, subjects_dir, output_fol, region_id, lookup, mask_fname
     return ret
 
 
-def warp_buckner_atlas_output_fname(subject, subjects_dir, subregions_num=7, cerebellum_segmentation='loose'):
+def warp_buckner_atlas_output_fname(subject, subjects_dir, subregions_num=7, cerebellum_segmentation='loose', **kargs):
     return op.join(subjects_dir, subject, 'mri', 'Buckner2011_atlas_{}_{}.nii.gz'.format(
         subregions_num, cerebellum_segmentation))
 
 
 @utils.check_for_freesurfer
-def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname, print_only=False):
+def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname, print_only=False, **kargs):
     norm_fname = op.join(subjects_dir, subject, 'mri', 'norm.mgz')
     if not op.isfile(norm_fname):
         print("Error in warp_buckner_atlas, can't find the file {}".format(norm_fname))
@@ -462,7 +464,7 @@ def warp_buckner_atlas(subject, subjects_dir, bunker_atlas_fname, wrap_map_fname
         return True
 
 
-def get_tr(fmri_fname):
+def get_tr(fmri_fname, **kargs):
     try:
         img = nib.load(fmri_fname)
         hdr = img.get_header()
@@ -480,7 +482,7 @@ def get_tr(fmri_fname):
 
 
 @utils.check_for_freesurfer
-def mri_convert(org_fname, new_fname, overwrite=False, print_only=False):
+def mri_convert(org_fname, new_fname, overwrite=False, print_only=False, **kargs):
     cmd = 'mri_convert {} {}'.format(org_fname, new_fname)
     if print_only:
         print(cmd)
@@ -493,34 +495,34 @@ def mri_convert(org_fname, new_fname, overwrite=False, print_only=False):
         raise Exception("mri_convert: {} wan't created".format(new_fname))
 
 
-def mri_convert_to(org_fname, new_file_type, overwrite=False):
+def mri_convert_to(org_fname, new_file_type, overwrite=False, **kargs):
     new_fname = '{}.{}'.format(op.splitext(org_fname)[0], new_file_type)
     return mri_convert(org_fname, new_fname, overwrite)
 
 
-def nii_gz_to_mgz_name(fmri_fname):
+def nii_gz_to_mgz_name(fmri_fname, **kargs):
     return '{}mgz'.format(fmri_fname[:-len('nii.gz')])
 
 
-def nii_to_mgz_name(fmri_fname):
+def nii_to_mgz_name(fmri_fname, **kargs):
     return '{}mgz'.format(fmri_fname[:-len('nii')])
 
 
-def nii_gz_to_mgz(fmri_fname):
+def nii_gz_to_mgz(fmri_fname, **kargs):
     new_fmri_fname = nii_gz_to_mgz_name(fmri_fname)
     if not op.isfile(new_fmri_fname):
         mri_convert(fmri_fname, new_fmri_fname)
     return new_fmri_fname
 
 
-def nii_to_mgz(fmri_fname):
+def nii_to_mgz(fmri_fname, **kargs):
     new_fmri_fname = nii_to_mgz_name(fmri_fname)
     if not op.isfile(new_fmri_fname):
         mri_convert(fmri_fname, new_fmri_fname)
     return new_fmri_fname
 
 
-def mgz_to_nii_gz(fmri_fname):
+def mgz_to_nii_gz(fmri_fname, **kargs):
     new_fmri_fname = '{}nii.gz'.format(fmri_fname[:-len('mgz')])
     if not op.isfile(new_fmri_fname):
         mri_convert(fmri_fname, new_fmri_fname)
@@ -528,7 +530,7 @@ def mgz_to_nii_gz(fmri_fname):
 
 
 @utils.check_for_freesurfer
-def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, cwd=None, print_only=False):
+def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, cwd=None, print_only=False, **kargs):
     if source_subject != target_subject:
         rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
         rs(mri_surf2surf)
@@ -537,7 +539,7 @@ def surf2surf(source_subject, target_subject, hemi, source_fname, target_fname, 
 
 
 @utils.check_for_freesurfer
-def vol2vol(subject, source_volume_fname, target_volume_fname, output_volume_fname, cwd=None, print_only=False):
+def vol2vol(subject, source_volume_fname, target_volume_fname, output_volume_fname, cwd=None, print_only=False, **kargs):
     if source_volume_fname != target_volume_fname:
         rs = utils.partial_run_script(locals(), cwd=cwd, print_only=print_only)
         rs(mri_vol2vol)
@@ -547,7 +549,7 @@ def vol2vol(subject, source_volume_fname, target_volume_fname, output_volume_fna
 
 
 def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overwrite=True, output_txt_fname='',
-                    output_sum_fname='', ret_files_name=False):
+                    output_sum_fname='', ret_files_name=False, **kargs):
     def get_labels_names(line):
         label_name = line.split()[4]
         label_nums = utils.find_num_in_str(label_name)
@@ -576,7 +578,7 @@ def calc_labels_avg(target_subject, hemi, atlas, fmri_fname, res_dir, cwd, overw
 
 @utils.check_for_freesurfer
 @utils.files_needed({'surf': ['lh.white', 'rh.white'], 'mri': ['ribbon.mgz']})
-def create_aparc_aseg_file(subject, atlas, subjects_dir, overwrite_aseg_file=False, print_only=False):
+def create_aparc_aseg_file(subject, atlas, subjects_dir, overwrite_aseg_file=False, print_only=False, **kargs):
     if not utils.both_hemi_files_exist(op.join(subjects_dir, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
         print('No annot file was found for {}!'.format(atlas))
         return False, ''
@@ -596,7 +598,7 @@ def create_aparc_aseg_file(subject, atlas, subjects_dir, overwrite_aseg_file=Fal
     return True, aparc_aseg_fname
 
 
-def parse_patch(filename):
+def parse_patch(filename, **kargs):
     import struct
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
@@ -606,7 +608,7 @@ def parse_patch(filename):
         return data
 
 
-def write_patch(filename, pts, edges=set()):
+def write_patch(filename, pts, edges=set(), **kargs):
     from tqdm import tqdm
     import struct
     with open(filename, 'wb') as fp:
@@ -618,7 +620,7 @@ def write_patch(filename, pts, edges=set()):
                 fp.write(struct.pack('>i3f', i+1, *pt))
 
 
-def read_patch(subject, hemi, subjects_dir, surface_type='pial', patch_fname=''):
+def read_patch(subject, hemi, subjects_dir, surface_type='pial', patch_fname='', **kargs):
     pts, polys = nib_fs.read_geometry(op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surface_type)))
 
     if patch_fname == '':
@@ -642,14 +644,14 @@ def read_patch(subject, hemi, subjects_dir, surface_type='pial', patch_fname='')
     return pts, polys
 
 
-def mris_convert(org_surf_fname, new_surf_fname, print_only=False):
+def mris_convert(org_surf_fname, new_surf_fname, print_only=False, **kargs):
     # mris_convert = 'mris_convert {org_surf_fname} {new_surf_fname}'
     rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(_mris_convert)
     return op.isfile(new_surf_fname)
 
 
-def write_surf(filename, pts, polys, comment=b''):
+def write_surf(filename, pts, polys, comment=b'', **kargs):
     import struct
     with open(filename, 'wb') as fp:
         fp.write(b'\xff\xff\xfe')
@@ -660,7 +662,7 @@ def write_surf(filename, pts, polys, comment=b''):
         fp.write(b'\n')
 
 
-def flat_brain(subject, hemi, subjects_dir, print_only=False):
+def flat_brain(subject, hemi, subjects_dir, print_only=False, **kargs):
     # mris_flatten lh.inflated.patch lh.flat.patch
     surf_dir = op.join(subjects_dir, subject, 'surf')
     rs = utils.partial_run_script(locals(), cwd=surf_dir, print_only=print_only)
@@ -668,12 +670,12 @@ def flat_brain(subject, hemi, subjects_dir, print_only=False):
     return get_flat_patch_fname(subject, hemi, subjects_dir)
 
 
-def get_flat_patch_fname(subject, hemi, subjects_dir):
+def get_flat_patch_fname(subject, hemi, subjects_dir, **kargs):
     surf_dir = op.join(subjects_dir, subject, 'surf')
     return op.join(surf_dir, '{}.flat.patch'.format(hemi))
 
 
-def test_patch(subject):
+def test_patch(subject, **kargs):
     from src.utils import preproc_utils as pu
     SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
@@ -703,7 +705,7 @@ def test_patch(subject):
     print('Finish!')
 
 
-def read_lta_file(lta_fame):
+def read_lta_file(lta_fame, **kargs):
     # https://github.com/pelednoam/ielu/blob/master/ielu/geometry.py#L182
     affine = np.zeros((4,4))
     with open(lta_fame) as fd:
@@ -718,7 +720,7 @@ def read_lta_file(lta_fame):
 
 @utils.check_for_freesurfer
 def robust_register(subject, subjects_dir, source_fname, target_fname, output_fname, lta_name,
-                    cost_function='nmi', print_only=False):
+                    cost_function='nmi', print_only=False, **kargs):
     xfms_dir = op.join(subjects_dir, subject, 'mri', 'transforms')
     utils.make_dir(xfms_dir)
     lta_fname = op.join(xfms_dir, lta_name)
@@ -728,7 +730,10 @@ def robust_register(subject, subjects_dir, source_fname, target_fname, output_fn
 
 
 @utils.check_for_freesurfer
-def create_seghead(subject, print_only=False):
+def create_seghead(subject, subjects_dir=None, print_only=False, **kargs):
+    if subjects_dir is None:
+        subjects_dir = utils.get_link_dir(utils.get_links_dir(), 'subjects', 'SUBJECTS_DIR')
+    os.environ['SUBJECTS_DIR'] = subjects_dir
     rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(mkheadsurf)
 

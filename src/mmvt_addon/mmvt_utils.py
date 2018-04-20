@@ -2461,9 +2461,11 @@ def is_float(x):
         return False
 
 
-def run_mmvt_func(module, func_name, flags=''):
+def run_mmvt_func(module, func_name, flags='', add_subject=False):
     if 'preproc' in module.split('.'):
         flags += ' -s {} --ignore_missing 1'.format(get_user())
+    elif add_subject:
+        flags += ' -s {}'.format(get_user())
     cmd = '{} -m {} -f {} {} '.format(
         bpy.context.scene.python_cmd, module, func_name, flags)
     run_command_in_new_thread(cmd, False, cwd=get_mmvt_code_root())
