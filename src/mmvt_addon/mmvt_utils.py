@@ -965,7 +965,7 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
 
 @functools.lru_cache(maxsize=None)
 def get_user():
-    return namebase(bpy.data.filepath).split('_')[0]
+    return '_'.join(namebase(bpy.data.filepath).split('_')[:-1])
 
 
 def current_path():
