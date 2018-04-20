@@ -70,6 +70,8 @@ bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0
 
 def init(addon):
     TransparencyPanel.addon = addon
+    bpy.context.scene.appearance_solid_slider = 1.0
+    bpy.context.scene.appearance_depth_slider = 0
     TransparencyPanel.init = True
     register()
 

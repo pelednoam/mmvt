@@ -1428,7 +1428,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['save_images_data_and_header'] = save_images_data_and_header(subject)
 
     if utils.should_run(args, 'create_pial_volume_mask'):
-        flags['create_pial_volume_mask'] = create_pial_volume_mask(subject)
+        flags['create_pial_volume_mask'] = create_pial_volume_mask(subject, args.overwrite)
 
     if utils.should_run(args, 'create_new_subject_blend_file'):
         flags['create_new_subject_blend_file'] = create_new_subject_blend_file(
