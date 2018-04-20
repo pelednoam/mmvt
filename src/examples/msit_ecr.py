@@ -47,7 +47,7 @@ def meg_preproc(args):
             overwrite_stc=True,
             overwrite_labels_data=True
         ))
-        # meg.call_main(args)
+        meg.call_main(args)
     #
     for subject in args.subject:
     #     meg_dir = op.join(MMVT_DIR, subject, 'meg')

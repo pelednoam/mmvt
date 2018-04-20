@@ -13,6 +13,7 @@ import mne
 import types
 import scipy.io as sio
 import nibabel as nib
+from collections import Counter
 
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
@@ -305,6 +306,16 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         events_conditions = {k: v for k,v in conditions.items() if v in np.unique(events[:, 2])}
     epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
+    min_bad_num = len(events) * 0.5
+    if len(epochs) < min_bad_num:
+        bad_channels = Counter(utils.flat_list_of_lists(epochs.drop_log))
+        for bad_ch, cnt in bad_channels.items():
+            if cnt > min_bad_num:
+                raw.info['bads'].append(bad_ch)
+        epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
+                            baseline=baseline, preload=True, reject=reject_dict)
+    if len(epochs) < min_bad_num:
+        raise Exception('Not enough good epochs!')
     print('{} good epochs'.format(len(epochs)))
     save_epochs(epochs, epoches_fname)
     return epochs
@@ -2795,7 +2806,7 @@ def calc_labels_func(subject, task, atlas, em, func=None, tmin=None, tmax=None, 
         d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
         hemi_data = d.data
         if times is not None and len(times) == 2 and times[1] > times[0]:
-            taxis = np.arange()
+            taxis = np.arange(times[0], times[1], len(hemi_data))
             if tmin is not None and tmax is not None:
                 hemi_data = hemi_data[tmin:tmax]
             elif tmin is not None:
