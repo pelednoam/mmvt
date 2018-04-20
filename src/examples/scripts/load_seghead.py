@@ -5,7 +5,8 @@ import nibabel.freesurfer as nib_fs
 def run(mmvt):
     surf_fname = op.join(mmvt.utils.get_subjects_dir(), mmvt.utils.get_user(), 'surf', 'lh.seghead')
     if not op.isfile(surf_fname):
-        print("Can't find the seghead surface! ({})".format(surf_fname))
+        print("Trying to create the seghead surface ({})".format(surf_fname))
+        mmvt.utils.run_mmvt_func('src.utils.freesurfer_utils', 'create_seghead')
         return
     ply_fname = op.join(mmvt.utils.get_user_fol(), 'surf', 'seghead.ply')
     if not op.isfile(ply_fname):

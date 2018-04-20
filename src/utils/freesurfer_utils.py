@@ -727,6 +727,22 @@ def robust_register(subject, subjects_dir, source_fname, target_fname, output_fn
     return True if print_only else op.isfile(lta_fname)
 
 
+@utils.check_for_freesurfer
+def create_seghead(subject, print_only=False):
+    rs = utils.partial_run_script(locals(), print_only=print_only)
+    rs(mkheadsurf)
+
+
 if __name__ == '__main__':
-    test_patch('sample')
+    import argparse
+    from src.utils.utils import Bag
+    from src.utils import args_utils as au
+
+    parser = argparse.ArgumentParser(description='MMVT')
+    parser.add_argument('-s', '--subject', help='subject name', required=True)
+    parser.add_argument('-f', '--function', help='function name', required=True, type=au.str_arr_type)
+    args = Bag(au.parse_parser(parser))
+    for func in args.function:
+        locals()[func](**args)
+
 
