@@ -9,7 +9,6 @@ The visualization and exploration of neuroimaging data are important for the ana
 
 ## Videos & Figures
 * The [aparc.DKTatlas40](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) FreeSurfer atlas
-
 ![Example](https://user-images.githubusercontent.com/1643819/39079174-8b61dc1a-44e3-11e8-8ce6-1c783596d1ae.png)
 
 <!--- * Spatial and temporal ttest result of MEG activation
