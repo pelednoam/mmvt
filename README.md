@@ -8,14 +8,14 @@ The visualization and exploration of neuroimaging data are important for the ana
 <a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
 
 ## Videos & Figures
-* The [aparc.DKTatlas40](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) FreeSurfer atlas
+* The [aparc.DKTatlas40](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) FreeSurfer atlas:
 ![Example](https://user-images.githubusercontent.com/1643819/39079174-8b61dc1a-44e3-11e8-8ce6-1c783596d1ae.png)
 
 <!--- * Spatial and temporal ttest result of MEG activation
  ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif "spatial and temporal ttest result of MEG activation") -->
-* Resting State fMRI & Cortical labels correlation
+* Resting State fMRI & Cortical labels correlation:
 ![Example](https://cloud.githubusercontent.com/assets/1643819/24374566/5ce2dce4-1303-11e7-9b3a-c23448e5114e.gif)
-* Spatial and temporal ttest result of MEG activation
+* Spatial and temporal ttest result of MEG activation:
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif)
 <!-- * MEG & Electrodes & Coherence
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341742/03e0af80-58c4-11e6-8587-125cde58e6b8.gif "MEG & Electrodes & Coherence") -->
