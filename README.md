@@ -7,7 +7,10 @@ The visualization and exploration of neuroimaging data are important for the ana
 
 <a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
 
-## Videos
+## Videos & Figures
+* The [aparc.DKTatlas40](https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation) FreeSurfer atlas
+
+![Example](https://user-images.githubusercontent.com/1643819/39079114-4feaeab0-44e2-11e8-9f59-25bc856e13a7.png)
 
 <!--- * Spatial and temporal ttest result of MEG activation
  ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif "spatial and temporal ttest result of MEG activation") -->
