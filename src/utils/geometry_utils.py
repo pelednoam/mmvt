@@ -15,7 +15,7 @@ def get_dural_surface(subject_fol, do_calc_normals=False):
             print("Couldn't find the dural surface! {}".format(surf_fname))
             print('You can create it using the following command:')
             subject = op.splitext(op.basename(subject_fol))[0]
-            print('''python2 -c "from ielu import pipeline as pipe; pipe.create_dural_surface(subject='{}')"'''.format(subject))
+            print('python -m src.misc.dural.create_dural -s {}'.format(subject))
             return (None, None, None) if do_calc_normals else (None, None)
     if do_calc_normals:
         return verts, faces, norms

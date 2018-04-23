@@ -33,6 +33,7 @@ def meg_preproc(args):
             function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
             conditions=task.lower(),
+            # 'ep005_msit_nTSSS_1-15-ica-raw'
             data_per_task=True,
             ica_overwrite_raw=False,
             normalize_data=False,

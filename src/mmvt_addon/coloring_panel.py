@@ -329,6 +329,8 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         t_ind = min(len(values) - 1, cur_frame)
         if values[t_ind].ndim == 0:
             value = values[t_ind]
+        elif len(values[t_ind]) == 1:
+            value = np.array(values[t_ind]).squeeze()
         # elif bpy.context.scene.selection_type == 'spec_cond':
         #     cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
         #     if len(cond_inds) == 0:
@@ -345,7 +347,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         # new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
         new_color = calc_colors([value], data_min, colors_ratio)[0]
         # todo: check if the stat should be avg or diff
-        obj = bpy.data.objects.get(obj_name+postfix_str)
+        obj = bpy.data.objects.get(obj_name.replace(' ', '') + postfix_str)
         # if obj and not obj.hide:
         #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
         # obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']

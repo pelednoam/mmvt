@@ -533,7 +533,7 @@ def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
 
 
 @pu.tryit_ret_bool
-def find_electrodes_hemis(subject, bipolar, sigma=0):
+def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
     from scipy.spatial.distance import cdist
     from collections import Counter
 
@@ -543,6 +543,17 @@ def find_electrodes_hemis(subject, bipolar, sigma=0):
     sorted_groups = dict(rh=[], lh=[])
 
     electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
+    if manual:
+        groups = list(set([utils.elec_group(elc, bipolar) for elc in electrodes]))
+        for group in groups:
+            hem = input("{}: r/l? ".format(group))
+            while hem not in ['r', 'l']:
+                hem = input('r/l? ')
+            hemi = '{}h'.format(hem)
+            sorted_groups[hemi].append(group)
+        utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
+        return True
+
     dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
     if dural_verts is None:
         return False
@@ -1146,7 +1157,8 @@ def main(subject, remote_subject_dir, args, flags):
     #         subject, args.bipolar, args.all_in_hemi, args.ask_for_hemis, do_plot=args.do_plot)
 
     if utils.should_run(args, 'find_electrodes_hemis'):
-        flags['find_electrodes_hemis'] = find_electrodes_hemis(subject, args.bipolar, args.sigma)
+        flags['find_electrodes_hemis'] = find_electrodes_hemis(
+            subject, args.bipolar, args.sigma, args.find_hemis_manual)
 
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         flags['create_electrode_data_file'] = create_electrode_data_file(
@@ -1205,6 +1217,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--normalize_data', help='normalize_data', required=False, default=1, type=au.is_true)
     parser.add_argument('--preload', help='preload', required=False, default=1, type=au.is_true)
     parser.add_argument('--sigma', help='surf sigma', required=False, default=0, type=float)
+    parser.add_argument('--find_hemis_manual', required=False, default=0, type=au.is_true)
 
     parser.add_argument('--start_time', help='', required=False, default='0:00:00')
     parser.add_argument('--end_time', help='', required=False, default='')

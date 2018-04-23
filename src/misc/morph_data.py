@@ -31,7 +31,7 @@ def change_stc_according_to_source():
 def morph_sensors_to_template(morph_from, morph_to, modality='meg'):
     sensors = np.load(op.join(MMVT_DIR, morph_from, modality, f'{modality}_sensors_positions.npz'))
     coords = sensors['pos']
-    mophed_coords = fu.transform_subject_to_subject_coordinates('ep001', morph_to, coords, SUBJECTS_DIR)
+    mophed_coords = fu.transform_subject_to_subject_coordinates(morph_from, morph_to, coords, SUBJECTS_DIR)
     # Not sure why, but there is a shift: (-0.18, -2.95, 1.53)
     utils.make_dir(op.join(MMVT_DIR, morph_to, modality))
     np.savez(op.join(MMVT_DIR, morph_to, modality, f'{modality}_sensors_positions.npz'), names=sensors['names'], pos=mophed_coords)
@@ -39,7 +39,7 @@ def morph_sensors_to_template(morph_from, morph_to, modality='meg'):
 
 
 if __name__ == '__main__':
-    morph_from = 'mg78_old'
-    morph_to = 'colin27'
+    morph_from = 'colin27'
+    morph_to = 'matt_hibert'
     # morph_fmri(morph_from, morph_to, 'non-interference-v-interference_{hemi}.mgz')
     morph_sensors_to_template(morph_from, morph_to, 'meg')

@@ -352,7 +352,7 @@ def save_template_electrodes_to_template(template_electrodes, bipolar, mmvt_dir,
 
 def export_into_csv(template_system, mmvt_dir, prefix=''):
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    electrodes_dict = utils.Bag(np.load(op.join(mmvt_dir, template, 'electrodes', 'stim_electrodes_positions.npz')))
+    electrodes_dict = utils.Bag(np.load(op.join(mmvt_dir, template, 'electrodes', '{}electrodes_positions.npz'.format(prefix))))
     fol = utils.make_dir(op.join(MMVT_DIR, template, 'electrodes'))
     csv_fname = op.join(fol, '{}{}_RAS.csv'.format(prefix, template))
     print('Writing csv file to {}'.format(csv_fname))
@@ -585,11 +585,13 @@ if __name__ == '__main__':
     root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'mni' # hc029
+    template_system = 'matt_hibert' # 'mni' # hc029
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     atlas = 'aparc.DKTatlas40'
     bipolar = False
     use_apply_morph = False
+    prefix, postfix = '', '' # 'stim_'
+    overwrite=False
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
@@ -602,12 +604,15 @@ if __name__ == '__main__':
         create_electrodes_files(electrodes, SUBJECTS_DIR, True)
         morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
-        export_into_csv(template_system, MMVT_DIR, 'stim_')
+        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+        export_into_csv(template_system, MMVT_DIR, prefix)
     else:
-        template_electrodes = transfer_electrodes_to_template_system(electrodes, template)
-        save_template_electrodes_to_template(template_electrodes, save_as_bipolar, MMVT_DIR, template_system, 'stim_')
-        export_into_csv(template_system, MMVT_DIR, 'stim_')
+        output_fname = op.join(MMVT_DIR, template, 'electrodes', '{}electrodes{}_positions.npz'.format(
+            prefix, '_bipolar' if bipolar else '', postfix))
+        if not op.isfile(output_fname) or overwrite:
+            template_electrodes = transfer_electrodes_to_template_system(electrodes, template, overwrite)
+            save_template_electrodes_to_template(template_electrodes, save_as_bipolar, MMVT_DIR, template_system, prefix, postfix)
+        export_into_csv(template_system, MMVT_DIR, prefix)
 
     # compare_electrodes_labeling(electrodes, template_system, atlas)
 

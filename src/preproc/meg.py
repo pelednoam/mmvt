@@ -307,11 +307,13 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
     min_bad_num = len(events) * 0.5
-    if len(epochs) < min_bad_num:
-        bad_channels = Counter(utils.flat_list_of_lists(epochs.drop_log))
+    bad_channels_max_num = 20
+    bad_channels = Counter(utils.flat_list_of_lists(epochs.drop_log))
+    if len(epochs) < min_bad_num or max(bad_channels.values()) > bad_channels_max_num:
         for bad_ch, cnt in bad_channels.items():
-            if cnt > min_bad_num:
+            if cnt > bad_channels_max_num:
                 raw.info['bads'].append(bad_ch)
+        picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
         epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                             baseline=baseline, preload=True, reject=reject_dict)
     if len(epochs) < min_bad_num:
@@ -1088,13 +1090,13 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
 
 
 def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc=False):
-    if events is None or (not isinstance(events, dict) and len(events) < 2):
+    if events is None or len(events) < 2: # (not isinstance(events, dict)
         return False
     stc_hemi_template = stc_hemi_template.format(cond='{cond}', method=inverse_method, hemi='{hemi}')
+    conds = list(events.keys())
     if all([utils.both_hemi_files_exist(
             stc_hemi_template.format(cond=cond, hemi='{hemi}'))
             for cond in events.keys()]) and len(glob.glob(stc_hemi_template.format(cond='*', hemi='?h'))) >= 4:
-        conds = list(events.keys())
         if len(conds) == 2:
             for hemi in utils.HEMIS:
                 diff_fname = stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), hemi=hemi)
@@ -1660,7 +1662,7 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
     ret = True
     for ind, cond in enumerate(events.keys()):
         output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
-        output_fname = op.join(SUBJECT_MEG_FOLDER, cond).replace(SUBJECT, morph_to_subject)
+        # output_fname = op.join(SUBJECT_MEG_FOLDER, cond).replace(SUBJECT, morph_to_subject)
         if utils.both_hemi_files_exist('{}-{}.stc'.format(output_fname, '{hemi}')) and not overwrite:
             continue
         utils.make_dir(utils.get_parent_fol(output_fname))
@@ -1673,6 +1675,10 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
 
 
 def _morph_stc(from_subject, to_subject, stc_fname, output_fname, grade=5, smooth=None, n_jobs=6):
+    if not op.isfile(stc_fname):
+        stcs_files = list(set([f[:-len('-rh.stc')] for f in glob.glob(op.join(SUBJECT_MEG_FOLDER, '*.stc'))]))
+        stc_fname = utils.select_one_file(stcs_files)
+        stc_fname = '{}-rh.stc'.format(stc_fname)
     if op.isfile(stc_fname):
         stc = mne.read_source_estimate(stc_fname)
         stc_morphed = mne.morph_data(from_subject, to_subject, stc, grade=grade, smooth=smooth, n_jobs=n_jobs)
@@ -3336,6 +3342,16 @@ def init(subject, args, mri_subject='', remote_subject_dir=''):
     fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
     init_globals_args(
         subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
+    fname_format = fname_format.replace('{subject}', SUBJECT)
+    fname_format = fname_format.replace('{ana_type}', 'raw')
+    if '{file_type}' in fname_format:
+        fname_format = fname_format.replace('{file_type}', '*')
+        raw_files = glob.glob(op.join(SUBJECT_MEG_FOLDER, fname_format))
+    else:
+        raw_files = glob.glob(op.join(SUBJECT_MEG_FOLDER, '{}.fif'.format(fname_format)))
+
+    if len(raw_files) == 1:
+        args.raw_fname = raw_files[0]
     return fname_format, fname_format_cond, conditions
 
 
