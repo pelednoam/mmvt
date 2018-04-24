@@ -100,7 +100,7 @@ class ModalTemplateTimerOperator(bpy.types.Operator):
                 pass
 
 
-bpy.types.Scene.template_files = bpy.props.EnumProperty(items=[], description="tempalte files")
+bpy.types.Scene.template_files = bpy.props.EnumProperty(items=[], description="template files")
 
 
 class TemplatePanel(bpy.types.Panel):
