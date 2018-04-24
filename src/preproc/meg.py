@@ -1051,17 +1051,28 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     from mne.minimum_norm import source_band_induced_power
                     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
                     atlas = 'high.level.atlas'
-                    for label in lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas):
-                        # On a normal computer, you might want to set n_jobs to 1 (memory...)s
+                    calc_inducde_power_per_label = False
+                    if calc_inducde_power_per_label:
+                        for label in lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas):
+                            # On a normal computer, you might want to set n_jobs to 1 (memory...)s
+                            stcs = source_band_induced_power(
+                                epochs, inverse_operator, bands, label, n_cycles=5, use_fft=False, lambda2=lambda2,
+                                n_jobs=n_jobs)
+                            for band, stc_band in stcs.items():
+                                # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
+                                band_stc_fname = '{}_{}_induced_power_{}'.format(stc_fname, label.name, band)
+                                print('Saving {}'.format(band_stc_fname))
+                                stc_band.save(band_stc_fname)
+                    else:
                         stcs = source_band_induced_power(
-                            epochs, inverse_operator, bands, label, n_cycles=5, use_fft=False, lambda2=lambda2,
+                            epochs, inverse_operator, bands, n_cycles=5, use_fft=False, lambda2=lambda2,
                             n_jobs=n_jobs)
                         for band, stc_band in stcs.items():
                             # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
-                            band_stc_fname = '{}_{}_induced_power_{}'.format(stc_fname, label.name, band)
+                            band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
                             print('Saving {}'.format(band_stc_fname))
                             stc_band.save(band_stc_fname)
-                        # stcs.save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(band_stc_fname)))
+
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
