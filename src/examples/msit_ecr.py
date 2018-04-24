@@ -31,9 +31,8 @@ def meg_preproc(args):
             task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
             get_task_defaults=False,
             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
-            # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+            function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
-            function='calc_stc_per_condition',
             conditions=task.lower(),
             data_per_task=True,
             ica_overwrite_raw=False,
@@ -44,11 +43,11 @@ def meg_preproc(args):
             calc_source_band_induced_power=True,
             read_only_from_annot=False,
             # pick_ori='normal',
-            # overwrite_epochs=True,
-            # overwrite_evoked=True,
-            # overwrite_inv=True,
+            overwrite_epochs=True,
+            overwrite_evoked=True,
+            overwrite_inv=True,
             overwrite_stc=True,
-            # overwrite_labels_data=True
+            overwrite_labels_data=True
         ))
         meg.call_main(args)
     #
