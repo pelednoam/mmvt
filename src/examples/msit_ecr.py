@@ -24,7 +24,7 @@ def meg_preproc(args):
     # Read the /autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{subject}/cfg.txt to find the scan day for each task for the empty room noise cov
     # Move the empty room recordings to op.join(MEG_DIR, subject)
     times = (-2, 4)
-    for task in tasks:
+    for task in [tasks[0]]:
         args = meg.read_cmd_args(dict(
             subject=args.subject, mri_subject=args.subject,
             # remote_subject_dir=remote_subject_dir,
