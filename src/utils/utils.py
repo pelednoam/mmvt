@@ -1966,6 +1966,7 @@ def print_last_error_line():
     except:
         pass
 
+
 def wrapped_partial(func, *args, **kwargs):
     from functools import update_wrapper
     partial_func = partial(func, *args, **kwargs)
@@ -1978,6 +1979,11 @@ def calc_bands_power(x, dt, bands):
     f, psd = welch(x, fs=1. / dt)
     power = {band: np.mean(psd[np.where((f >= lf) & (f <= hf))]) for band, (lf, hf) in bands.items()}
     return power
+
+
+def calc_max(x, norm_percs=None):
+    x_no_nan = x[np.where(~np.isnan(x))]
+    return np.nanmax(x) if norm_percs is None else np.percentile(x_no_nan, norm_percs[1])
 
 
 def unique_rows(x):

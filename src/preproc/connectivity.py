@@ -271,6 +271,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             connectivity_method = 'PLI'
         elif 'mi' in args.connectivity_method:
             connectivity_method = 'MI'
+        elif 'coherence' in args.connectivity_method:
+            connectivity_method = 'COH'
     if not op.isfile(output_mat_fname) or args.recalc_connectivity:
         conn = np.zeros((data.shape[0], data.shape[0], windows_num))
         if 'corr' in args.connectivity_method:
@@ -304,7 +306,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             print('Saving {}, {}'.format(output_mat_fname, conn.shape))
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
-        elif 'pli' in args.connectivity_method:
+        elif 'pli' in args.connectivity_method or 'coherence' in args.connectivity_method:
             if data.ndim == 3:
                 conn_data = np.transpose(data, [2, 1, 0])
             elif data.ndim == 2:
@@ -313,8 +315,13 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                     conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
             indices = np.array_split(np.arange(windows_num), args.n_jobs)
             # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
-            chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length) for chunk_indices in indices]
-            results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
+            chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length)
+                      for chunk_indices in indices]
+            if 'pli' in args.connectivity_method:
+                par_func = _pli_parallel
+            elif 'coherence' in args.connectivity_method:
+                par_func = _coh_parallel
+            results = utils.run_parallel(par_func, chunks, args.n_jobs)
             for chunk in results:
                 for w, con in chunk.items():
                     conn[:, :, w] = con
@@ -464,6 +471,24 @@ def _pli_parallel(p):
         else:
             print('Error in PLI! windowsw ind {}'.format(window_ind))
     return res
+
+
+def _coh_parallel(p):
+    res = {}
+    conn_data, indices, channels_num, window_length = p
+    for window_ind, window in zip(indices, conn_data):
+        print('COH: Window ind {}'.format(window_ind))
+        coh_val = pli(window, channels_num, window_length)
+        if not coh_val is None:
+            res[window_ind] = coh_val
+        else:
+            print('Error in COH! windowsw ind {}'.format(window_ind))
+    return res
+
+
+def coherence():
+    from scipy import signal
+    f, Cxy = signal.coherence(x, y, fs, nperseg=1024)
 
 
 def corr_matrix(data, comps_num):

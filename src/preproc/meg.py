@@ -254,7 +254,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
                  power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
-                 windows_num=0, overwrite_epochs=False, eve_template='*eve.fif'):
+                 windows_num=0, overwrite_epochs=False, eve_template='*eve.fif', raw_fname=''):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
     if op.isfile(epoches_fname) and not overwrite_epochs:
         epochs = mne.read_epochs(epoches_fname)
@@ -313,6 +313,9 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         for bad_ch, cnt in bad_channels.items():
             if cnt > bad_channels_max_num:
                 raw.info['bads'].append(bad_ch)
+        if raw_fname == '':
+            raw_fname = get_raw_fname(raw_fname)
+        raw.save(raw_fname, overwrite=True)
         picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
         epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                             baseline=baseline, preload=True, reject=reject_dict)
@@ -393,7 +396,7 @@ def calc_epochs_wrapper(
                                   stim_channels, pick_meg, pick_eeg, pick_eog, reject,
                                   reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
                                   epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
-                                  eve_template)
+                                  eve_template, raw_fname)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -945,16 +948,19 @@ def calc_inverse_operator(
             else:
                 noise_cov = mne.read_cov(noise_cov_fname)
             # todo: should use noise_cov = calc_cov(...
-            if calc_for_cortical_fwd and not op.isfile(get_cond_fname(inv_fname, cond)):
+            if calc_for_cortical_fwd and (not op.isfile(get_cond_fname(inv_fname, cond))
+                                          or overwrite_inverse_operator):
                 if cortical_fwd is None:
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
                 _calc_inverse_operator(
                     cortical_fwd, get_cond_fname(inv_fname, cond), get_cond_fname(evo_fname, cond), noise_cov, inv_loose, inv_depth)
-            if calc_for_sub_cortical_fwd and not op.isfile(get_cond_fname(INV_SUB, cond)):
+            if calc_for_sub_cortical_fwd and (not op.isfile(get_cond_fname(INV_SUB, cond))
+                                              or overwrite_inverse_operator):
                 if subcortical_fwd is None:
                     subcortical_fwd = get_cond_fname(FWD_SUB, cond)
                 _calc_inverse_operator(subcortical_fwd, get_cond_fname(INV_SUB, cond), evo_fname, noise_cov, None, None)
-            if calc_for_spec_sub_cortical and not op.isfile(get_cond_fname(INV_X, cond, region=region)):
+            if calc_for_spec_sub_cortical and (not op.isfile(get_cond_fname(INV_X, cond, region=region))
+                                               or overwrite_inverse_operator):
                 if spec_subcortical_fwd is None:
                     spec_subcortical_fwd = get_cond_fname(FWD_X, cond, region=region)
                 _calc_inverse_operator(spec_subcortical_fwd, get_cond_fname(INV_X, cond, region=region), evo_fname,
@@ -1044,14 +1050,16 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
                     from mne.minimum_norm import source_band_induced_power
                     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-                    stcs[cond_name] = source_band_induced_power(
-                        epochs, inverse_operator, bands, n_cycles=5, use_fft=False, lambda2=lambda2, n_jobs=1)
-                    for band, stcs[cond_name] in stcs.items():
-                        print('Saving the source estimate to {}.stc'.format(stc_fname))
-                        band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
-                        print('Saving {}'.format(band_stc_fname))
-                        stcs.save(band_stc_fname)
-                        stcs.save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(band_stc_fname)))
+                    atlas = 'high.level.atlas'
+                    for label in lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas):
+                        stcs = source_band_induced_power(
+                            epochs, inverse_operator, bands, label, n_cycles=5, use_fft=False, lambda2=lambda2, n_jobs=1)
+                        for band, stc_band in stcs.items():
+                            # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
+                            band_stc_fname = '{}_{}_induced_power_{}'.format(stc_fname, label.name, band)
+                            print('Saving {}'.format(band_stc_fname))
+                            stc_band.save(band_stc_fname)
+                        # stcs.save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(band_stc_fname)))
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
@@ -2798,74 +2806,97 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_c
     return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
 
 
-def calc_labels_func(subject, task, atlas, em, func=None, tmin=None, tmax=None, times=None,
-                     labels_data_output_name='', precentiles=(1, 99), func_name='', norm_data=True):
+def calc_labels_func(subject, task, atlas, em, func=None, tmin=None, tmax=None, times=None, time_dim=1,
+                     labels_data_output_name='', precentiles=(1, 99), func_name='', norm_data=True, overwrite=False):
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+    labels_data_template_fname = op.join(
+        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}{}.npz'.format(
+            task.lower(), atlas, em, 'norm_' if norm_data else '', '{hemi}'))
+    labels_data = {hemi:utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi))) for hemi in utils.HEMIS}
     if func is None:
         func = utils.wrapped_partial(np.mean, axis=1)
     if func_name == '':
         func_name = func.__name__ if hasattr(func, '__name__') else ''
-    labels_data_template_fname = op.join(
-        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}{}.npz'.format(
-            task.lower(), atlas, em, 'norm_' if norm_data else '', '{hemi}'))
+    if labels_data_output_name == '':
+        conds = labels_data['rh'].conditions
+        conds = '{}-{}'.format(conds[0], conds[1]) if len(conds) == 2 else conds[0]
+        labels_data_output_name = '{}_{}_{}{}'.format(conds, atlas, func_name, '_norm' if norm_data else '')
+    output_fname = op.join(fol, '{}.npz'.format(labels_data_output_name))
+    if op.isfile(output_fname) and not overwrite:
+        return True
+
     data, labels = [], []
     for hemi in utils.HEMIS:
-        d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
+        d = labels_data[hemi]
         hemi_data = d.data
         if times is not None and len(times) == 2 and times[1] > times[0]:
-            taxis = np.arange(times[0], times[1], len(hemi_data))
+            dt = (times[1] - times[0]) / (hemi_data.shape[time_dim] - 1)
+            t_axis = np.arange(times[0], times[1], dt)
+            if tmin is not None:
+                tmin_ind = np.where(t_axis > tmin)[0][0] - 1
+            if tmax is not None:
+                tmax_ind = np.where(t_axis > tmax)[0][0] - 1
             if tmin is not None and tmax is not None:
-                hemi_data = hemi_data[tmin:tmax]
+                hemi_data = hemi_data[:, tmin_ind:tmax_ind] if time_dim == 1 else hemi_data[tmin_ind:tmax_ind]
             elif tmin is not None:
-                hemi_data = hemi_data[tmin:]
+                hemi_data = hemi_data[:, tmin:] if time_dim == 1 else hemi_data[tmin:]
             elif tmax is not None:
-                hemi_data = hemi_data[:tmax]
+                hemi_data = hemi_data[:, :tmax] if time_dim == 1 else hemi_data[:tmax]
         data = func(hemi_data) if len(data) == 0 else np.concatenate((data, func(hemi_data)))
         labels.extend(d.names)
-    if labels_data_output_name == '':
-        labels_data_output_name = '{}_{}_{}{}'.format(d.conditions[0], atlas, func_name, '_norm' if norm_data else '')
     if data.ndim > 1 or data.shape[0] != len(labels):
         print('data ({}) should have one dim, and same length as the labels ({})'.format(data.shape, len(labels)))
         return
     data_minmax = utils.calc_abs_minmax(data, precentiles)
     print('calc_labels_func minmax: {}, {}'.format(-data_minmax, data_minmax))
-    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
     title = '{} {}'.format(d.conditions[0], func_name).replace('_', ' ')
-    np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
-        names=np.array(labels), atlas=atlas, data=data, title=title,
+    np.savez(output_fname, names=np.array(labels), atlas=atlas, data=data, title=title,
              data_min=-data_minmax, data_max=data_minmax, cmap='BuPu-RdOrYl')
+    return op.isfile(output_fname)
 
 
-def calc_labels_power_bands(subject, task, atlas, em, precentiles=(1, 99), func_name='power', norm_data=False,
-        bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])):
+def calc_labels_power_bands(
+        subject, task, atlas, em, tmin, tmax, precentiles=(1, 99), func_name='power', norm_data=False,
+        bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
+        overwrite=False):
     labels_data_template_fname = op.join(
         MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+    labels_data = {hemi: utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi))) for hemi in utils.HEMIS}
+    conds = labels_data['rh'].conditions
+    conds = '{}-{}'.format(conds[0], conds[1]) if len(conds) == 2 else conds[0]
+    files_exist = all([op.isfile(op.join(fol, '{}_{}_{}.npz'.format(conds, func_name, band))) for band in bands.keys()])
+    if files_exist and not overwrite:
+        return True
+
     data, labels = defaultdict(list), []
     for hemi in utils.HEMIS:
-        d = utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi)))
+        d = labels_data[hemi]
+        dt = (tmax - tmin) / (d.data.shape[1] - 1)
         bands_power = defaultdict(list)
         for label_data in d.data:
-            power = utils.calc_bands_power(label_data, 0.001, bands)
+            power = utils.calc_bands_power(label_data, dt, bands)
             for band, band_power in power.items():
                 bands_power[band].append(band_power)
         for band in bands:
             data[band] = bands_power[band] if len(data[band]) == 0 else \
                 np.concatenate((data[band], np.array(bands_power[band])))
         labels.extend(d.names)
-    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
     for band in bands.keys():
         labels_data_output_name = '{}_{}_{}'.format(d.conditions[0], func_name, band)
         if data[band].ndim > 1 or data[band].shape[0] != len(labels):
             print('data ({}) should have one dim, and same length as the labels ({})'.format(data[band].shape, len(labels)))
             continue
+        output_fname = op.join(fol, '{}.npz'.format(labels_data_output_name))
         if norm_data:
             data_minmax = utils.calc_abs_minmax(data[band])
             data[band] /= data_minmax
             labels_data_output_name = '{}_norm'.format(labels_data_output_name)
         data_max = utils.calc_max(data[band], norm_percs=precentiles)
         print('calc_labels_func minmax: {}, {}'.format(0, data_max))
-        np.savez(op.join(fol, '{}.npz'.format(labels_data_output_name)),
-            names=np.array(labels), atlas=atlas, data=data[band], title=labels_data_output_name.replace('_', ' '),
-                 data_min=0, data_max=data_max, cmap='RdOrYl')
+        np.savez(output_fname, names=np.array(labels), atlas=atlas, data=data[band],
+                 title=labels_data_output_name.replace('_', ' '), data_min=0, data_max=data_max, cmap='RdOrYl')
+    return all([op.isfile(op.join(fol, '{}_{}_{}.npz'.format(conds, func_name, band))) for band in bands.keys()])
 
 
 def calc_labels_power_bands_diff(subject, task1, task2, precentiles=(1, 99), func_name='power', norm_data=False,
