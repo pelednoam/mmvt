@@ -130,7 +130,7 @@ def init(addon):
     files_names = [mu.namebase(fname)[len('template'):].replace('_', ' ') for fname in template_files]
     template_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.template_files = bpy.props.EnumProperty(
-        items=template_items, description="tempalte files",update=template_files_update)
+        items=template_items, description="template files",update=template_files_update)
     bpy.context.scene.template_files = files_names[0]
     register()
     TemplatePanel.init = True

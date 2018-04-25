@@ -87,6 +87,8 @@ waits_for_file = su.waits_for_file
 from src.utils import args_utils as au
 is_int = au.is_int
 
+from src.utils import setup_utils
+create_folder_link = setup_utils.create_folder_link
 
 try:
     import cPickle as pickle
@@ -1664,25 +1666,25 @@ def get_sftp_password(subjects, subjects_dir, necessary_files, sftp_username, ov
     return sftp_password
 
 
-def create_folder_link(real_fol, link_fol):
-    if not is_link(link_fol):
-        if is_windows():
-            try:
-                if not op.isdir(real_fol):
-                    print('The target is not a directory!!')
-                    return
-
-                import winshell
-                from win32com.client import Dispatch
-                path = '{}.lnk'.format(link_fol)
-                shell = Dispatch('WScript.Shell')
-                shortcut = shell.CreateShortCut(path)
-                shortcut.Targetpath = real_fol
-                shortcut.save()
-            except:
-                print("Can't create a link to the folder {}!".format(real_fol))
-        else:
-            os.symlink(real_fol, link_fol)
+# def create_folder_link(real_fol, link_fol):
+#     if not is_link(link_fol):
+#         if is_windows():
+#             try:
+#                 if not op.isdir(real_fol):
+#                     print('The target is not a directory!!')
+#                     return
+#
+#                 import winshell
+#                 from win32com.client import Dispatch
+#                 path = '{}.lnk'.format(link_fol)
+#                 shell = Dispatch('WScript.Shell')
+#                 shortcut = shell.CreateShortCut(path)
+#                 shortcut.Targetpath = real_fol
+#                 shortcut.save()
+#             except:
+#                 print("Can't create a link to the folder {}!".format(real_fol))
+#         else:
+#             os.symlink(real_fol, link_fol)
 
 
 def is_link(link_path):

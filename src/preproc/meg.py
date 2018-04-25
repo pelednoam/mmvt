@@ -1051,7 +1051,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     from mne.minimum_norm import source_band_induced_power
                     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
                     atlas = 'high.level.atlas'
-                    calc_inducde_power_per_label = False
+                    calc_inducde_power_per_label = True
                     if calc_inducde_power_per_label:
                         for label in lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas):
                             # On a normal computer, you might want to set n_jobs to 1 (memory...)s
