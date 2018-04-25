@@ -1056,6 +1056,9 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                         labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
                         now = time.time()
                         for ind, label in enumerate(labels):
+                            if 'unknown' in label.name:
+                                continue
+                            print('Calculating source_band_induced_power for {}'.format(label.name))
                             utils.time_to_go(now, ind, len(labels), runs_num_to_print=1)
                             # On a normal computer, you might want to set n_jobs to 1 (memory...)s
                             stcs = source_band_induced_power(
