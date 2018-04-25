@@ -11,7 +11,7 @@ MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 def meg_preproc(args):
     atlas, inv_method, em = 'aparc.DKTatlas40', 'dSPM', 'mean_flip'
-    atlas = 'high.level.atlas'
+    atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     tasks = ['MSIT', 'ECR']
     for subject in args.subject:
@@ -24,7 +24,7 @@ def meg_preproc(args):
     # Read the /autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{subject}/cfg.txt to find the scan day for each task for the empty room noise cov
     # Move the empty room recordings to op.join(MEG_DIR, subject)
     times = (-2, 4)
-    for task in ['ECR']:# tasks:
+    for task in tasks:
         args = meg.read_cmd_args(dict(
             subject=args.subject, mri_subject=args.subject,
             # remote_subject_dir=remote_subject_dir,
@@ -42,6 +42,8 @@ def meg_preproc(args):
             read_events_from_file=False, stim_channels='STI001',
             use_empty_room_for_noise_cov=True,
             calc_source_band_induced_power=True,
+            calc_inducde_power_per_label=True,
+            bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
             read_only_from_annot=False,
             # pick_ori='normal',
             overwrite_epochs=True,
@@ -57,7 +59,7 @@ def meg_preproc(args):
         for task in tasks:
             task = task.lower()
             # meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            # meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
+            meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
 
     #     meg_dir = op.join(MMVT_DIR, subject, 'meg')
     #     # meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),

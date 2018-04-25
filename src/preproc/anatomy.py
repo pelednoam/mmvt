@@ -1045,22 +1045,28 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
 
 
 @utils.tryit()
-def create_high_level_atlas(subject):
+def create_high_level_atlas(subject, high_level_atlas_name='high_level_atlas'):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas40.annot')):
         fu.create_annotation_file(
             subject, 'aparc.DKTatlas40', subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
     look = create_labels_names_lookup(subject, 'aparc.DKTatlas40')
-    csv_fname = op.join(MMVT_DIR, 'high_level_atlas.csv')
+    csv_fname = op.join(MMVT_DIR, '{}.csv'.format(high_level_atlas_name))
     if not op.isfile(csv_fname):
-        print('No high_level_atlas.csv in MMVT_DIR!')
+        print('No {}.csv in {}!'.format(high_level_atlas_name, MMVT_DIR))
         return False
     labels = []
     for hemi in utils.HEMIS:
         for line in utils.csv_file_reader(csv_fname, ','):
-            new_label = lu.join_labels('{}-{}'.format(line[0], hemi), (look['{}-{}'.format(l, hemi)] for l in line[1:]))
+            if len(line) == 0:
+                continue
+            elif len(line) > 1:
+                new_label = lu.join_labels('{}-{}'.format(line[0], hemi), (look['{}-{}'.format(l, hemi)] for l in line[1:]))
+            else:
+                new_label = look['{}-{}'.format(line[0], hemi)]
             labels.append(new_label)
-    lu.labels_to_annot(subject, SUBJECTS_DIR, 'high.level.atlas', labels=labels, overwrite=True)
-    return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.high.level.atlas.annot'))
+    lu.labels_to_annot(subject, SUBJECTS_DIR, high_level_atlas_name, labels=labels, overwrite=True)
+    return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(
+        '{hemi}', high_level_atlas_name)))
 
 
 def create_labels_names_lookup(subject, atlas):
@@ -1435,7 +1441,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['save_hemis_curv'] = save_hemis_curv(subject, args.atlas)
 
     if utils.should_run(args, 'create_high_level_atlas'):
-        flags['create_high_level_atlas'] = create_high_level_atlas(subject)
+        flags['create_high_level_atlas'] = create_high_level_atlas(subject, args.high_level_atlas_name)
 
     if utils.should_run(args, 'create_spatial_connectivity'):
         # *) Create the subject's connectivity
@@ -1547,6 +1553,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--label_name', help='', required=False, default='')
     parser.add_argument('--hemi', help='', required=False, default='')
     parser.add_argument('--label_r', help='', required=False, default='5', type=int)
+    parser.add_argument('--high_level_atlas_name', help='', required=False, default='high_level_atlas')
 
     parser.add_argument('--slice_xyz', help='', required=False, default='166,118,113', type=au.int_arr_type)
     parser.add_argument('--slices_modality', help='', required=False, default='mri')

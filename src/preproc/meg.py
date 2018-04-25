@@ -996,7 +996,8 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                            single_trial_stc=False, calc_source_band_induced_power=False, save_stc=True, snr=3.0,
                            overwrite_stc=False, stc_template='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
-                           modality='meg', calc_stc_for_all=False, calc_stcs_diff=True, n_jobs=6):
+                           modality='meg', calc_stc_for_all=False, calc_stcs_diff=True,
+                           atlas='aparc.DKTatlas40', bands=None, calc_inducde_power_per_label=True, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     # Other options is to use calc_labels_avg_for_rest
     epo_fname = get_epo_fname(epo_fname)
@@ -1046,39 +1047,9 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                 if single_trial_stc:
                     stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                         pick_ori=pick_ori, return_generator=True)
-                elif calc_source_band_induced_power:
-                    # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
-                    from mne.minimum_norm import source_band_induced_power
-                    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-                    atlas = 'high.level.atlas'
-                    calc_inducde_power_per_label = True
-                    if calc_inducde_power_per_label:
-                        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
-                        now = time.time()
-                        for ind, label in enumerate(labels):
-                            if 'unknown' in label.name:
-                                continue
-                            print('Calculating source_band_induced_power for {}'.format(label.name))
-                            utils.time_to_go(now, ind, len(labels), runs_num_to_print=1)
-                            # On a normal computer, you might want to set n_jobs to 1 (memory...)s
-                            stcs = source_band_induced_power(
-                                epochs, inverse_operator, bands, label, n_cycles=5, use_fft=False, lambda2=lambda2,
-                                n_jobs=n_jobs)
-                            for band, stc_band in stcs.items():
-                                # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
-                                band_stc_fname = '{}_{}_induced_power_{}'.format(stc_fname, label.name, band)
-                                print('Saving {}'.format(band_stc_fname))
-                                stc_band.save(band_stc_fname)
-                    else:
-                        stcs = source_band_induced_power(
-                            epochs, inverse_operator, bands, n_cycles=5, use_fft=False, lambda2=lambda2,
-                            n_jobs=n_jobs)
-                        for band, stc_band in stcs.items():
-                            # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
-                            band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
-                            print('Saving {}'.format(band_stc_fname))
-                            stc_band.save(band_stc_fname)
-
+                if calc_source_band_induced_power:
+                    calc_induced_power(epochs, atlas, bands, inverse_operator, lambda2, stc_fname,
+                                       calc_inducde_power_per_label, overwrite_stc=False, n_jobs=n_jobs)
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
@@ -1114,6 +1085,45 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
     if calc_stcs_diff and len(events) > 1:
         calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
+
+
+def calc_induced_power(epochs, atlas, bands, inverse_operator, lambda2, stc_fname,
+                       calc_inducde_power_per_label=True, overwrite_stc=False, n_jobs=6):
+    # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
+    from mne.minimum_norm import source_band_induced_power
+    if bands is None or bands == '':
+        bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    # atlas = 'high.level.atlas'
+    if calc_inducde_power_per_label:
+        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
+        now = time.time()
+        for ind, label in enumerate(labels):
+            if 'unknown' in label.name:
+                continue
+            files_exist = all([op.isfile('{}_{}_induced_power_{}'.format(stc_fname, label.name, band))
+                               for band in bands.keys()])
+            if files_exist and not overwrite_stc:
+                continue
+            print('Calculating source_band_induced_power for {}'.format(label.name))
+            utils.time_to_go(now, ind, len(labels), runs_num_to_print=1)
+            # On a normal computer, you might want to set n_jobs to 1 (memory...)s
+            stcs = source_band_induced_power(
+                epochs, inverse_operator, bands, label, n_cycles=2, use_fft=False, lambda2=lambda2,
+                pca=True, n_jobs=n_jobs)
+            for band, stc_band in stcs.items():
+                # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
+                band_stc_fname = '{}_{}_induced_power_{}'.format(stc_fname, label.name, band)
+                print('Saving {}'.format(band_stc_fname))
+                stc_band.save(band_stc_fname)
+    else:
+        stcs = source_band_induced_power(
+            epochs, inverse_operator, bands, n_cycles=2, use_fft=False, lambda2=lambda2, pca=True,
+            n_jobs=n_jobs)
+        for band, stc_band in stcs.items():
+            # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
+            band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
+            print('Saving {}'.format(band_stc_fname))
+            stc_band.save(band_stc_fname)
 
 
 def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc=False):
@@ -2513,7 +2523,8 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc,
             args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
             args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw,
-            raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff, args.n_jobs)
+            raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff,
+            args.atlas, args.bands, args.calc_inducde_power_per_label, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
 
@@ -2911,7 +2922,10 @@ def calc_labels_power_bands(
             data_minmax = utils.calc_abs_minmax(data[band])
             data[band] /= data_minmax
             labels_data_output_name = '{}_norm'.format(labels_data_output_name)
-        data_max = utils.calc_max(data[band], norm_percs=precentiles)
+        try:
+            data_max = utils.calc_max(data[band], norm_percs=precentiles)
+        except:
+            data_max = utils.calc_max(data[band], norm_percs=precentiles)
         print('calc_labels_func minmax: {}, {}'.format(0, data_max))
         np.savez(output_fname, names=np.array(labels), atlas=atlas, data=data[band],
                  title=labels_data_output_name.replace('_', ' '), data_min=0, data_max=data_max, cmap='RdOrYl')
@@ -3623,6 +3637,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
     parser.add_argument('--meg_root_fol', required=False, default='')
+    parser.add_argument('--bands', required=False, default='')
+    parser.add_argument('--calc_inducde_power_per_label', required=False, default=1, type=au.is_true)
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
     # **** ICA *****
