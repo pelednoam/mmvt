@@ -414,8 +414,8 @@ def calc_labels_connectivity(
         subject, atlas, events, mri_subject='', subjects_dir='', mmvt_dir='', inverse_method='dSPM',
         epo_fname='', inv_fname='', raw_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
         add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, extract_modes=['mean_flip'], surf_name='pial',
-        con_method='coh', con_mode='cwt_morlet', cwt_n_cycles=7, parallel_over_bands=True,
-        overwrite_connectivity=False, raw=None, epochs=None, src=None, bands=None, cwt_frequencies=None, n_jobs=6):
+        con_method='coh', con_mode='cwt_morlet', cwt_n_cycles=7, overwrite_connectivity=False,
+        raw=None, epochs=None, src=None, bands=None, cwt_frequencies=None, n_jobs=6):
     if mri_subject == '':
         mri_subject = subject
     if subjects_dir == '':
@@ -434,14 +434,16 @@ def calc_labels_connectivity(
     if bands is None or bands == '':
         bands = [[4, 8], [8, 15], [15, 30], [30, 55], [65, 200]]
     if cwt_frequencies is None or cwt_frequencies == '':
-        cwt_frequencies = [np.arange(4, 8.1, 0.5), np.arange(8, 15.1, 1), np.arange(15, 30.1, 2),
-                           np.arange(30, 55.1, 2), np.arange(65, 200.1, 4)]
+        cwt_frequencies = np.arange(4, 200, 2)
     if raw is None:
         raw_fname = get_raw_fname(raw_fname)
         raw = mne.io.read_raw_fif(raw_fname)
         sfreq = raw.info['sfreq']
     fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'connectivity'))
     for cond_name, em in product(events_keys, extract_modes):
+        output_fname = op.join(fol, '{}_{}_{}_{}.npz'.format(cond_name, em, con_method, con_mode))
+        if op.isfile(output_fname) and not overwrite_connectivity:
+            continue
         if epochs is None:
             epo_cond_fname = get_cond_fname(epo_fname, cond_name)
             if not op.isfile(epo_cond_fname):
@@ -457,31 +459,12 @@ def calc_labels_connectivity(
         stcs = mne.minimum_norm.apply_inverse_epochs(
             epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         label_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
-        if parallel_over_bands:
-            indices = np.array_split(np.arange(len(args.bands)), args.n_jobs)
-            chunks = [(epochs, chunk_indices, args.sfreq, args.bands)
-                      for chunk_indices in indices]
-            utils.run_parallel(_spectral_connectivity_parallel, chunks, args.n_jobs)
-        else:
-            for (fmin, fmax), cwt_band_frequencies in zip(bands, cwt_frequencies):
-                output_fname = op.join(fol, '{}_{}_{}-{}.npz'.format(con_method, con_mode, fmin, fmax))
-                if op.isfile(output_fname) and not overwrite_connectivity:
-                    continue
-                con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
-                    label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
-                    cwt_frequencies=cwt_band_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
-                np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
-
-
-def _spectral_connectivity_parallel(p):
-    label_ts, con_method, con_mode, sfreq, fmin, fmax, cwt_band_frequencies, cwt_n_cycles, fol, overwrite_connectivity = p
-    output_fname = op.join(fol, '{}_{}_{}-{}.npz'.format(con_method, con_mode, fmin, fmax))
-    if op.isfile(output_fname) and not overwrite_connectivity:
-        return
-    con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
-        label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
-        cwt_frequencies=cwt_band_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=1)
-    np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
+        fmin, fmax = [t[0] for t in bands], [t[1] for t in bands]
+        # If you are running this on your owne computer, use n_jobs=1
+        con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
+            label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
+            cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
+        np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
 
 
 def spectral_connectivity(label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
@@ -489,12 +472,12 @@ def spectral_connectivity(label_ts, con_method, con_mode, sfreq, fmin, fmax, fav
     if con_mode == 'cwt_morlet':
         con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
             label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=True, mt_adaptive=True,
-            cwt_frequencies=cwt_frequencies, cwt_n_cycles=7, n_jobs=n_jobs)
+            fmax=fmax, faverage=faverage, mt_adaptive=mt_adaptive,
+            cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
     elif con_mode == 'multitaper':
         con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
             label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=True, mt_adaptive=True, n_jobs=n_jobs)
+            fmax=fmax, faverage=faverage, mt_adaptive=True, n_jobs=n_jobs)
     else:
         con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
             label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
@@ -3635,7 +3618,7 @@ def main(tup, remote_subject_dir, args, flags=None):
             SUBJECT, args.atlas, conditions, MRI_SUBJECT, SUBJECTS_MRI_DIR, MMVT_DIR, inverse_method,
             args.epo_fname, args.inv_fname, args.raw_fname, args.snr, args.pick_ori, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.extract_mode, args.surf_name,
-            args.con_method, args.con_mode, args.cwt_n_cycles,  args.parallel_over_bands, args.overwrite_connectivity,
+            args.con_method, args.con_mode, args.cwt_n_cycles, args.overwrite_connectivity,
             raw=None, epochs=None, src=None, bands=None, n_jobs=args.n_jobs)
 
     if 'load_fieldtrip_volumetric_data' in args.function:
@@ -3790,7 +3773,6 @@ def read_cmd_args(argv=None):
     parser.add_argument('--con_method', required=False, default='coh')
     parser.add_argument('--con_mode', required=False, default='cwt_morlet')
     parser.add_argument('--cwt_n_cycles', required=False, default=7, type=int)
-    parser.add_argument('--parallel_over_bands', required=False, default=1, type=au.is_true)
     parser.add_argument('--overwrite_connectivity', required=False, default=0, type=au.is_true)
 
     pu.add_common_args(parser)
