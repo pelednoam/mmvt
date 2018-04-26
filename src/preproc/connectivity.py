@@ -509,6 +509,8 @@ def _coh_parallel(p):
 
 def coherence(data, sfreq, fmin, fmax):
     from mne.connectivity import spectral_connectivity
+    # Shouldn't be epochs, should be sources
+    # https://martinos.org/mne/stable/auto_examples/connectivity/plot_mne_inverse_label_connectivity.html#sphx-glr-auto-examples-connectivity-plot-mne-inverse-label-connectivity-py
     con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
         data, method='coh', mode='multitaper', sfreq=sfreq, fmin=fmin,
         fmax=fmax, faverage=True, mt_adaptive=True, n_jobs=1)
