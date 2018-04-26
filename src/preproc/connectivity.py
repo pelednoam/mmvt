@@ -330,13 +330,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         elif 'coherence' in args.connectivity_method:
             if args.bands == '':
                 args.bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-            conn = np.zeros((data.shape[0], data.shape[0], windows_num, len(args.bands)))
-            # if data.ndim == 3:
-            #     conn_data = np.transpose(data, [2, 1, 0])
-            # elif data.ndim == 2:
-            #     conn_data = np.zeros((windows_num, data.shape[0], args.windows_length))
-            #     for w in range(windows_num):
-            #         conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
+            conn = np.zeros((data.shape[0], data.shape[0], len(args.bands))) # What about windows_num?
             epochs = mne.read_epochs(args.epochs_fname)
             indices = np.array_split(np.arange(len(args.bands)), args.n_jobs)
             # for iband, (band, (fmin, fmax)) in enumerate(args.bands.items()):
@@ -344,8 +338,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
                       for chunk_indices in indices]
             results = utils.run_parallel(_coh_parallel, chunks, args.n_jobs)
             for chunk in results:
-                for w, con in chunk.items():
-                    conn[:, :, w, iband] = con
+                for iband, con in chunk.items():
+                    # todo: fix this
+                    conn[:, :, iband] = con
 
         elif 'mi' in args.connectivity_method or 'mi_vec' in args.connectivity_method:
             conn = np.zeros((data.shape[0], data.shape[0], windows_num))

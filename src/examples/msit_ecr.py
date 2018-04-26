@@ -33,7 +33,8 @@ def meg_preproc(args):
             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
             # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_labels_avg_per_condition,calc_labels_min_max',
-            function='calc_stc_per_condition',
+            # function='calc_stc_per_condition',
+            function='calc_labels_connectivity',
             conditions=task.lower(),
             data_per_task=True,
             ica_overwrite_raw=False,
@@ -44,6 +45,9 @@ def meg_preproc(args):
             calc_source_band_induced_power=True,
             calc_inducde_power_per_label=True,
             bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
+            con_method='coh',
+            con_mode='cwt_morlet',
+            overwrite_connectivity=False,
             read_only_from_annot=False,
             # pick_ori='normal',
             overwrite_epochs=True,
@@ -59,7 +63,7 @@ def meg_preproc(args):
         for task in tasks:
             task = task.lower()
             # meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
+            # meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
 
     #     meg_dir = op.join(MMVT_DIR, subject, 'meg')
     #     # meg.calc_stc_diff(op.join(meg_dir, '{}_msit-{}-rh.stc'.format(subject, inv_method)),
@@ -86,8 +90,6 @@ def con_preprc(args):
             windows_length=6000,
             windows_shift=100,
             sfreq=1000.0,
-            epochs_fname=op.join(MEG_DIR, task, args.subject[0], '{}_{}_nTSSS-ica-raw-epo.fif'.format(
-                args.subject[0], task.lower())),
             # fmin=10,
             # fmax=100
             # recalc_connectivity=True,
