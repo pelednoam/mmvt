@@ -460,7 +460,7 @@ def calc_labels_connectivity(
         stcs = mne.minimum_norm.apply_inverse_epochs(
             epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         label_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
-        # fmin, fmax = [t[0] for t in bands], [t[1] for t in bands]
+        fmin, fmax = [t[0] for t in bands], [t[1] for t in bands]
         # If you are running this on your owne computer, use n_jobs=1
         con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
             label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
