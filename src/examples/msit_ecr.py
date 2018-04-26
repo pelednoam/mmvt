@@ -73,22 +73,25 @@ def meg_preproc(args):
 
 
 def con_preprc(args):
+    atlas = 'aparc.DKTatlas40'
     for task in ['MSIT', 'ECR']:
         args = con.read_cmd_args(utils.Bag(
             subject=args.subject,
-            atlas='laus125',
+            atlas=atlas,
             function='calc_lables_connectivity',
-            labels_data_name='labels_data_{}_laus125_mean_flip_norm_{}'.format(task.lower(), '{hemi}'),
+            labels_data_name='labels_data_{}_{}_mean_flip_{}.npz'.format(task.lower(), atlas, '{hemi}'),
             connectivity_modality='meg',
             connectivity_method='coherence',
             identifier=task.lower(),
-            windows_length=500,
+            windows_length=6000,
             windows_shift=100,
             sfreq=1000.0,
+            epochs_fname=op.join(MEG_DIR, task, args.subject[0], '{}_{}_nTSSS-ica-raw-epo.fif'.format(
+                args.subject[0], task.lower())),
             # fmin=10,
             # fmax=100
             # recalc_connectivity=True,
-            max_windows_num=100,
+            max_windows_num=1,
             recalc_connectivity=True,
             n_jobs=args.n_jobs
         ))

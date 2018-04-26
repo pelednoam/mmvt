@@ -274,8 +274,8 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         elif 'coherence' in args.connectivity_method:
             connectivity_method = 'COH'
     if not op.isfile(output_mat_fname) or args.recalc_connectivity:
-        conn = np.zeros((data.shape[0], data.shape[0], windows_num))
         if 'corr' in args.connectivity_method:
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
             if labels_extract_mode.startswith('pca_'):
                 comps_num = int(labels_extract_mode.split('_')[1])
                 dims = (data.shape[0], data.shape[0], windows_num, comps_num * 2, comps_num * 2)
@@ -306,7 +306,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             print('Saving {}, {}'.format(output_mat_fname, conn.shape))
             np.save(output_mat_fname, conn)
             connectivity_method = 'Pearson corr'
-        elif 'pli' in args.connectivity_method or 'coherence' in args.connectivity_method:
+
+        elif 'pli' in args.connectivity_method:
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
             if data.ndim == 3:
                 conn_data = np.transpose(data, [2, 1, 0])
             elif data.ndim == 2:
@@ -316,19 +318,37 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             indices = np.array_split(np.arange(windows_num), args.n_jobs)
             # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
             chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length)
-                      for chunk_indices in indices]
-            if 'pli' in args.connectivity_method:
-                par_func = _pli_parallel
-            elif 'coherence' in args.connectivity_method:
-                par_func = _coh_parallel
-            results = utils.run_parallel(par_func, chunks, args.n_jobs)
+                  for chunk_indices in indices]
+            results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
             for chunk in results:
                 for w, con in chunk.items():
                     conn[:, :, w] = con
             backup(output_mat_fname)
             np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
+
+        elif 'coherence' in args.connectivity_method:
+            if args.bands == '':
+                args.bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num, len(args.bands)))
+            # if data.ndim == 3:
+            #     conn_data = np.transpose(data, [2, 1, 0])
+            # elif data.ndim == 2:
+            #     conn_data = np.zeros((windows_num, data.shape[0], args.windows_length))
+            #     for w in range(windows_num):
+            #         conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
+            epochs = mne.read_epochs(args.epochs_fname)
+            indices = np.array_split(np.arange(len(args.bands)), args.n_jobs)
+            # for iband, (band, (fmin, fmax)) in enumerate(args.bands.items()):
+            chunks = [(epochs, chunk_indices, args.sfreq, args.bands)
+                      for chunk_indices in indices]
+            results = utils.run_parallel(_coh_parallel, chunks, args.n_jobs)
+            for chunk in results:
+                for w, con in chunk.items():
+                    conn[:, :, w, iband] = con
+
         elif 'mi' in args.connectivity_method or 'mi_vec' in args.connectivity_method:
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
             corr_fname = get_output_mat_fname('corr', labels_extract_mode)
             if op.isfile(corr_fname):
                 corr = np.load(get_output_mat_fname('corr', labels_extract_mode))
@@ -475,20 +495,24 @@ def _pli_parallel(p):
 
 def _coh_parallel(p):
     res = {}
-    conn_data, indices, channels_num, window_length = p
-    for window_ind, window in zip(indices, conn_data):
-        print('COH: Window ind {}'.format(window_ind))
-        coh_val = pli(window, channels_num, window_length)
+    conn_data, indices, sfreq, bands = p
+    # for window_ind, window in zip(indices, conn_data):
+    for iband, (fmin, fmax) in enumerate(bands.values()):
+        print('COH: Window ind {}'.format(fmin, fmax))
+        coh_val = coherence(conn_data, sfreq, fmin, fmax)
         if not coh_val is None:
-            res[window_ind] = coh_val
+            res[iband] = coh_val
         else:
-            print('Error in COH! windowsw ind {}'.format(window_ind))
+            print('Error in COH! window_ind: {}'.format(iband))
     return res
 
 
-def coherence():
-    from scipy import signal
-    f, Cxy = signal.coherence(x, y, fs, nperseg=1024)
+def coherence(data, sfreq, fmin, fmax):
+    from mne.connectivity import spectral_connectivity
+    con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
+        data, method='coh', mode='multitaper', sfreq=sfreq, fmin=fmin,
+        fmax=fmax, faverage=True, mt_adaptive=True, n_jobs=1)
+    return con
 
 
 def corr_matrix(data, comps_num):
@@ -961,6 +985,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--sfreq', help='', required=False, default=1000, type=float)
     parser.add_argument('--fmin', help='', required=False, default=5, type=float)
     parser.add_argument('--fmax', help='', required=False, default=100, type=float)
+    parser.add_argument('--bands', required=False, default='')
+    parser.add_argument('--epochs_fname', required=False, default='')
 
     parser.add_argument('--save_mmvt_connectivity', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--calc_subs_connectivity', help='', required=False, default=0, type=au.is_true)
