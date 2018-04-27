@@ -197,7 +197,7 @@ def install_reqs(only_verbose=False):
         from pip._internal import main as pipmain
     # if utils.is_windows() and not utils.is_admin():
     #     utils.set_admin()
-    pip.pipmain(['install', '--upgrade', 'pip'])
+    pipmain(['install', '--upgrade', 'pip'])
     retcode = 0
     reqs_fname = op.join(utils.get_parent_fol(levels=2), 'requirements.txt')
     with open(reqs_fname, 'r') as f:
@@ -205,7 +205,7 @@ def install_reqs(only_verbose=False):
             if only_verbose:
                 print('Trying to install {}'.format(line.strip()))
             else:
-                pipcode = pip.pipmain(['install', '--upgrade', line.strip()])
+                pipcode = pipmain(['install', '--upgrade', line.strip()])
                 retcode = retcode or pipcode
     return retcode
 
