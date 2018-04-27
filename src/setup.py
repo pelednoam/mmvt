@@ -191,9 +191,13 @@ def create_real_folder(real_fol):
 
 def install_reqs(only_verbose=False):
     import pip
+    try:
+        from pip import main as pipmain
+    except:
+        from pip._internal import main as pipmain
     # if utils.is_windows() and not utils.is_admin():
     #     utils.set_admin()
-    pip.main(['install', '--upgrade', 'pip'])
+    pip.pipmain(['install', '--upgrade', 'pip'])
     retcode = 0
     reqs_fname = op.join(utils.get_parent_fol(levels=2), 'requirements.txt')
     with open(reqs_fname, 'r') as f:
@@ -201,7 +205,7 @@ def install_reqs(only_verbose=False):
             if only_verbose:
                 print('Trying to install {}'.format(line.strip()))
             else:
-                pipcode = pip.main(['install', '--upgrade', line.strip()])
+                pipcode = pip.pipmain(['install', '--upgrade', line.strip()])
                 retcode = retcode or pipcode
     return retcode
 
