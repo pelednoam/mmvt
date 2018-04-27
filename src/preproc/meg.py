@@ -440,6 +440,7 @@ def calc_labels_connectivity(
         raw = mne.io.read_raw_fif(raw_fname)
         sfreq = raw.info['sfreq']
     fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'connectivity'))
+    ret = True
     for cond_name, em in product(events_keys, extract_modes):
         output_fname = op.join(fol, '{}_{}_{}_{}.npz'.format(cond_name, em, con_method, con_mode))
         if op.isfile(output_fname) and not overwrite_connectivity:
@@ -462,12 +463,14 @@ def calc_labels_connectivity(
             epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         label_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
         fmin, fmax = [t[0] for t in bands], [t[1] for t in bands]
-        # If you are running this on your owne computer, use n_jobs=1
+        # The data is too big for running it in parallel
+        # todo: Parallel over bands
         con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
             label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
-            cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
+            cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=1)
         np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
-
+        ret = ret and op.isfile(output_fname)
+    return ret
 
 
 def spectral_connectivity(label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
@@ -1092,7 +1095,7 @@ def _calc_inverse_operator(fwd_name, inv_name, evoked_fname, noise_cov, inv_loos
 #     stc.save(STC.format('all', inverse_method))
 
 
-def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
+def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, calc_source_band_induced_power=False, save_stc=True, snr=3.0,
                            overwrite_stc=False, stc_template='', epo_fname='', evo_fname='', inv_fname='',
@@ -1149,7 +1152,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
                     stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
                         pick_ori=pick_ori, return_generator=True)
                 if calc_source_band_induced_power:
-                    calc_induced_power(epochs, atlas, bands, inverse_operator, lambda2, stc_fname,
+                    calc_induced_power(epochs, atlas, task, bands, inverse_operator, lambda2, stc_fname,
                                        calc_inducde_power_per_label, overwrite_stc=False, n_jobs=n_jobs)
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
@@ -1188,7 +1191,7 @@ def calc_stc_per_condition(events=None, stc_t_min=None, stc_t_max=None, inverse_
     return flag, stcs, stcs_num
 
 
-def calc_induced_power(epochs, atlas, bands, inverse_operator, lambda2, stc_fname,
+def calc_induced_power(epochs, atlas, task, bands, inverse_operator, lambda2, stc_fname,
                        calc_inducde_power_per_label=True, overwrite_stc=False, n_jobs=6):
     # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
     from mne.minimum_norm import source_band_induced_power
@@ -1196,24 +1199,25 @@ def calc_induced_power(epochs, atlas, bands, inverse_operator, lambda2, stc_fnam
         bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     # atlas = 'high.level.atlas'
     if calc_inducde_power_per_label:
+        fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'induced_power'))
         labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
         now = time.time()
         for ind, label in enumerate(labels):
             if 'unknown' in label.name:
                 continue
-            files_exist = all([op.isfile('{}_{}_induced_power_{}'.format(stc_fname, label.name, band))
+            files_exist = all([op.join(fol, '{}_{}_{}_induced_power'.format(task, label.name, band))
                                for band in bands.keys()])
             if files_exist and not overwrite_stc:
                 continue
             print('Calculating source_band_induced_power for {}'.format(label.name))
             utils.time_to_go(now, ind, len(labels), runs_num_to_print=1)
-            # On a normal computer, you might want to set n_jobs to 1 (memory...)s
+            # On a normal computer, you might want to set n_jobs to 1 (memory...)
             stcs = source_band_induced_power(
                 epochs, inverse_operator, bands, label, n_cycles=2, use_fft=False, lambda2=lambda2,
                 pca=True, n_jobs=n_jobs)
             for band, stc_band in stcs.items():
                 # print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
-                band_stc_fname = '{}_{}_induced_power_{}'.format(stc_fname, label.name, band)
+                band_stc_fname = op.join(fol, '{}_{}_{}_induced_power'.format(task, label.name, band))
                 print('Saving {}'.format(band_stc_fname))
                 stc_band.save(band_stc_fname)
     else:
@@ -2620,7 +2624,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         evo_fname = get_evo_fname(args.evo_fname)
         get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
         flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
-            conditions, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
+            conditions, args.task, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc,
             args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
             args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw,
@@ -3627,8 +3631,7 @@ def main(tup, remote_subject_dir, args, flags=None):
             SUBJECT, args.atlas, conditions, MRI_SUBJECT, SUBJECTS_MRI_DIR, MMVT_DIR, inverse_method,
             args.epo_fname, args.inv_fname, args.raw_fname, args.snr, args.pick_ori, args.apply_SSP_projection_vectors,
             args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.extract_mode, args.surf_name,
-            args.con_method, args.con_mode, args.cwt_n_cycles, args.overwrite_connectivity,
-            raw=None, epochs=None, src=None, bands=None, n_jobs=args.n_jobs)
+            args.con_method, args.con_mode, args.cwt_n_cycles, args.overwrite_connectivity, n_jobs=args.n_jobs)
 
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(

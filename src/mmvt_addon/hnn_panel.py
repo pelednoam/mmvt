@@ -16,9 +16,10 @@ def update_something():
 
 
 def run_hnn():
-    hnn_cmd = 'hnn.sh -dataf {} -paramf {}'.format(
-        bpy.context.scene.hnn_data_file, bpy.context.scene.param_file)
-    mu.run_command_in_new_thread(hnn_cmd, False, cwd=bpy.path.abspath(bpy.context.scene.hnn_folder))
+    hnn_folder = op.abspath(bpy.path.abspath(bpy.context.scene.hnn_folder))
+    hnn_cmd = '{} -dataf {} -paramf {}'.format(
+        op.join(hnn_folder, 'hnn.sh'), bpy.context.scene.hnn_data_files, bpy.context.scene.hnn_param_files)
+    mu.run_command_in_new_thread(hnn_cmd, False, cwd=hnn_folder)
 
 
 def set_hnn_folder(self, context):
@@ -45,7 +46,7 @@ def init_hnn_files():
     HNNPanel.params_files_names = [mu.namebase(fname) for fname in glob.glob(op.join(hnn_folder, 'param', '*.param'))]
     if len(HNNPanel.params_files_names) > 0:
         hnn_items = [(c, c, '', ind) for ind, c in enumerate(HNNPanel.params_files_names)]
-        bpy.types.Scene.hnn_files = bpy.props.EnumProperty(items=hnn_items, description="param files")
+        bpy.types.Scene.hnn_param_files = bpy.props.EnumProperty(items=hnn_items, description="param files")
         bpy.context.scene.hnn_param_files = HNNPanel.params_files_names[0]
 
 
