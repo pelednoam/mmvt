@@ -999,9 +999,16 @@ def get_evo_fname(evo_fname=''):
     return evo_fname
 
 
+def get_empty_fname(empty_fname=''):
+    if empty_fname == '':
+        empty_fname = EMPTY_ROOM
+    empty_fname, empty_exist = locating_meg_file(empty_fname, '*empty*.fif')
+    return empty_fname
+
+
 def calc_inverse_operator(
         events=None, raw_fname='', epo_fname='', evo_fname='', fwd_fname='', inv_fname='', noise_cov_fname='',
-        inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0, overwrite_inverse_operator=False,
+        empty_fname='', inv_loose=0.2, inv_depth=0.8, noise_t_min=None, noise_t_max=0, overwrite_inverse_operator=False,
         use_empty_room_for_noise_cov=False, use_raw_for_noise_cov=False, overwrite_noise_cov=False,
         calc_for_cortical_fwd=True, calc_for_sub_cortical_fwd=True, fwd_usingMEG=True, fwd_usingEEG=True,
         calc_for_spec_sub_cortical=False, cortical_fwd=None, subcortical_fwd=None, spec_subcortical_fwd=None,
@@ -1011,6 +1018,7 @@ def calc_inverse_operator(
     inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     evo_fname = get_evo_fname(evo_fname)
     epo_fname = get_epo_fname(epo_fname)
+    empty_fname = get_empty_fname(empty_fname)
     if noise_cov_fname == '':
         noise_cov_fname = NOISE_COV
     if events is None:
@@ -1027,9 +1035,7 @@ def calc_inverse_operator(
         try:
             if overwrite_noise_cov or not op.isfile(noise_cov_fname):
                 if use_empty_room_for_noise_cov:
-                    empty_room_fname, empty_room_exist = locating_meg_file(
-                        EMPTY_ROOM, '*empty*.fif', raise_exception=True)
-                    raw_empty_room = mne.io.read_raw_fif(empty_room_fname, add_eeg_ref=False)
+                    raw_empty_room = mne.io.read_raw_fif(empty_fname, add_eeg_ref=False)
                     noise_cov = mne.compute_raw_covariance(raw_empty_room, tmin=0, tmax=None)
                     noise_cov.save(noise_cov_fname)
                 elif use_raw_for_noise_cov:
@@ -1575,8 +1581,8 @@ def calc_specific_subcortical_activity(region, inverse_methods, events, plot_all
     if not x_opertor_exists(FWD_X, region, events) or overwrite_fwd:
         make_forward_solution_to_specific_subcortrical(events, region)
     if not x_opertor_exists(INV_X, region, events) or overwrite_inv:
-        calc_inverse_operator(events, '', '', '', '', '', '', inv_loose, inv_depth, False, False, False, False, False,
-                              True, region=region)
+        calc_inverse_operator(events, '', '', '', '', '', '', '', inv_loose, inv_depth,
+                              False, False, False, False, False, True, region=region)
     for inverse_method in inverse_methods:
         files_exist = np.all([op.isfile(op.join(SUBJECT_MEG_FOLDER, 'subcorticals',
             '{}-{}-{}.npy'.format(cond, region, inverse_method))) for cond in events.keys()])
@@ -2566,8 +2572,8 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
             get_meg_files(subject, [epo_fname, fwd_fname], args, conditions)
             flags['calc_inverse_operator'] = calc_inverse_operator(
-                conditions, raw_fname, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.inv_loose,
-                args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
+                conditions, raw_fname, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.empty_fname,
+                args.inv_loose, args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
                 args.use_empty_room_for_noise_cov, args.use_raw_for_noise_cov,
                 args.overwrite_noise_cov, args.inv_calc_cortical, args.inv_calc_subcorticals,
                 args.fwd_usingMEG, args.fwd_usingEEG, args=args)
@@ -3657,6 +3663,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--epo_fname', help='', required=False, default='')
     parser.add_argument('--evo_fname', help='', required=False, default='')
     parser.add_argument('--noise_cov_fname', help='', required=False, default='')
+    parser.add_argument('--empty_fname', help='', required=False, default='')
     parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)

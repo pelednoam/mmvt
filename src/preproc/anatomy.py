@@ -1404,6 +1404,10 @@ def morph_labels_from_fsaverage(subject, atlas, fsaverage, overwrite_morphing, f
         fs_labels_fol=fs_labels_fol, n_jobs=n_jobs)
 
 
+def call_main(args):
+    pu.run_on_subjects(args, main)
+
+
 def main(subject, remote_subject_dir, args, flags):
     copy_sphere_reg_files(subject)
 
