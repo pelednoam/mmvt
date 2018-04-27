@@ -18,29 +18,30 @@ def update_something():
 def run_hnn():
     hnn_cmd = 'hnn.sh -dataf {} -paramf {}'.format(
         bpy.context.scene.hnn_data_file, bpy.context.scene.param_file)
-    mu.run_command_in_new_thread(hnn_cmd, False, cwd=bpy.context.scene.hnn_folder)
+    mu.run_command_in_new_thread(hnn_cmd, False, cwd=bpy.path.abspath(bpy.context.scene.hnn_folder))
 
 
-def set_hnn_folder():
-    init_hnn_files()
-    if not op.isdir(bpy.context.scene.hnn_folder):
+def set_hnn_folder(self, context):
+    hnn_folder = op.abspath(bpy.path.abspath(bpy.context.scene.hnn_folder))
+    if not op.isdir(hnn_folder):
         return
-    hnn_link = mu.get_link_dir(mu.get_links_dir(), 'hnn')
+    hnn_link = op.join(mu.get_links_dir(), 'hnn')
     if op.islink(hnn_link):
         os.remove(hnn_link)
     try:
-        os.symlink(bpy.context.scene.hnn_folder, hnn_link)
+        os.symlink(hnn_folder, hnn_link)
     except:
         print('set_hnn_folder: Error in creating hnn link!')
+    init_hnn_files()
 
 
 def init_hnn_files():
-    hnn_folder = bpy.context.scene.hnn_folder
+    hnn_folder = bpy.path.abspath(bpy.context.scene.hnn_folder)
     HNNPanel.data_files_names = [mu.namebase(fname) for fname in glob.glob(op.join(hnn_folder, 'data', '*.txt'))]
     if len(HNNPanel.data_files_names) > 0:
         hnn_items = [(c, c, '', ind) for ind, c in enumerate(HNNPanel.data_files_names)]
         bpy.types.Scene.hnn_data_files = bpy.props.EnumProperty(items=hnn_items, description="data files")
-        bpy.context.scene.hnn_files = HNNPanel.data_files_names[0]
+        bpy.context.scene.hnn_data_files = HNNPanel.data_files_names[0]
     HNNPanel.params_files_names = [mu.namebase(fname) for fname in glob.glob(op.join(hnn_folder, 'param', '*.param'))]
     if len(HNNPanel.params_files_names) > 0:
         hnn_items = [(c, c, '', ind) for ind, c in enumerate(HNNPanel.params_files_names)]
@@ -51,7 +52,7 @@ def init_hnn_files():
 def hnn_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'hnn_folder')
-    if op.isdir(bpy.context.scene.hnn_folder):
+    if op.isdir(bpy.path.abspath(bpy.context.scene.hnn_folder)):
         layout.prop(context.scene, 'hnn_data_files', text='Data file')
         layout.prop(context.scene, 'hnn_param_files', text='Param file')
         if len(HNNPanel.params_files_names) == 0:
@@ -68,7 +69,7 @@ class LoadParamFile(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        load_param_file()
+        pass #load_param_file()
         return {'PASS_THROUGH'}
 
 
@@ -78,7 +79,7 @@ class LoadDataFile(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        load_data_file()
+        pass # load_data_file()
         return {'PASS_THROUGH'}
 
 
@@ -94,8 +95,7 @@ class RunHNN(bpy.types.Operator):
 
 bpy.types.Scene.hnn_data_files = bpy.props.EnumProperty(items=[], description="data files")
 bpy.types.Scene.hnn_param_files = bpy.props.EnumProperty(items=[], description="params files")
-bpy.types.Scene.hnn_folder = bpy.props.StringProperty(
-    name="", default="", description="HNN main folder", subtype='DIR_PATH', update=set_hnn_folder)
+bpy.types.Scene.hnn_folder = bpy.props.StringProperty(subtype='DIR_PATH', update=set_hnn_folder)
 
 
 class HNNPanel(bpy.types.Panel):

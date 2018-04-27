@@ -443,6 +443,7 @@ def calc_labels_connectivity(
     for cond_name, em in product(events_keys, extract_modes):
         output_fname = op.join(fol, '{}_{}_{}_{}.npz'.format(cond_name, em, con_method, con_mode))
         if op.isfile(output_fname) and not overwrite_connectivity:
+            # d = utils.Bag(np.load(output_fname))
             continue
         if epochs is None:
             epo_cond_fname = get_cond_fname(epo_fname, cond_name)
@@ -466,6 +467,7 @@ def calc_labels_connectivity(
             label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
             cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
         np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
+
 
 
 def spectral_connectivity(label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
