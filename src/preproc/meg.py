@@ -1201,11 +1201,13 @@ def calc_induced_power(epochs, atlas, task, bands, inverse_operator, lambda2, st
     if calc_inducde_power_per_label:
         fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'induced_power'))
         labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
+        if len(labels) == 0:
+            raise Exception('No labels found for {}!'.format(atlas))
         now = time.time()
         for ind, label in enumerate(labels):
             if 'unknown' in label.name:
                 continue
-            files_exist = all([op.join(fol, '{}_{}_{}_induced_power'.format(task, label.name, band))
+            files_exist = all([op.isfile(op.join(fol, '{}_{}_{}_induced_power'.format(task, label.name, band)))
                                for band in bands.keys()])
             if files_exist and not overwrite_stc:
                 continue

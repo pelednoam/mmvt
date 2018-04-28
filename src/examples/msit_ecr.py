@@ -23,37 +23,39 @@ def anatomy_preproc(args):
     anat.call_main(args)
 
 
-def init_meg_preproc(args, tasks):
-    for subject in args.subject:
-        utils.make_dir(op.join(MEG_DIR, subject))
-        utils.make_link(op.join(args.remote_subject_dir.format(subject=subject), 'bem'),
-                        op.join(MEG_DIR, subject, 'bem'))
-        for task in tasks:
-            utils.make_dir(op.join(MEG_DIR, task, subject))
-            utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'))
-        utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(SUBJECTS_DIR, subject, 'bem'))
+def get_empty_fnames(subject, tasks, args):
+    utils.make_dir(op.join(MEG_DIR, subject))
+    utils.make_link(op.join(args.remote_subject_dir.format(subject=subject), 'bem'),
+                    op.join(MEG_DIR, subject, 'bem'))
+    for task in tasks:
+        utils.make_dir(op.join(MEG_DIR, task, subject))
+        utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'))
+    utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(SUBJECTS_DIR, subject, 'bem'))
 
-        remote_meg_fol = '/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{}'.format(subject)
-        csv_fname = op.join(remote_meg_fol, 'cfg.txt')
-        days, empty_fnames = {}, {}
-        for line in utils.csv_file_reader(csv_fname, ' '):
+    remote_meg_fol = '/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{}'.format(subject)
+    csv_fname = op.join(remote_meg_fol, 'cfg.txt')
+    if not op.isfile(csv_fname):
+        print('No cfg file!')
+        return {task:'' for task in tasks}
+    days, empty_fnames = {}, {}
+    for line in utils.csv_file_reader(csv_fname, ' '):
+        for task in tasks:
+            if line[4].lower() == task.lower():
+                days[task] = line[2]
+    print(days)
+    for line in utils.csv_file_reader(csv_fname, ' '):
+        if line[4] == 'empty':
             for task in tasks:
-                if line[4].lower() == task.lower():
-                    days[task] = line[2]
-        print(days)
-        for line in utils.csv_file_reader(csv_fname, ' '):
-            if line[4] == 'empty':
-                for task in tasks:
-                    empty_fnames[task] = op.join(MEG_DIR, task, subject, '{}_empty_raw.fif'.format(subject))
-                    if op.isfile(empty_fnames[task]):
-                        continue
-                    task_day = days[task]
-                    if line[2] == task_day:
-                        empty_fname = op.join(remote_meg_fol, line[0].zfill(3), line[-1])
-                        if not op.isfile(empty_fname):
-                            raise Exception('empty file does not exist! {}'.format(empty_fname[task]))
-                        utils.make_link(empty_fname, empty_fnames[task])
-        return empty_fnames
+                empty_fnames[task] = op.join(MEG_DIR, task, subject, '{}_empty_raw.fif'.format(subject))
+                if op.isfile(empty_fnames[task]):
+                    continue
+                task_day = days[task]
+                if line[2] == task_day:
+                    empty_fname = op.join(remote_meg_fol, line[0].zfill(3), line[-1])
+                    if not op.isfile(empty_fname):
+                        raise Exception('empty file does not exist! {}'.format(empty_fname[task]))
+                    utils.make_link(empty_fname, empty_fnames[task])
+    return empty_fnames
 
 
 def meg_preproc(args):
@@ -61,7 +63,7 @@ def meg_preproc(args):
     atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     tasks = ['MSIT', 'ECR']
-    empty_fnames = init_meg_preproc(args, tasks)
+    empty_fnames = get_empty_fnames(args.subject[0], tasks, args)
     times = (-2, 4)
     for task in tasks:
         args = meg.read_cmd_args(dict(
@@ -128,7 +130,7 @@ if __name__ == '__main__':
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     args.remote_subject_dir = '/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
