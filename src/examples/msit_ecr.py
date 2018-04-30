@@ -84,7 +84,7 @@ def meg_preproc(args):
             read_events_from_file=False, stim_channels='STI001',
             use_empty_room_for_noise_cov=True,
             calc_source_band_induced_power=True,
-            calc_inducde_power_per_label=True,
+            calc_inducde_power_per_label=False,
             bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
             con_method='coh',
             con_mode='cwt_morlet',
