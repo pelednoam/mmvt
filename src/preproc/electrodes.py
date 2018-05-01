@@ -556,6 +556,11 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
 
     dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
     if dural_verts is None:
+        from src.misc.dural import create_dural
+        create_dural.create_dural_surface(subject, SUBJECTS_DIR)
+        dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
+    if dural_verts is None:
+        print('No Dural surface!!!')
         return False
     for hemi in ['rh', 'lh']:
         dists = cdist(electrodes_t1_tkreg, dural_verts[hemi])

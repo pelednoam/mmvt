@@ -747,7 +747,6 @@ def init(addon):
     # print('Electrodes panel initialization completed successfully!')
 
 
-
 def init_sorted_groups():
     import shutil
     sorted_groups_fname = op.join(mu.get_user_fol(), 'electrodes', 'sorted_groups.pkl')
@@ -776,6 +775,7 @@ def init_leads_list(leads=None):
         bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
     else:
         ElecsPanel.current_lead = ''
+        print('len(ElecsPanel.leads) = 0!')
 
 
 def init_electrodes_list():
