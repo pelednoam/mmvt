@@ -108,17 +108,24 @@ def meg_preproc(args):
 
 
 def post_analysis(args):
+    import matplotlib.pyplot as plt
     tasks = ['MSIT', 'ECR']
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     for subject, task, band in product(args.subject, tasks, bands.keys()):
         power_fol = op.join(MMVT_DIR, subject, 'labels', 'labels_data')
         induced_power_fol = op.join(MEG_DIR, task, subject, 'induced_power')
         d = utils.Bag(np.load(op.join(power_fol, '{}_power_{}.npz'.format(task.lower(), band))))
-        for label_name in d.names:
+        for label_name, label_data in zip(d.names, d.data):
             hemi = lu.get_label_hemi(label_name)
             stc_fname = op.join(induced_power_fol, '{}_{}-dSPM_{}_induced_power_{}-lh.stc'.format(
                 subject, task.lower(), label_name, band))
             stc = mne.read_source_estimate(stc_fname, subject)
+            stc_data = stc.rh_data if hemi == 'rh' else stc.lh_data
+            plt.figure()
+            plt.plot(stc_data.mean(0))
+            plt.axhline(label_data * 1e5, color='r', linestyle='--')
+            plt.show()
+            plt.close()
             print('asdf')
 
 
