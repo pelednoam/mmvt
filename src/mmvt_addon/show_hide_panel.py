@@ -394,6 +394,17 @@ def minimize_brain():
     bpy.ops.screen.back_to_previous(context)
 
 
+class CenterView(bpy.types.Operator):
+    bl_idname = "mmvt.center_view"
+    bl_label = "mmvt center_view"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        mu.center_view()
+        return {"FINISHED"}
+
+
 class ShowSagittal(bpy.types.Operator):
     bl_idname = "mmvt.show_sagittal"
     bl_label = "mmvt show_sagittal"
@@ -620,6 +631,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         # next_icon = icons[int(bpy.context.scene.in_camera_view)]
         # row = layout.row(align=True)
         # layout.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
+        layout.operator(CenterView.bl_idname, text='Center View', icon='FREEZE')
         layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
         # layout.label(text=','.join(['{:.3f}'.format(x) for x in mu.get_view3d_region().view_rotation]))
 
@@ -702,6 +714,7 @@ def register():
         bpy.utils.register_class(ShowAxial)
         bpy.utils.register_class(SplitView)
         bpy.utils.register_class(MaxMinBrain)
+        bpy.utils.register_class(CenterView)
         bpy.utils.register_class(ShowHideSubCorticals)
         bpy.utils.register_class(ShowHideLHSubs)
         bpy.utils.register_class(ShowHideRHSubs)
@@ -721,6 +734,7 @@ def unregister():
         bpy.utils.unregister_class(ShowAxial)
         bpy.utils.unregister_class(SplitView)
         bpy.utils.unregister_class(MaxMinBrain)
+        bpy.utils.unregister_class(CenterView)
         bpy.utils.unregister_class(ShowHideSubCorticals)
         bpy.utils.unregister_class(ShowHideLHSubs)
         bpy.utils.unregister_class(ShowHideRHSubs)
