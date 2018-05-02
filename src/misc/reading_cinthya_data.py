@@ -29,8 +29,9 @@ def read_xlsx(xlsx_fname):
 def ttest(data, root_fol, output_name, two_tailed_test=True, alpha=0.05, is_greater=True):
     labels = sorted(list(data.keys()))
     subjects_types = sorted(list(data[labels[0]]))
-    ttest_stats, ttest_labels, welch_stats, welch_labels = [], [], [] ,[]
+    ttest_stats, ttest_labels, welch_stats, welch_labels, labels_means = [], [], [] ,[], []
     for ind, label in enumerate(labels):
+        labels_means.append(np.mean(data[label][1] + data[label][2]))
         data1, data2 = only_floats(data[label][subjects_types[0]]), only_floats(data[label][subjects_types[1]])
         # two-tailed p-value
         t, pval = scipy.stats.ttest_ind(data1, data2, equal_var=True)
@@ -42,6 +43,9 @@ def ttest(data, root_fol, output_name, two_tailed_test=True, alpha=0.05, is_grea
             welch_stats.append(pval)
             welch_labels.append(label)
     title = output_name.replace('_', ' ')
+    np.savez(op.join(root_fol, '{}_mean.npz'.format(output_name)), names=labels,
+             atlas='aparc.DKTatlas40', data=np.array(labels_means), title=title,
+             data_min=np.min(labels_means), data_max=np.max(labels_means), cmap='YlOrRd')
     print('{} ttest: {} significant labels were found'.format(title, len(ttest_stats)))
     print('{} welch: {} significant labels were found'.format(title, len(ttest_stats)))
     np.savez(op.join(root_fol, '{}_ttest.npz'.format(output_name)), names=np.array(ttest_labels),
@@ -81,5 +85,5 @@ if __name__ == '__main__':
     data = read_xlsx(op.join(root_fol, 'COLBOS_CT_Database.xlsx'))
     ttest(data, root_fol, 'cortical_thickness')
 
-    data = read_xlsx(op.join(root_fol, 'COLBOS_Vol_DB.xlsx'))
-    ttest(data, root_fol, 'cortical_volume')
+    # data = read_xlsx(op.join(root_fol, 'COLBOS_Vol_DB.xlsx'))
+    # ttest(data, root_fol, 'cortical_volume')

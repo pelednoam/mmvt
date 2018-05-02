@@ -553,6 +553,10 @@ def get_max_time_steps(default_val=2500):
         return default_val
 
 
+def get_max_t():
+    return bpy.context.scene.maximal_time_steps
+
+
 _listener_in_queue, _listener_out_queue = None, None
 
 

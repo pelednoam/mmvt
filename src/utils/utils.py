@@ -1735,6 +1735,11 @@ def ceil_floor(x):
     return math.ceil(x) if x > 0 else math.floor(x)
 
 
+def round_n_digits(x, n):
+    import math
+    return ceil_floor(x * math.pow(10, n)) / math.pow(10, n)
+
+
 def add_str_to_file_name(fname, txt, suf=''):
     if suf == '':
         suf = file_type(fname)
