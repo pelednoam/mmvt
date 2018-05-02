@@ -280,13 +280,14 @@ def install_blender_reqs(gui=True):
         # if utils.is_osx():
         # install blender reqs:
         pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
+        reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator'
         if not utils.is_windows():
             utils.run_script(pip_cmd)
-            install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit'.format(op.join('bin', 'pip'))
+            install_cmd = '{} install {}'.format(op.join('bin', 'pip'), reqs)
             utils.run_script(install_cmd)
         else:
             # https://stackoverflow.com/questions/130763/request-uac-elevation-from-within-a-python-script
-            install_cmd = '{} install matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit'.format(op.join('Scripts', 'pip'))
+            install_cmd = '{} install '.format(op.join('Scripts', 'pip'), reqs)
             print(
                 'Sorry, automatically installing external python libs in python will be implemented in the future.\n' +
                 'Meanwhile, you can do the following:\n' +

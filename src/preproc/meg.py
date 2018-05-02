@@ -1,7 +1,6 @@
 import os
 import os.path as op
 import time
-import matplotlib.pyplot as plt
 import glob
 import shutil
 import numpy as np
@@ -14,6 +13,11 @@ import types
 import scipy.io as sio
 import nibabel as nib
 from collections import Counter
+
+try:
+    import matplotlib.pyplot as plt
+except:
+    pass
 
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
@@ -514,10 +518,10 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
     try:
         evoked_fname = get_evo_fname(evoked_fname)
         fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
-        task_str = f'{task}_' if task != '' else ''
-        mmvt_files = [op.join(fol, f'{task_str}sensors_evoked_data.npy'),
-                      op.join(fol, f'{task_str}sensors_evoked_data_meta.npz'),
-                      op.join(fol, f'{task_str}sensors_evoked_minmax.npy')]
+        task_str = '{}_'.format(task) if task != '' else ''
+        mmvt_files = [op.join(fol, '{}sensors_evoked_data.npy'.format(task_str)),
+                      op.join(fol, '{}sensors_evoked_data_meta.npz'.format(task_str)),
+                      op.join(fol, '{}sensors_evoked_minmax.npy'.format(task_str))]
         if op.isfile(evoked_fname) and all([op.isfile(f) for f in mmvt_files]) and not overwrite_evoked:
             evoked = mne.read_evokeds(evoked_fname)
             return True, evoked
@@ -540,7 +544,7 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
         if calc_evoked_for_all_epoches:
             epochs_all = mne.concatenate_epochs([epochs[event] for event in events_keys])
             evokes_all = epochs_all.average()
-            evokes_all_fname = op.join(utils.get_parent_fol(evoked_fname), f'{mri_subject}-all-eve.fif')
+            evokes_all_fname = op.join(utils.get_parent_fol(evoked_fname), '{}-all-eve.fif'.format(mri_subject))
             mne.write_evokeds(evokes_all_fname, evokes_all)
         else:
             evokes_all = None
@@ -571,7 +575,7 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     if modality == 'meg':
         channels_indices = [k for k, name in enumerate(evokes[0].ch_names) if name.startswith('MEG')]
         if len(channels_indices) == 0:
-            print(f'None of the channels names starts with {channels_prefix}!')
+            print('None of the channels names starts with "MEG"!')
     else:
         channels_indices = range(len(first_evokes.ch_names))
     ch_names = [first_evokes.ch_names[k] for k in channels_indices]
@@ -598,10 +602,10 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     max_abs = utils.get_max_abs(data_max, data_min)
     if evokes_all is not None:
         events_keys.append('all')
-    task = f'{task}_' if task != '' else ''
-    np.save(op.join(fol, f'{task}sensors_evoked_data.npy'), data)
-    np.savez(op.join(fol, f'{task}sensors_evoked_data_meta.npz'), names=ch_names, conditions=events_keys, dt=dt)
-    np.save(op.join(fol, f'{task}sensors_evoked_minmax.npy'), [-max_abs, max_abs])
+    task = '{}_'.format(task) if task != '' else ''
+    np.save(op.join(fol, '{}sensors_evoked_data.npy'.format(task)), data)
+    np.savez(op.join(fol, '{}sensors_evoked_data_meta.npz'.format(task)), names=ch_names, conditions=events_keys, dt=dt)
+    np.save(op.join(fol, '{}sensors_evoked_minmax.npy'.format(task)), [-max_abs, max_abs])
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -663,7 +667,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
     # https://martinos.org/mne/stable/manual/cookbook.html#anatomical-information
     # src_fname, src_exist = locating_subject_file(SRC, '*-src.fif')
     src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem',
-                        f'{mri_subject}-{recreate_src_spacing[:-1]}-{recreate_src_spacing[-1]}-src.fif')
+                        '{}-{}-{}-src.fif'.format(mri_subject, recreate_src_spacing[:-1], recreate_src_spacing[-1]))
     if not op.isfile(src_fname):
         src_fname = op.join(SUBJECTS_MRI_DIR, mri_subject, 'bem', '{}-{}-{}-src.fif'.format(
             mri_subject, recreate_src_spacing[:3], recreate_src_spacing[3:]))

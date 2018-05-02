@@ -109,6 +109,14 @@ def get_selected_clusters_data():
 #         _addon().color_prev_colors(clustes_contour_vertices, hemi_obj_name)
 
 
+def dipole_fit():
+    mu.add_mmvt_code_root_to_sys()
+    from src.preproc import meg
+    meg.dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
+                use_meg=True, use_eeg=False, vol_atlas_fname='', vol_atlas_lut_fname='', mask_roi='', do_plot=False,
+                n_jobs=6)
+
+
 def set_cluster_time_series(cluster):
     cluster_uid_name = get_cluster_fcurve_name(cluster)
     _addon().create_empty_if_doesnt_exists(PARENT_OBJ_NAME, _addon().EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
@@ -415,6 +423,7 @@ def meg_draw(self, context):
     layout.operator(SelectAllClusters.bl_idname, text="Select all", icon='BORDER_RECT')
     text = 'Flip time series' if not MEGPanel.data_is_flipped else 'Unflip time series'
     layout.operator(FlipMEGClustersTS.bl_idname, text=text, icon='FORCE_MAGNETIC')
+    layout.operator(DipoleFit.bl_idname, text='Dipole fit', icon='OOPS')
     layout.operator(DeselecAllClusters.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
     layout.operator(ClearClusters.bl_idname, text="Clear all clusters", icon='PANEL_CLOSE')
     layout.operator(_addon().ClearColors.bl_idname, text="Clear activity", icon='PANEL_CLOSE')
@@ -463,6 +472,16 @@ class FlipMEGClustersTS(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         flip_meg_clusters_ts()
+        return {'PASS_THROUGH'}
+
+
+class DipoleFit(bpy.types.Operator):
+    bl_idname = "mmvt.dipole_fit"
+    bl_label = "Dipole fit"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        dipole_fit()
         return {'PASS_THROUGH'}
 
 
@@ -578,6 +597,7 @@ def register():
         bpy.utils.register_class(FilterMEGClusters)
         bpy.utils.register_class(SelectAllClusters)
         bpy.utils.register_class(FlipMEGClustersTS)
+        bpy.utils.register_class(DipoleFit)
         bpy.utils.register_class(DeselecAllClusters)
         bpy.utils.register_class(ClearClusters)
     except:
@@ -593,6 +613,7 @@ def unregister():
         bpy.utils.unregister_class(FilterMEGClusters)
         bpy.utils.unregister_class(SelectAllClusters)
         bpy.utils.unregister_class(FlipMEGClustersTS)
+        bpy.utils.unregister_class(DipoleFit)
         bpy.utils.unregister_class(DeselecAllClusters)
         bpy.utils.unregister_class(ClearClusters)
     except:

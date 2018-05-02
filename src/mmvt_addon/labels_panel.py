@@ -101,6 +101,8 @@ def grow_a_label():
 
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
                    specific_colors=None, atlas='', move_cursor=True):
+    if _addon() is None:
+        return
     if isinstance(specific_labels, str):
         specific_labels = [specific_labels]
     if atlas != '' and atlas != bpy.context.scene.contours_coloring and atlas in LabelsPanel.existing_contoures:

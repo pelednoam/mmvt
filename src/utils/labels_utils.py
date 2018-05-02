@@ -738,7 +738,7 @@ def create_atlas_coloring(subject, atlas, n_jobs=-1):
     try:
         labels = read_labels(subject, SUBJECTS_DIR, atlas, n_jobs=n_jobs)
         if len(labels) == 0:
-            print(f'create_atlas_coloring: No labels for {atlas}!')
+            print('create_atlas_coloring: No labels for {}!'.format(atlas))
         colors_rgb_and_names = cu.get_distinct_colors_and_names()
         labels_colors_rgb, labels_colors_names = {}, {}
         for label in labels:

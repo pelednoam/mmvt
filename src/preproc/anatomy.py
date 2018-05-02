@@ -638,7 +638,7 @@ def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', at
         if debug:
             prefix = '_'.join(rois)
             for vert in vertices_in_between:
-                new_label_name = f'{prefix}_{vert}_{hemi}'
+                new_label_name = '{}_{}_{}'.format(prefix, vert, hemi)
                 new_label = lu.grow_label(subject, vert, hemi, new_label_name, 3, 4)
                 utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
                 new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
