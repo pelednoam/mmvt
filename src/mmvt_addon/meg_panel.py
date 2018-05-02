@@ -110,17 +110,16 @@ def get_selected_clusters_data():
 
 
 def dipole_fit():
-    mu.add_mmvt_code_root_to_sys()
+    mu.add_mmvt_code_root_to_path()
     from src.preproc import meg
     t = _addon().get_current_time()
     dt = 500 # should be taken from the GUI
     t_min, t_max = max(0, t-dt), min(_addon().get_max_t(), t+dt)
     # todo: We should save somewhere when is time zero in the epochs/evokes
     dipoles_times = [(-0.3, 0.5)]
-    dipole_title = MEGPanel.current_cluster['intersects'][0]
-    meg.dipoles_fit(dipoles_times, dipoloes_title, min_dist=5.,
-                use_meg=True, use_eeg=True, vol_atlas_fname='', vol_atlas_lut_fname='', mask_roi='', do_plot=False,
-                n_jobs=6)
+    dipoloes_title = mask_roi = MEGPanel.current_cluster['intersects'][0]
+    meg.dipoles_fit(dipoles_times, dipoloes_title, min_dist=5., use_meg=True, use_eeg=True, mask_roi=mask_roi,
+                    do_plot=False, n_jobs=6)
 
 
 def set_cluster_time_series(cluster):

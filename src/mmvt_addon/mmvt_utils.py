@@ -987,7 +987,7 @@ def get_mmvt_code_root():
     return os.path.dirname(os.path.split(curr_dir)[0])
 
 
-def add_mmvt_code_root_to_sys():
+def add_mmvt_code_root_to_path():
     code_root_fol = op.join(get_mmvt_code_root())
     if code_root_fol not in sys.path:
         sys.path.append(code_root_fol)
