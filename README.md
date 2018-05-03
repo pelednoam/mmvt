@@ -13,7 +13,6 @@ The visualization and exploration of neuroimaging data are important for the ana
 
 <!--- * Spatial and temporal ttest result of MEG activation
  ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif "spatial and temporal ttest result of MEG activation") -->
-![Example](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=1)
 * Resting State fMRI & Cortical labels correlation:
 ![Example](https://cloud.githubusercontent.com/assets/1643819/24374566/5ce2dce4-1303-11e7-9b3a-c23448e5114e.gif)
 * Spatial and temporal ttest result of MEG activation:
@@ -27,6 +26,8 @@ The visualization and exploration of neuroimaging data are important for the ana
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
 
 
+![Example](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
+
 ## Installation
 Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Installation).
 
@@ -39,6 +40,8 @@ Few Blender shortcuts you should know:
 * Rotate the brain using the middle mouse button.
 * Select objects (electrodes / sensors / cortical lables) using the right mouse button. To select cortical labels you need to change first the view to "ROIs" in the Appearence panel.
 * Zoom in/out using the mouse scrolling.
+
+Few of the features can be seen [here](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
 
 ## Preprocessing
 The preprocessing tutorial can be found in the [wiki](https://github.com/pelednoam/mmvt/wiki/Preprocessing).
