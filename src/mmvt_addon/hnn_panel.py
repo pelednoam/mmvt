@@ -18,7 +18,9 @@ def update_something():
 def run_hnn():
     hnn_folder = op.abspath(bpy.path.abspath(bpy.context.scene.hnn_folder))
     hnn_cmd = '{} -dataf {} -paramf {}'.format(
-        op.join(hnn_folder, 'hnn.sh'), bpy.context.scene.hnn_data_files, bpy.context.scene.hnn_param_files)
+        op.join(hnn_folder, 'hnn.sh'),
+        op.join(hnn_folder, 'data',  '{}.txt'.format(bpy.context.scene.hnn_data_files)),
+        op.join(hnn_folder, 'param', '{}.param'.format(bpy.context.scene.hnn_param_files)))
     mu.run_command_in_new_thread(hnn_cmd, False, cwd=hnn_folder)
 
 

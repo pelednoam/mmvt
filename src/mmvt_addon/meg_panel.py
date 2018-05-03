@@ -112,6 +112,9 @@ def get_selected_clusters_data():
 def dipole_fit():
     mu.add_mmvt_code_root_to_path()
     from src.preproc import meg
+    subject = mu.get_user()
+    args = meg.read_cmd_args(dict(subject=subject, mri_subject=subject, atlas=mu.get_atlas()))
+    meg.init(subject, args)
     t = _addon().get_current_time()
     dt = 500 # should be taken from the GUI
     t_min, t_max = max(0, t-dt), min(_addon().get_max_t(), t+dt)
