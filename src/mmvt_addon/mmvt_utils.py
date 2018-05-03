@@ -359,7 +359,7 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
 
 
 @functools.lru_cache(maxsize=None)
-def get_atlas(default='laus250'):
+def get_atlas():
     # name_split = namebase(bpy.data.filepath).split('_')
     # if len(name_split) > 1:
     #     return name_split[1]
