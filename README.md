@@ -27,9 +27,6 @@ The visualization and exploration of neuroimaging data are important for the ana
 <!--## Tutorials
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
 
-
-![Example](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
-
 ## Installation
 Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Installation).
 
