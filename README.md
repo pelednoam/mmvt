@@ -13,6 +13,7 @@ The visualization and exploration of neuroimaging data are important for the ana
 
 <!--- * Spatial and temporal ttest result of MEG activation
  ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif "spatial and temporal ttest result of MEG activation") -->
+![Example](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
 * Resting State fMRI & Cortical labels correlation:
 ![Example](https://cloud.githubusercontent.com/assets/1643819/24374566/5ce2dce4-1303-11e7-9b3a-c23448e5114e.gif)
 * Spatial and temporal ttest result of MEG activation:
