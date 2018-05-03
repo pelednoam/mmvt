@@ -301,10 +301,8 @@ class GrabFromFiltering(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        # print(bpy.context.scene.frame_current)
         context.scene.filter_from = bpy.context.scene.frame_current
-        # print(bpy.context.scene.filter_from)
-        bpy.data.scenes['Scene'].frame_preview_start = context.scene.frame_current
+        mu.select_time_range(t_start=context.scene.frame_current)
         return {"FINISHED"}
 
 
@@ -314,10 +312,8 @@ class GrabToFiltering(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        # print(bpy.context.scene.frame_current)
         context.scene.filter_to = bpy.context.scene.frame_current
-        # print(bpy.context.scene.filter_to)
-        bpy.data.scenes['Scene'].frame_preview_end = context.scene.frame_current
+        mu.select_time_range(t_end=context.scene.frame_current)
         return {"FINISHED"}
 
 

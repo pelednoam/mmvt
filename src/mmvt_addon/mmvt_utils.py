@@ -2512,6 +2512,13 @@ def write_ply_file(verts, faces, ply_file_name):
         np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
         np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
 
+
+def select_time_range(t_start=None, t_end=None):
+    if t_start is not None:
+        bpy.data.scenes['Scene'].frame_preview_start = t_start
+    if t_end is not None:
+        bpy.data.scenes['Scene'].frame_preview_end = t_end
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:

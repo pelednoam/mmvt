@@ -638,7 +638,7 @@ def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', at
         if debug:
             prefix = '_'.join(rois)
             for vert in vertices_in_between:
-                new_label_name = '{}_{}_{}'.format(prefix, vert, hemi)
+                new_label_name = '{}_{}_{}'.format(prefix, vert, )
                 new_label = lu.grow_label(subject, vert, hemi, new_label_name, 3, 4)
                 utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
                 new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
@@ -1107,7 +1107,7 @@ def check_bem(subject, remote_subject_dir, args):
     meg_args.update(args)
     meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
     args.remote_subject_dir = remote_subject_dir
-    return meg.check_bem(subject, meg_args)
+    return meg.check_bem(subject, remote_subject_dir, meg_args)
 
 
 def full_extent(ax, pad=0.0):

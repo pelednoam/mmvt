@@ -25,9 +25,11 @@ except:
 HEMIS = ['rh', 'lh']
 
 
-def find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir):
+def find_template_brain_with_annot_file(aparc_name, fsaverage, subjects_dir, find_in_all=True):
     fs_found = False
-    if isinstance(fsaverage, str):
+    if find_in_all:
+        fsaverage = [utils.namebase(d) for d in glob.glob(op.join(subjects_dir, 'fs*'))]
+    elif isinstance(fsaverage, str):
         fsaverage = [fsaverage]
     for fsav in fsaverage:
         fsaverage_annot_files_exist = utils.both_hemi_files_exist(op.join(

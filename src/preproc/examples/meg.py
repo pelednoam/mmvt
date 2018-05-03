@@ -77,7 +77,7 @@ def calc_msit(args):
         mri_subject=args.mri_subject,
         task='MSIT',
         # function=args.real_function,
-        function='calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+        function='calc_epochs,calc_evokes,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
         data_per_task=True,
         atlas=args.atlas,
         contrast='interference',
@@ -260,24 +260,27 @@ def calc_functional_rois(args):
 def calc_msit_functional_rois(args):
     clusters_root_fol = utils.make_dir(op.join(MMVT_DIR, args.subject[0], 'meg', 'clusters'))
     utils.delete_folder_files(clusters_root_fol)
-    conditions = ['neutral', 'interference']
-    for cond in conditions:
-        _args = meg.read_cmd_args(dict(
-            subject=args.subject,
-            mri_subject=args.mri_subject,
-            atlas='laus125',
-            function='find_functional_rois_in_stc',
-            inverse_method='dSPM',
-            stc_name='MSIT-{}-dSPM'.format(cond),
-            label_name_template='*',
-            inv_fname='{}-inv'.format(cond),
-            threshold=99.5,
-            min_cluster_max=5,
-            min_cluster_size=100,
-            recreate_src_spacing='ico5'
-            # clusters_label='precentral'
-        ))
-        meg.call_main(_args)
+    # conditions = ['neutral', 'interference']
+    # for cond in conditions:
+    _args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        data_per_task=True,
+        # atlas='laus125',
+        function='find_functional_rois_in_stc',
+        inverse_method='dSPM',
+        stc_name='{subject}_msit_nTSSS_interference_interference-neutral_1-15-dSPM',
+        inv_fname='{subject}_msit_nTSSS_interference_1-15-inv',
+        label_name_template='*',
+        peak_mode='pos',
+        threshold=99.5,
+        min_cluster_max=5,
+        min_cluster_size=100,
+        # recreate_src_spacing='ico5'
+        # clusters_label='precentral'
+    ))
+    meg.call_main(_args)
 
 
 if __name__ == '__main__':

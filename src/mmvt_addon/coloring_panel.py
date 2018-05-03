@@ -79,6 +79,7 @@ def plot_meg(t=-1, save_image=False, view_selected=False):
 
 
 # @mu.dump_args
+@mu.timeit
 def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
              view_selected=False, subject='', save_prev_colors=False, cm=None,
              n_jobs=-1):
@@ -100,45 +101,52 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
         stc_t = mne.SourceEstimate(data, vertices, stc.tmin + t * stc.tstep, stc.tstep, subject=subject)
         return stc_t
 
-    # subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
-    subjects_dir = mu.get_parent_fol(mu.get_user_fol())
-    if subjects_dir:
-        print('subjects_dir: {}'.format(subjects_dir))
-    if t == -1:
-        t = get_current_time()
-    if isinstance(stc, str):
-        stc_name = stc
-        if not op.isfile(stc):
-            stc = op.join(mu.get_user_fol(), 'meg', stc)
-        if not op.isfile(stc):
-            stc = '{}-rh.stc'.format(stc)
-        if not op.isfile(stc):
-            print("Can't find the stc file! ({})".format(stc_name))
-            return '', None
-        ColoringMakerPanel.stc = stc = mne.read_source_estimate(stc)
-        stc.name = stc_name
-        # data_min, data_max, _ = calc_stc_minmax(cb_percentiles, stc_name)
-        # if not _addon().colorbar_values_are_locked():
-        #     _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
+    fol = mu.make_dir(op.join(mu.get_user_fol(), 'meg', 'cache'))
+    stc_t_fname = op.join(fol, '{}_t{}'.format(bpy.context.scene.meg_files, t))
+    if op.isfile('{}-rh.stc'.format(stc_t_fname)) and op.isfile('{}-lh.stc'.format(stc_t_fname)):
+        stc_t_smooth = mne.read_source_estimate(stc_t_fname)
     else:
-        if stc is None:
-            stc = mne.read_source_estimate(get_stc_full_fname())
-        stc.name = bpy.context.scene.meg_files
-    if cb_percentiles is not None:
-        set_meg_minmax_prec(*cb_percentiles, stc.name)
-    if threshold is not None:
-        set_lower_threshold(threshold)
-    else:
-        threshold = get_lower_threshold()
-    stc_t = create_stc_t(stc, t)
-    if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
-            len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):
-        stc_t_smooth = stc_t
-    else:
-        vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
-        n_jobs = 1 if mu.IS_WINDOWS else n_jobs
-        stc_t_smooth = mne.morph_data(
-            subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
+        # subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
+        subjects_dir = mu.get_parent_fol(mu.get_user_fol())
+        if subjects_dir:
+            print('subjects_dir: {}'.format(subjects_dir))
+        if t == -1:
+            t = get_current_time()
+        if isinstance(stc, str):
+            stc_name = stc
+            if not op.isfile(stc):
+                stc = op.join(mu.get_user_fol(), 'meg', stc)
+            if not op.isfile(stc):
+                stc = '{}-rh.stc'.format(stc)
+            if not op.isfile(stc):
+                print("Can't find the stc file! ({})".format(stc_name))
+                return '', None
+            ColoringMakerPanel.stc = stc = mne.read_source_estimate(stc)
+            stc.name = stc_name
+            # data_min, data_max, _ = calc_stc_minmax(cb_percentiles, stc_name)
+            # if not _addon().colorbar_values_are_locked():
+            #     _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
+        else:
+            if stc is None:
+                stc = mne.read_source_estimate(get_stc_full_fname())
+            stc.name = bpy.context.scene.meg_files
+        if cb_percentiles is not None:
+            set_meg_minmax_prec(*cb_percentiles, stc.name)
+        if threshold is not None:
+            set_lower_threshold(threshold)
+        else:
+            threshold = get_lower_threshold()
+        stc_t = create_stc_t(stc, t)
+        if len(bpy.data.objects.get('inflated_rh').data.vertices) == len(stc_t.rh_vertno) and \
+                len(bpy.data.objects.get('inflated_lh').data.vertices) == len(stc_t.lh_vertno):
+            stc_t_smooth = stc_t
+        else:
+            vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
+            n_jobs = 1 if mu.IS_WINDOWS else n_jobs
+            stc_t_smooth = mne.morph_data(
+                subject, subject, stc_t, n_jobs=n_jobs, grade=vertices_to, subjects_dir=subjects_dir)
+
+        stc_t_smooth.save(stc_t_fname)
 
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
@@ -1053,33 +1061,16 @@ def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur
 
 
 def recreate_coloring_layers(mesh, coloring_layer='Col'):
-    # if len(mesh.vertex_colors) > 1 and 'inflated' in cur_obj.name:
-    #     # mesh.vertex_colors.active_index = 1
-    #     mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
-    # if not (len(mesh.vertex_colors) == 1 and 'inflated' in cur_obj.name):
-    #     c = mu.get_graph_context()
-    #     bpy.ops.mesh.vertex_color_remove(c)
-    #     # except:
-    #     #     print("Can't remove vertex color!")
-    # if mesh.vertex_colors.get('Col') is None:
-    #     vcol_layer = mesh.vertex_colors.new('Col')
-
     coloring_layers = ['Col', 'contours'] if coloring_layer == 'Col' else ['contours']
     for cl in coloring_layers:
         if mesh.vertex_colors.get(cl) is not None:
             mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index(cl)
             mesh.vertex_colors.remove(mesh.vertex_colors.get(cl))
-            # bpy.ops.mesh.vertex_color_remove()
     for cl in coloring_layers:
         if mesh.vertex_colors.get(cl) is None:
             mesh.vertex_colors.new(cl)
-    # if mesh.vertex_colors.get('Col') is None:
-    #     vcol_layer = mesh.vertex_colors.new('Col')
-    # if mesh.vertex_colors.get('Col') is None:
-    #     mesh.vertex_colors.new('contours')
     mesh.vertex_colors.active_index = mesh.vertex_colors.keys().index('Col')
     mesh.vertex_colors['Col'].active_render = True
-    # return vcol_layer
 
 
 def get_activity_colors(vert_values, threshold, data_min, colors_ratio, bigger_or_equall=False):

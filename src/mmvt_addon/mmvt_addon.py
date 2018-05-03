@@ -754,6 +754,7 @@ def load_all_panels(addon_prefs=None, first_time=False):
             bpy.data.objects[hemi].hide_render = True
     set_colorbar_defaults()
     mmvt_utils.center_view()
+    mmvt_utils.select_time_range(0, bpy.context.scene.maximal_time_steps)
 
 
 # @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))
@@ -791,7 +792,6 @@ def main(addon_prefs=None):
                 #     inflated_obj.data.vertex_colors.new('blank')
                 #     for vert in inflated_obj.data.vertex_colors['blank'].data:
                 #         vert.color = (1.0, 1.0, 1)
-        pass
     except:
         print('The classes are already registered!')
         print(traceback.format_exc())

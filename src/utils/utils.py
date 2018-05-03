@@ -77,6 +77,7 @@ get_fname_folder = mu.get_fname_folder
 change_fname_extension = mu.change_fname_extension
 copy_file = mu.copy_file
 namebase = mu.namebase
+check_if_atlas_exist = mu.check_if_atlas_exist
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
