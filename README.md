@@ -43,7 +43,7 @@ Few Blender shortcuts you should know:
 * Select objects (electrodes / sensors / cortical lables) using the right mouse button. To select cortical labels you need to change first the view to "ROIs" in the Appearence panel.
 * Zoom in/out using the mouse scrolling.
 
-Few of the features can be seen [here](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
+The features can be seen [here](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
 
 ## Preprocessing
 The preprocessing tutorial can be found in the [wiki](https://github.com/pelednoam/mmvt/wiki/Preprocessing).
