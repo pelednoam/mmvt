@@ -1284,14 +1284,17 @@ def calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrit
     return utils.both_hemi_files_exist(stc_hemi_template.format(cond='{}-{}'.format(conds[0], conds[1]), hemi='{hemi}'))
 
 
-def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='', min_dist=5.,
-                use_meg=True, use_eeg=False, vol_atlas_fname='', vol_atlas_lut_fname='', mask_roi='', do_plot=False,
+def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', evo_fname='',
+                head_to_mri_trans_mat_fname='', min_dist=5., use_meg=True, use_eeg=False, vol_atlas_fname='',
+                vol_atlas_lut_fname='', mask_roi='', do_plot=False,
                 n_jobs=6):
     from mne.forward import make_forward_dipole
     import nibabel as nib
 
     if noise_cov_fname == '':
         noise_cov_fname = NOISE_COV
+    if head_to_mri_trans_mat_fname == '':
+        head_to_mri_trans_mat_fname = COR
     evo_fname = get_evo_fname(evo_fname)
     if vol_atlas_fname == '':
         vol_atlas_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlas40+aseg.mgz'))
@@ -1304,7 +1307,7 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', 
     if not op.isfile(BEM):
         print("The BEM solution cannot be found in {}!".format(BEM))
         return False
-    if not op.isfile(COR):
+    if not op.isfile(head_to_mri_trans_mat_fname):
         print("The MEG-to-head-trans matrix cannot be found in {}!".format(COR))
         return False
     if evokes is None:
@@ -1322,13 +1325,14 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', 
             if not op.isfile(dipole_fname):
                 evoked_t = evoked.copy()
                 evoked_t.crop(t_min, t_max)
-                dipole, residual = mne.fit_dipole(evoked_t, noise_cov_fname, BEM, COR, min_dist, n_jobs)
+                dipole, residual = mne.fit_dipole(
+                    evoked_t, noise_cov_fname, BEM, head_to_mri_trans_mat_fname, min_dist, n_jobs)
                 utils.save((dipole, residual), dipole_fname)
             else:
                 dipole, residual = utils.load(dipole_fname)
             if do_plot:
-                dipole.plot_locations(COR, 'DC', SUBJECTS_MRI_DIR, mode='orthoview')
-            dipole_pos_vox = dipole_pos_to_vox(dipole, COR)
+                dipole.plot_locations(head_to_mri_trans_mat_fname, 'DC', SUBJECTS_MRI_DIR, mode='orthoview')
+            dipole_pos_vox = dipole_pos_to_vox(dipole, head_to_mri_trans_mat_fname)
             if op.isfile(vol_atlas_fname) and op.isfile(vol_atlas_lut_fname) and mask_roi != '':
                 mask = nib.load(vol_atlas_fname).get_data()
                 lut = utils.read_freesurfer_lookup_table(lut_fname=vol_atlas_lut_fname, return_dict=True, reverse_dict=True)
@@ -1341,18 +1345,18 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', 
                 # (the one that maximized GOF)over the entire interval
                 best_idx = np.argmax(dipole.gof)
                 dipole_fixed, residual_fixed = mne.fit_dipole(
-                    evoked, noise_cov_fname, BEM, COR, min_dist, pos=dipole.pos[best_idx], ori=dipole.ori[best_idx],
+                    evoked, noise_cov_fname, BEM, head_to_mri_trans_mat_fname, min_dist, pos=dipole.pos[best_idx], ori=dipole.ori[best_idx],
                     n_jobs=n_jobs)
                 utils.save((dipole_fixed, residual_fixed), dipole_fix_output_fname)
             else:
                 dipole_fixed, residual_fixed = utils.load(dipole_fix_output_fname)
             if not op.isfile(dipole_stc_fwd_fname):
-                dipole_fwd, dipole_stc = make_forward_dipole(dipole, BEM, evoked.info, COR, n_jobs=n_jobs)
+                dipole_fwd, dipole_stc = make_forward_dipole(dipole, BEM, evoked.info, head_to_mri_trans_mat_fname, n_jobs=n_jobs)
                 utils.save((dipole_fwd, dipole_stc), dipole_stc_fwd_fname)
             else:
                 dipole_fwd, dipole_stc = utils.load(dipole_stc_fwd_fname)
             if not op.isfile(dipole_location_figure_fname) and do_plot:
-                dipole.plot_locations(COR, MRI_SUBJECT, SUBJECTS_MRI_DIR, mode='orthoview')
+                dipole.plot_locations(head_to_mri_trans_mat_fname, MRI_SUBJECT, SUBJECTS_MRI_DIR, mode='orthoview')
                 plt.savefig(dipole_location_figure_fname)
 
             if do_plot:

@@ -6,6 +6,7 @@ import traceback
 import mmvt_utils as mu
 import os
 
+preview_collections = {}
 
 def _addon():
     return HNNPanel.addon
@@ -53,17 +54,18 @@ def init_hnn_files():
 
 
 def hnn_draw(self, context):
+    hnn_icon = preview_collections['main']['hnn_icon']
     layout = self.layout
     layout.prop(context.scene, 'hnn_folder')
     if op.isdir(bpy.path.abspath(bpy.context.scene.hnn_folder)):
         layout.prop(context.scene, 'hnn_data_files', text='Data file')
         layout.prop(context.scene, 'hnn_param_files', text='Param file')
-        if len(HNNPanel.params_files_names) == 0:
-            layout.operator(LoadParamFile.bl_idname, text="Load param file", icon='ROTATE')
-        if len(HNNPanel.data_files_names) == 0:
-            layout.operator(LoadDataFile.bl_idname, text="Load data file", icon='ROTATE')
-        elif len(HNNPanel.params_files_names) > 0 and len(HNNPanel.data_files_names) > 0:
-            layout.operator(RunHNN.bl_idname, text="Run HNN", icon='ROTATE')
+        # if len(HNNPanel.params_files_names) == 0:
+        #     layout.operator(LoadParamFile.bl_idname, text="Load param file", icon='ROTATE')
+        # if len(HNNPanel.data_files_names) == 0:
+        #     layout.operator(LoadDataFile.bl_idname, text="Load data file", icon='ROTATE')
+        if len(HNNPanel.params_files_names) > 0 and len(HNNPanel.data_files_names) > 0:
+            layout.operator(RunHNN.bl_idname, text="Run HNN", icon='POSE_HLT')
 
 
 class LoadParamFile(bpy.types.Operator):
@@ -127,9 +129,19 @@ def init(addon):
     HNNPanel.init = True
 
 
+def init_logo():
+    import bpy.utils.previews
+    pcoll = bpy.utils.previews.new()
+    hnn_icons_dir = op.join(mu.get_parent_fol(mu.get_user_fol()), 'icons')
+    # load a preview thumbnail of a file and store in the previews collection
+    pcoll.load("hnn_icon", os.path.join(hnn_icons_dir, "hnn.png"), 'IMAGE')
+    preview_collections["main"] = pcoll
+
+
 def register():
     try:
         unregister()
+        init_logo()
         bpy.utils.register_class(HNNPanel)
         bpy.utils.register_class(RunHNN)
         bpy.utils.register_class(LoadParamFile)

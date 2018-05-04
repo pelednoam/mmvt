@@ -1,4 +1,5 @@
 import bpy
+import bpy_extras
 import os.path as op
 import glob
 import numpy as np
@@ -120,6 +121,9 @@ def dipole_fit():
     # t_min, t_max = max(0, t-dt), min(_addon().get_max_t(), t+dt)
     # todo: We should save somewhere when is time zero in the epochs/evokes
     dipoles_times = [(-0.3, 0.5)]
+    noise_cov_fname = ''
+    evo_fname = ''
+    head_to_mri_trans_mat_fname = ''
     dipoloes_title = mask_roi = MEGPanel.current_cluster['intersects'][0]
     meg.dipoles_fit(dipoles_times, dipoloes_title, min_dist=5., use_meg=True, use_eeg=True, mask_roi=mask_roi,
                     do_plot=False, n_jobs=6)
@@ -431,10 +435,22 @@ def meg_draw(self, context):
     layout.operator(SelectAllClusters.bl_idname, text="Select all", icon='BORDER_RECT')
     text = 'Flip time series' if not MEGPanel.data_is_flipped else 'Unflip time series'
     layout.operator(FlipMEGClustersTS.bl_idname, text=text, icon='FORCE_MAGNETIC')
-    layout.operator(DipoleFit.bl_idname, text='Dipole fit', icon='OOPS')
     layout.operator(DeselecAllClusters.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
     layout.operator(ClearClusters.bl_idname, text="Clear all clusters", icon='PANEL_CLOSE')
     layout.operator(_addon().ClearColors.bl_idname, text="Clear activity", icon='PANEL_CLOSE')
+    layout.prop(context.scene, 'calc_meg_dipole_fit', text='Show dipole fit info')
+    if bpy.context.scene.calc_meg_dipole_fit:
+        col = layout.box().column()
+        col.prop(context.scene, 'meg_evoked_fname', text='evoked')
+        col.prop(context.scene, 'meg_noise_cov_fname', text='noise cov')
+        col.prop(context.scene, 'head_to_mri_trans_mat_fname', text='trans mat')
+        row = col.row(align=True)
+        row.prop(context.scene, 'meg_dipole_fit_tmin', text='from t(s)')
+        row.prop(context.scene, 'meg_dipole_fit_tmax', text='to t(s)')
+        row = col.row(align=True)
+        row.prop(context.scene, 'meg_dipole_fit_use_meg', text='use MEG')
+        row.prop(context.scene, 'meg_dipole_fit_use_eeg', text='use EEG')
+        col.operator(DipoleFit.bl_idname, text='Dipole fit', icon='OOPS')
 
 
 bpy.types.Scene.meg_clusters_labels_files = bpy.props.EnumProperty(
@@ -451,6 +467,14 @@ bpy.types.Scene.meg_show_filtering = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.plot_current_meg_cluster = bpy.props.BoolProperty(
     default=True, description="Plot current cluster's contour")
 bpy.types.Scene.cumulate_meg_cluster = bpy.props.BoolProperty(default=False, description="Cumulate contours")
+bpy.types.Scene.calc_meg_dipole_fit = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.meg_evoked_fname = bpy.props.StringProperty(subtype='FILE_PATH')
+bpy.types.Scene.meg_noise_cov_fname = bpy.props.StringProperty(subtype='FILE_PATH')
+bpy.types.Scene.head_to_mri_trans_mat_fname = bpy.props.StringProperty(subtype='FILE_PATH')
+bpy.types.Scene.meg_dipole_fit_tmin = bpy.props.FloatProperty()
+bpy.types.Scene.meg_dipole_fit_tmax = bpy.props.FloatProperty()
+bpy.types.Scene.meg_dipole_fit_use_meg = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.meg_dipole_fit_use_eeg = bpy.props.BoolProperty(default=False)
 
 
 class NextMEGCluster(bpy.types.Operator):

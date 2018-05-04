@@ -974,7 +974,6 @@ class RenderingMakerPanel(bpy.types.Panel):
         render_draw(self, context)
 
 
-
 def init(addon):
     RenderingMakerPanel.addon = addon
     bpy.data.objects['Target'].rotation_euler.x = 0
