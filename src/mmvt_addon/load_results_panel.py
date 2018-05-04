@@ -73,6 +73,7 @@ if IN_BLENDER:
         _timer = None
 
         def execute(self, context):
+            _addon().colors_clear()
             self.fmri_file_template, hemi, other_hemi = load_surf_files(self.filepath[:-2])
             if hemi == '':
                 bpy.context.scene.nii_label_prompt = "Can't determine the hemi!"
@@ -190,6 +191,8 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol=''):
             # cmd = '{} -m  -s {} -f  --fmri_file_template "{}" --ignore_missing 1'.format(
             #     bpy.context.scene.python_cmd, mu.get_user(), fmri_file_template)
             # mu.run_command_in_new_thread(cmd, False, cwd=mu.get_mmvt_code_root())
+    else:
+        print("Couldn't find the other hemi file! ({})".format(other_hemi_fname))
     return fmri_file_template, hemi, other_hemi
 
 
