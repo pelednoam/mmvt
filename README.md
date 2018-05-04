@@ -27,9 +27,6 @@ The visualization and exploration of neuroimaging data are important for the ana
 <!--## Tutorials
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
 
-
-![Example](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
-
 ## Installation
 Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Installation).
 
@@ -43,7 +40,7 @@ Few Blender shortcuts you should know:
 * Select objects (electrodes / sensors / cortical lables) using the right mouse button. To select cortical labels you need to change first the view to "ROIs" in the Appearence panel.
 * Zoom in/out using the mouse scrolling.
 
-Few of the features can be seen [here](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
+The features can be seen [here](https://dl.dropboxusercontent.com/s/rvoc94xrrdg7858/MMVT_demo.gif?dl=0)
 
 ## Preprocessing
 The preprocessing tutorial can be found in the [wiki](https://github.com/pelednoam/mmvt/wiki/Preprocessing).
