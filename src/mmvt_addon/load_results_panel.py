@@ -73,7 +73,7 @@ if IN_BLENDER:
         _timer = None
 
         def execute(self, context):
-            _addon().colors_clear()
+            _addon().clear_colors()
             self.fmri_file_template, hemi, other_hemi = load_surf_files(self.filepath[:-2])
             if hemi == '':
                 bpy.context.scene.nii_label_prompt = "Can't determine the hemi!"
