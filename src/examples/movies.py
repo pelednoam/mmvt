@@ -132,8 +132,14 @@ def image_in_image():
             meg_ind += 1
 
 
+
+def edit_mmvt_demo():
+    movie_fol = op.join(MMVT_DIR, 'colin27', 'movies')
+    mu.add_text_to_movie(movie_fol, 'MMVT_demo.mp4', 'MMVT_demo_subs.mp4', 'subs', fontsize=60)
+
+
 if __name__ == '__main__':
     # image_in_image()
     # ski_movie()
     # edit_movie_example3()
-    edit_skull_movie()
+    edit_mmvt_demo()

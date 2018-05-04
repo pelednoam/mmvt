@@ -2004,5 +2004,13 @@ def unique_rows(x):
     return np.unique(x, axis=0)
 
 
+def time_to_seconds(time_str, time_format='%H:%M:%S'):
+    import datetime
+    # time_str: '00:01:00,000'
+    x = time.strptime(time_str.split(',')[0], time_format)
+    seconds = datetime.timedelta(hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec).total_seconds()
+    return seconds
+
+
 if __name__ == '__main__':
     print(file_modification_time('/home/npeled/code/procfast_indi'))

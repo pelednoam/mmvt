@@ -105,7 +105,23 @@ def add_text_example(movie):
 # os.write(temptxt_fd, bytes(txt, 'UTF8'))
 # os.close(temptxt_fd)
 
-def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold'):
+def import_subs(movie_fol, subs_name='subs', delim=' '):
+    if op.isfile(op.join(movie_fol, subs_name)):
+        subs_fname = op.join(movie_fol, subs_name)
+    else:
+        subs_fnames = glob.glob(op.join(movie_fol, '{}.*'.format(subs_name)))
+        subs_fname = utils.select_one_file(subs_fnames)
+        if subs_fname is None:
+            return
+    subs = []
+    for line in utils.csv_file_reader(subs_fname, delim):
+        from_t, to_t = [utils.time_to_seconds(t, '%M:%S') for t in line[0].split('-')]
+        subs.append(((from_t, to_t), ' '.join(line[1:])))
+    return subs
+
+
+def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold',
+                      subs_delim=' '):
     # Should install ImageMagick
     # For centos6: https://www.vultr.com/docs/install-imagemagick-on-centos-6
     # For centos7: http://helostore.com/blog/install-imagemagick-on-centos-7
@@ -122,6 +138,8 @@ def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, 
         cvc = editor.CompositeVideoClip([clip, txtclip.set_pos(('center', 'bottom'))])
         return cvc.set_duration(clip.duration)
 
+    if isinstance(subs, str):
+        subs = import_subs(movie_fol, subs, subs_delim)
     video = editor.VideoFileClip(op.join(movie_fol, movie_name))
     annotated_clips = [annotate(video.subclip(from_t, to_t), txt) for (from_t, to_t), txt in subs]
     final_clip = editor.concatenate_videoclips(annotated_clips)

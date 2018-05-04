@@ -1146,7 +1146,7 @@ def color_manually():
     # labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
     coloring_name = '{}.csv'.format(bpy.context.scene.coloring_files)
     no_colors_lines_num = sum(
-        [1 for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name))if len(line) == 1])
+        [1 for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)) if len(line) == 1])
     rand_colors = itertools.cycle(mu.get_distinct_colors(no_colors_lines_num))
     subs_names = [o.name for o in bpy.data.objects['Subcortical_structures'].children]
     cortex_labels_names = [o.name for o in bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children]
