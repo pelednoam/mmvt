@@ -12,14 +12,22 @@ def _addon():
     return ScriptsPanel.addon
 
 
+def scripts_items_update(self, context):
+    script_name = bpy.context.scene.scripts_files.replace(' ', '_')
+    run_func, params = ScriptsPanel.funcs[script_name]
+    func_params = [str(p) for p in params]
+    ScriptsPanel.cb_min_max_exist = 'cb_min' in func_params and 'cb_max' in func_params
+    ScriptsPanel.threshold_exist = 'threshold' in func_params
+
+
 def check_script(script_name):
     try:
         lib = importlib.import_module(script_name)
         importlib.reload(lib)
         run_func = getattr(lib, 'run')
         func_signature = inspect.signature(run_func)
-        if 1 <= len(func_signature.parameters) <= 2:
-            ScriptsPanel.funcs[script_name] = (run_func, len(func_signature.parameters))
+        if len(func_signature.parameters) >= 1:
+            ScriptsPanel.funcs[script_name] = (run_func, func_signature.parameters)
             return True
         else:
             return False
@@ -32,10 +40,15 @@ def run_script(script_name=''):
         bpy.context.scene.scripts_files = script_name
     try:
         script_name = bpy.context.scene.scripts_files.replace(' ', '_')
-        run_func, params_num = ScriptsPanel.funcs[script_name]
-        if params_num == 2:
+        run_func, params = ScriptsPanel.funcs[script_name]
+        if ScriptsPanel.cb_min_max_exist and ScriptsPanel.threshold_exist:
+            run_func(_addon(), cb_min=bpy.context.scene.scripts_cb_min, cb_max=bpy.context.scene.scripts_cb_max,
+                     threshold=bpy.context.scene.scripts_threshold)
+        elif ScriptsPanel.threshold_exist:
+            run_func(_addon(), threshold=bpy.context.scene.scripts_threshold)
+        elif len(params) == 2:
             run_func(_addon(), bpy.context.scene.scripts_overwrite)
-        elif params_num == 1:
+        elif len(params) == 1:
             run_func(_addon())
     except:
         print("run_script: Can't run {}!".format(script_name))
@@ -52,6 +65,11 @@ def scripts_draw(self, context):
     # row = layout.row(align=0)
     layout.operator(RunScript.bl_idname, text="Run script", icon='POSE_HLT')
     layout.prop(context.scene, 'scripts_overwrite', 'Overwrite')
+    if ScriptsPanel.threshold_exist:
+        layout.prop(context.scene, 'scripts_threshold', 'threshold')
+    if ScriptsPanel.cb_min_max_exist:
+        layout.prop(context.scene, 'scripts_cb_min', 'cb min')
+        layout.prop(context.scene, 'scripts_cb_max', 'cb max')
 
 
 class RunScript(bpy.types.Operator):
@@ -66,6 +84,9 @@ class RunScript(bpy.types.Operator):
 
 bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=[], description="scripts files")
 bpy.types.Scene.scripts_overwrite = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.scripts_threshold = bpy.props.FloatProperty(default=0)
+bpy.types.Scene.scripts_cb_min = bpy.props.FloatProperty(default=0)
+bpy.types.Scene.scripts_cb_max = bpy.props.FloatProperty(default=0)
 
 
 class ScriptsPanel(bpy.types.Panel):
@@ -78,6 +99,7 @@ class ScriptsPanel(bpy.types.Panel):
     init = False
     funcs = {}
     scripts_names = []
+    cb_min_max_exist = False
 
     def draw(self, context):
         if ScriptsPanel.init:
@@ -98,13 +120,17 @@ def init(addon):
     scripts_files = [f for f in scripts_files if check_script(mu.namebase(f))]
     ScriptsPanel.scripts_names = files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
     scripts_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-    bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=scripts_items, description="scripts files")
+    bpy.types.Scene.scripts_files = bpy.props.EnumProperty(
+        items=scripts_items, description="scripts files", update=scripts_items_update)
     bpy.context.scene.scripts_files = files_names[0]
     bpy.context.scene.scripts_overwrite = True
     try:
         bpy.context.scene.report_use_script = bpy.context.scene.reports_files in ScriptsPanel.scripts_names
     except:
         pass
+    bpy.context.scene.scripts_threshold = 2
+    bpy.context.scene.scripts_cb_min = 2
+    bpy.context.scene.scripts_cb_max = 6
     register()
     ScriptsPanel.init = True
 

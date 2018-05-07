@@ -8,7 +8,17 @@ PIAL_VIEW_DISTANCE = 18 #15
 INFLATED_VIEW_DISTANCE = 25 #21
 
 
-def run(mmvt, overwrite):
+def run(mmvt, cb_min=None, cb_max=None, threshold=None, overwrite=True):
+    if cb_min is None:
+        cb_min = 2
+    if cb_max is None:
+        cb_max = 6
+    if threshold is None:
+        threshold = 2
+    inflating_ratio = mmvt.appearance.get_inflated_ratio()
+    view_distance = mmvt.render.get_view_distance()
+    subcorticals_are_hiding = mmvt.show_hide.subcorticals_are_hiding()
+
     # Set a new output folder
     report = mmvt.reports.get_report_fields()
     print('Setup fMRI report, where task="{}", patient name="{}", date="{}" and MRN="{}"'.format(
@@ -30,7 +40,7 @@ def run(mmvt, overwrite):
             mmvt.utils.move_file(f, op.join(new_output_fol, 'backup'))
 
     # Set the colorbar
-    mmvt.colorbar.set_colorbar_min_max(2, 6)
+    mmvt.colorbar.set_colorbar_min_max(cb_min, cb_max)
     mmvt.colorbar.set_colormap('RdOrYl')
     mmvt.colorbar.set_colorbar_title('')
     mmvt.colorbar.set_cb_ticks_num(3)
@@ -42,7 +52,7 @@ def run(mmvt, overwrite):
     mmvt.show_hide.show_hemis()
 
     # Set a threshold and plot the fmri activity
-    mmvt.coloring.set_lower_threshold(2)
+    mmvt.coloring.set_lower_threshold(threshold)
     mmvt.coloring.set_use_abs_threshold(False)  # No negative values
     mmvt.coloring.plot_fmri()
 
@@ -72,3 +82,12 @@ def run(mmvt, overwrite):
     mmvt.reports.create_report()
     # Remove temp colorbar figure
     os.remove(mmvt.colorbar.get_colorbar_figure_fname())
+
+    # Return to prev vis
+    mmvt.appearance.set_inflated_ratio(inflating_ratio)
+    mmvt.render.set_view_distance(view_distance)
+    if subcorticals_are_hiding:
+        mmvt.show_hide.show_subcorticals()
+    else:
+        mmvt.show_hide.show_subcorticals()
+    mmvt.utils.center_view()

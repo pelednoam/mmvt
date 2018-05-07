@@ -2,6 +2,7 @@ import mmvt_utils as mu
 import colors_utils as cu
 import numpy as np
 import os.path as op
+import os
 import time
 import itertools
 from collections import defaultdict, OrderedDict
@@ -805,7 +806,7 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 f = ColoringMakerPanel.fMRI[hemi]
 
         if threshold > data_max:
-            print('Threshold > data_max, changing it to data_min')
+            print('Threshold ({}) > data_max ({}), changing it to data_min ({})'.format(threshold, data_max, data_min))
             threshold = data_min
 
         if f.ndim == 2:
@@ -1536,9 +1537,12 @@ def _fmri_files_update(fmri_file_name):
     # if not op.isfile(fmri_data_maxmin_fname):
     fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format(fmri_file_name))
     #     bpy.context.scene.fmri_files))
-    if not op.isfile(fmri_data_maxmin_fname):
-        calc_fmri_min_max(fmri_data_maxmin_fname, fname_template)
     data_min, data_max = mu.load(fmri_data_maxmin_fname)
+    if data_max <= data_min:
+        os.remove(fmri_data_maxmin_fname)
+    if not op.isfile(fmri_data_maxmin_fname):
+        data_min, data_max = calc_fmri_min_max(fmri_data_maxmin_fname, fname_template)
+
     ColoringMakerPanel.fmri_activity_colors_ratio = 256 / (data_max - data_min)
     ColoringMakerPanel.fmri_activity_data_minmax = (data_min, data_max)
     if not _addon().colorbar_values_are_locked():
@@ -1568,6 +1572,7 @@ def calc_fmri_min_max(fmri_data_maxmin_fname, fname_template):
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_max, data_min = data_minmax, -data_minmax
     mu.save((data_min, data_max), fmri_data_maxmin_fname)
+    return data_min, data_max
 
 
 def electrodes_sources_files_update(self, context):

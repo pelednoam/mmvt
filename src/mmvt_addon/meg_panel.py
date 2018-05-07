@@ -1,9 +1,9 @@
 import bpy
-import bpy_extras
 import os.path as op
 import glob
 import numpy as np
 import mmvt_utils as mu
+import importlib
 
 try:
     import mne
@@ -113,11 +113,13 @@ def get_selected_clusters_data():
 def dipole_fit():
     mu.add_mmvt_code_root_to_path()
     from src.preproc import meg
+    importlib.reload(meg)
+
     subject = mu.get_user()
     args = meg.read_cmd_args(dict(subject=subject, mri_subject=subject, atlas=mu.get_atlas()))
     meg.init(subject, args)
     dipoles_times = [(bpy.context.scene.meg_dipole_fit_tmin, bpy.context.scene.meg_dipole_fit_tmax)]
-    dipoloes_title = mask_roi = MEGPanel.current_cluster['intersects'][0]
+    dipoloes_title = mask_roi = MEGPanel.current_cluster['intersects'][0]['name']
     meg.dipoles_fit(
         dipoles_times, dipoloes_title, None, get_fname('meg_noise_cov_fname'), get_fname('meg_evoked_fname'),
         get_fname('head_to_mri_trans_mat_fname'), 5., bpy.context.scene.meg_dipole_fit_use_meg,

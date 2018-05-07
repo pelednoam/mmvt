@@ -1342,7 +1342,7 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', 
             #     print('asdf')
             if not op.isfile(dipole_fix_output_fname):
                 # Estimate the time course of a single dipole with fixed position and orientation
-                # (the one that maximized GOF)over the entire interval
+                # (the one that maximized GOF) over the entire interval
                 best_idx = np.argmax(dipole.gof)
                 dipole_fixed, residual_fixed = mne.fit_dipole(
                     evoked, noise_cov_fname, BEM, head_to_mri_trans_mat_fname, min_dist, pos=dipole.pos[best_idx], ori=dipole.ori[best_idx],
@@ -1439,7 +1439,11 @@ def plot_predicted_dipole(evoked, dipole_fwd, dipole_stc, best_time):
 def dipole_pos_to_vox(dipole, trans):
     from mne.transforms import _get_trans, apply_trans
 
-    orig_trans = utils.Bag(np.load(op.join(MMVT_DIR, MRI_SUBJECT, 't1_trans.npz')))
+    trans_fname = op.join(MMVT_DIR, MRI_SUBJECT, 't1_trans.npz')
+    if not op.isfile(trans_fname):
+        from src.preproc import anatomy as anat
+        anat.save_subject_orig_trans(MRI_SUBJECT)
+    orig_trans = utils.Bag(np.load(trans_fname))
     trans = _get_trans(trans, fro='head', to='mri')[0]
     scatter_points = apply_trans(trans['trans'], dipole.pos) * 1e3
     dipole_locs_vox = apply_trans(orig_trans.ras_tkr2vox, scatter_points)
