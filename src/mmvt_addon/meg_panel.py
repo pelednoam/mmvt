@@ -116,17 +116,17 @@ def dipole_fit():
     subject = mu.get_user()
     args = meg.read_cmd_args(dict(subject=subject, mri_subject=subject, atlas=mu.get_atlas()))
     meg.init(subject, args)
-    # t = _addon().get_current_time()
-    # dt = 500 # should be taken from the GUI
-    # t_min, t_max = max(0, t-dt), min(_addon().get_max_t(), t+dt)
-    # todo: We should save somewhere when is time zero in the epochs/evokes
-    dipoles_times = [(-0.3, 0.5)]
-    noise_cov_fname = ''
-    evo_fname = ''
-    head_to_mri_trans_mat_fname = ''
+    dipoles_times = [(bpy.context.scene.meg_dipole_fit_tmin, bpy.context.scene.meg_dipole_fit_tmax)]
     dipoloes_title = mask_roi = MEGPanel.current_cluster['intersects'][0]
-    meg.dipoles_fit(dipoles_times, dipoloes_title, min_dist=5., use_meg=True, use_eeg=True, mask_roi=mask_roi,
-                    do_plot=False, n_jobs=6)
+    meg.dipoles_fit(
+        dipoles_times, dipoloes_title, None, get_fname('meg_noise_cov_fname'), get_fname('meg_evoked_fname'),
+        get_fname('head_to_mri_trans_mat_fname'), 5., bpy.context.scene.meg_dipole_fit_use_meg,
+        bpy.context.scene.meg_dipole_fit_use_eeg, mask_roi=mask_roi, do_plot=False, n_jobs=4)
+
+
+def get_fname(field):
+    fname = op.abspath(bpy.path.abspath(bpy.context.scene[field]))
+    return fname
 
 
 def set_cluster_time_series(cluster):

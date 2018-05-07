@@ -280,7 +280,7 @@ def install_blender_reqs(gui=True):
         # if utils.is_osx():
         # install blender reqs:
         pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
-        reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator'
+        reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator scikit-learn'
         if not utils.is_windows():
             utils.run_script(pip_cmd)
             install_cmd = '{} install {}'.format(op.join('bin', 'pip'), reqs)
