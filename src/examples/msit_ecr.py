@@ -58,6 +58,30 @@ def get_empty_fnames(subject, tasks, args):
     return empty_fnames
 
 
+def calc_meg_epochs(args):
+    tasks = ['MSIT', 'ECR']
+    empty_fnames = get_empty_fnames(args.subject[0], tasks, args)
+    times = (-2, 4)
+    for task in tasks:
+        args = meg.read_cmd_args(dict(
+            subject=args.subject, mri_subject=args.subject,
+            task=task,
+            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
+            get_task_defaults=False,
+            fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
+            empty_fname=empty_fnames[task],
+            function='calc_epochs,calc_evokes',
+            conditions=task.lower(),
+            data_per_task=True,
+            normalize_data=False,
+            t_min=times[0], t_max=times[1],
+            read_events_from_file=False, stim_channels='STI001',
+            use_empty_room_for_noise_cov=True,
+            n_jobs=args.n_jobs
+        ))
+        meg.call_main(args)
+
+
 def meg_preproc(args):
     atlas, inv_method, em = 'aparc.DKTatlas40', 'dSPM', 'mean_flip'
     atlas = 'darpa_atlas'
