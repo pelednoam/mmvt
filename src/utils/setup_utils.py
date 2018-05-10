@@ -257,3 +257,29 @@ def set_admin():
     import ctypes
     import sys
     ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+
+
+def send_email(mail_subject, from_subject, to_emails):
+    # https://stackoverflow.com/questions/6270782/how-to-send-an-email-with-python
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+
+    if isinstance(to_emails, str):
+        to_emails = [to_emails]
+
+    msg = MIMEMultipart()
+    msg['Subject'] = mail_subject
+    msg['From'] = from_subject
+    msg['To'] = ', '.join(to_emails)
+    msg.preamble = ''
+    s = smtplib.SMTP('localhost')
+    s.sendmail(from_subject, to_emails, msg.as_string())
+    s.quit()
+
+
+def get_ip_address():
+    # https://stackoverflow.com/questions/24196932/how-can-i-get-the-ip-address-of-eth0-in-python/30990617
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    return s.getsockname()[0]

@@ -304,6 +304,11 @@ def install_blender_reqs(gui=True):
         print("*** Can't install pizco ***")
 
 
+def send_email():
+    ip = utils.get_ip_address()
+    utils.send_email('mmvt_setup', ip, 'MultiModalityVisualizationTool@gmail.com')
+
+
 def main(args):
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
@@ -338,6 +343,9 @@ def main(args):
     # 5) Install python packages in Blender
     if utils.should_run(args, 'install_blender_reqs'):
         install_blender_reqs()
+
+    if utils.should_run(args, 'send_email'):
+        send_email()
 
     if 'create_links_csv' in args.function:
         create_empty_links_csv()
