@@ -329,6 +329,89 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     return epochs
 
 
+def calc_epochs_using_auto_reject(raw, events, events_conditions, tmin, tmax, picks, baseline,
+                                  compute_thresholds_method='random_search', consensus_percs=None, n_interpolates=None,
+                                  bad_ar_threshold=0.5, n_jobs=10, overwrite=False):
+    from autoreject import LocalAutoRejectCV, compute_thresholds
+
+    # if (os.path.isfile(self._fname('epochs', 'epo', '.fif', event, 'ar')) and
+    #         not overwrite):
+    #     print('Autoreject already calculated, use \'overwrite=True\' to ' +
+    #           'recalculate.')
+    #     return
+    if consensus_percs is None:
+        consensus_percs = np.linspace(0, 1.0, 11)
+    if n_interpolates is None:
+        n_interpolates = [1,2,3,5,7,10,20], #np.array([1, 4, 32])
+    # The reject params will be set to None because we do not want epochs to be dropped when instantiating mne.Epochs.
+    epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
+                        baseline=baseline, preload=True, reject=None, detrend=0)
+    # compute_thresholds_method in ['bayesian_optimization' or 'random_search']
+    thresh_func = partial(compute_thresholds, random_state=89, method=compute_thresholds_method, n_jobs=n_jobs)
+    ar = LocalAutoRejectCV(thresh_func=thresh_func, consensus_percs=consensus_percs,
+                           n_interpolates=n_interpolates, verbose='tqdm', picks=picks)
+    ar.fit(epochs)
+    rejected = float(len(ar.bad_epochs_idx)) / len(epochs)
+    print('Autoreject rejected %.0f%% of epochs' % (100 * rejected))
+    epochs_ar = ar.transform(epochs)
+    # if autoreject would throw out over half of epochs for a channel, mark as bad
+    previous_bads = epochs_ar.info['bads']
+    for i in range(ar.bad_segments.shape[1]):
+        if (sum(ar.bad_segments[:, i]) > len(ar.bad_segments[:, i]) * bad_ar_threshold):
+            epochs_ar.info['bads'].append(epochs_ar.ch_names[i])
+    if previous_bads != epochs_ar.info['bads']:
+        difference = [ch for ch in previous_bads
+                      if ch not in epochs_ar.info['bads']]
+        print('Greater than %.0f%% ' % (100 * bad_ar_threshold) +
+              'of epochs thrown out for: ' + ' '.join([str(ch) for ch in difference]))
+
+        # raw = raw.interpolate_bads(reset_bads=True)
+        self.markAutoReject(event, bad_ar_threshold)
+
+    self._save_epochs(epochs_ar, event, ar=True)
+
+
+def plotAutoReject(event, keyword=None):
+    epochs_ar = self._load_epochs(event, ar=True)
+    epochs_comparison = self._load_epochs(event, keyword=keyword)
+    ar = self.autorejects[event]
+
+    set_matplotlib_defaults(plt, style='seaborn-white')
+    if self.eeg:
+        loss = ar.loss_['eeg'].mean(axis=-1)  # losses are stored by channel type.
+        epochs_ar.plot(scalings=dict(eeg=40e-6))
+    else:
+        loss = ar.loss_['meg'].mean(axis=-1)  # losses are stored by channel type.
+    epochs_ar.plot_drop_log()
+
+    plt.matshow(loss.T * 1e6, cmap=plt.get_cmap('viridis'))
+    plt.xticks(range(len(ar.consensus_percs)), ar.consensus_percs)
+    plt.yticks(range(len(ar.n_interpolates)), ar.n_interpolates)
+
+    # Draw rectangle at location of best parameters
+    ax = plt.gca()
+    idx, jdx = np.unravel_index(loss.argmin(), loss.shape)
+    rect = patches.Rectangle((idx - 0.5, jdx - 0.5), 1, 1, linewidth=2,
+                             edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+    ax.xaxis.set_ticks_position('bottom')
+    plt.xlabel(r'Consensus percentage $\kappa$')
+    plt.ylabel(r'Max sensors interpolated $\rho$')
+    plt.title('Mean cross validation error (x 1e6)')
+    plt.colorbar()
+    plt.show()
+
+    fig = plot_epochs(epochs_comparison, bad_epochs_idx=ar.bad_epochs_idx,
+                      fix_log=ar.fix_log, scalings=dict(eeg=40e-6),
+                      title='Dropped and interpolated Epochs')
+
+    ylim = dict(eeg=(-15, 15))
+    epochs_comparison.average().plot(ylim=ylim, spatial_colors=True,
+                                     window_title='Before Autoreject')
+    epochs_ar.average().plot(ylim=ylim, spatial_colors=True,
+                             window_title='After Autoreject')
+
+
 def save_epochs(epochs, epoches_fname=None):
     epoches_fname = EPO if epoches_fname is None else epoches_fname
     if '{cond}' in epoches_fname:
