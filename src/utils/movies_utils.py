@@ -121,13 +121,13 @@ def import_subs(movie_fol, subs_name='subs', delim=' '):
 
 
 def add_text_to_movie(movie_fol, movie_name, out_movie_name, subs, fontsize=50, txt_color='red', font='Xolonium-Bold',
-                      subs_delim=' '):
+                      subs_delim=' ', bg_color=None):
     # Should install ImageMagick
     # For centos6: https://www.vultr.com/docs/install-imagemagick-on-centos-6
     # For centos7: http://helostore.com/blog/install-imagemagick-on-centos-7
     from moviepy import editor
 
-    def annotate(clip, txt, txt_color=txt_color, fontsize=fontsize, font=font):
+    def annotate(clip, txt, txt_color=txt_color, fontsize=fontsize):
         """ Writes a text at the bottom of the clip. """
         # To make this code works the policy.xml should be editted
         #  identify -list policy

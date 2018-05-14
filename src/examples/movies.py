@@ -135,7 +135,8 @@ def image_in_image():
 
 def edit_mmvt_demo():
     movie_fol = op.join(MMVT_DIR, 'colin27', 'movies')
-    mu.add_text_to_movie(movie_fol, 'MMVT_demo.mp4', 'MMVT_demo_subs.mp4', 'subs', fontsize=60)
+    mu.add_text_to_movie(movie_fol, 'MMVT_demo.mp4', 'MMVT_demo_subs.mp4', 'subs', fontsize=60,
+                         txt_color='red', bg_color='0, 0, 1',)
 
 
 if __name__ == '__main__':
