@@ -230,7 +230,7 @@ def init(subject, task):
     fname_format_cond = '{subject}_hcp_{cond}-{ana_type}.{file_type}'
     fname_format = '{subject}_hcp-{ana_type}.{file_type}'
     meg.init_globals_args(
-        subject, '', fname_format, fname_format_cond, MEG_DIR, SUBJECTS_DIR, MMVT_DIR, args)
+        subject, '', fname_format, fname_format_cond, args=args)
 
     hcp_params = dict(hcp_path=HCP_DIR, subject=subject, data_type=task)
     return args, hcp_params

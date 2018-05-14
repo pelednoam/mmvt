@@ -93,7 +93,7 @@ def get_meg(subject, mri_subject, task, elecs_probs, bipolar, vertices_num_thres
         keys_dict = {'C': 'congruent', 'I': 'incongruent'}
     inverse_method = 'dSPM'
     meg.init_globals(subject, mri_subject, fname_format, fname_format_cond, cleaning_method=cleaning_method,
-                     subjects_meg_dir=SUBJECTS_MEG_DIR, task=task, subjects_mri_dir=SUBJECTS_DIR,
+                     task=task, subjects_meg_dir=SUBJECTS_MEG_DIR, subjects_mri_dir=SUBJECTS_DIR,
                      mmvt_dir=MMVT_DIR, files_includes_cond=True, fwd_no_cond=True,
                      constrast=constrast)
 

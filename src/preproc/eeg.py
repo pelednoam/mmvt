@@ -107,8 +107,7 @@ def init(subject, args, mri_subject='', remote_subject_dir=''):
     if mri_subject == '':
         mri_subject = subject
     fname_format, fname_format_cond, conditions = meg.init_main(subject, mri_subject, remote_subject_dir, args)
-    meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, SUBJECTS_EEG_DIR, SUBJECTS_MRI_DIR,
-                     MMVT_DIR, args)
+    meg.init_globals_args(subject, mri_subject, fname_format, fname_format_cond, args=args)
     meg.MEG_DIR = SUBJECTS_EEG_DIR
     meg.FWD = meg.FWD_EEG
     meg.INV = meg.INV_EEG

@@ -174,6 +174,18 @@ def add_common_args(parser):
     parser.add_argument('--sftp_password', help='sftp port', required=False, default='')
     parser.add_argument('--print_traceback', help='print_traceback', required=False, default=1, type=au.is_true)
 
+    # global folders
+    parser.add_argument('--meg_dir', required=False, default='')
+    parser.add_argument('--mri_dir', required=False, default='')
+    parser.add_argument('--mmvt_dir', required=False, default='')
+
+
+def set_default_folders(args):
+    if args.mri_dir == '':
+        args.mri_dir = SUBJECTS_DIR
+    if args.mmvt_dir == '':
+        args.mmvt_dir = MMVT_DIR
+
 
 def check_freesurfer():
     if os.environ.get('FREESURFER_HOME', '') == '':

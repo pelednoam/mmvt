@@ -89,19 +89,21 @@ def meg_preproc(args):
     tasks = ['MSIT', 'ECR']
     empty_fnames = get_empty_fnames(args.subject[0], tasks, args)
     times = (-2, 4)
+
     for task in tasks:
         args = meg.read_cmd_args(dict(
             subject=args.subject, mri_subject=args.subject,
             task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
-            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}', # Needed for finding COR
+            meg_dir=args.meg_dir,
+            remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
             get_task_defaults=False,
-            fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
+            fname_format='{}_{}_maxwell-raw'.format('{subject}', task),
             empty_fname=empty_fnames[task],
             # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
-            function='calc_stc_per_condition',
+            function='calc_epochs',
             # function='calc_labels_connectivity',
             conditions=task.lower(),
-            data_per_task=True,
+            # data_per_task=True,
             ica_overwrite_raw=False,
             normalize_data=False,
             t_min=times[0], t_max=times[1],
@@ -153,16 +155,16 @@ def post_analysis(args):
             print('asdf')
 
 
-
-
-
 if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
+    parser.add_argument('--meg_dir', required=False,
+                        default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
+    parser.add_argument('--remote_subject_dir', required=False,
+                        default='/autofs/space/lilli_001/users/DARPA-Recons/{subject}')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
-    args.remote_subject_dir = '/autofs/space/lilli_001/users/DARPA-Recons/{subject}'
     locals()[args.function](args)

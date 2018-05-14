@@ -49,17 +49,16 @@ locating_meg_file = None
 locating_subject_file = None
 
 
-def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, subjects_meg_dir, subjects_mri_dir,
-                      mmvt_dir, args):
+def init_globals_args(subject, mri_subject, fname_format, fname_format_cond, args):
     return init_globals(subject, mri_subject, fname_format, fname_format_cond, args.raw_fname_format,
                  args.fwd_fname_format, args.inv_fname_format, args.events_file_name, args.files_includes_cond,
-                 args.cleaning_method, args.contrast, subjects_meg_dir, args.task, subjects_mri_dir, mmvt_dir,
+                 args.cleaning_method, args.contrast, args.task, args.meg_dir, args.mri_dir, args.mmvt_dir,
                  args.fwd_no_cond, args.inv_no_cond, args.data_per_task, args.sub_dirs_for_tasks)
 
 
 def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='', raw_fname_format='',
                  fwd_fname_format='', inv_fname_format='', events_fname='', files_includes_cond=False,
-                 cleaning_method='', contrast='', subjects_meg_dir='', task='', subjects_mri_dir='', mmvt_dir='',
+                 cleaning_method='', contrast='', task='', subjects_meg_dir='', subjects_mri_dir='', mmvt_dir='',
                  fwd_no_cond=False, inv_no_cond=False, data_per_task=False, sub_dirs_for_tasks=False):
     global SUBJECT, MRI_SUBJECT, SUBJECT_MEG_FOLDER, RAW, RAW_ICA, INFO, EVO, EVE, COV, EPO, EPO_NOISE, FWD, FWD_EEG, FWD_SUB,\
         FWD_X, FWD_SMOOTH, INV, INV_EEG, INV_SMOOTH, INV_EEG_SMOOTH, INV_SUB, INV_X, EMPTY_ROOM, MRI, SRC, SRC_SMOOTH,\
@@ -137,7 +136,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_HEMI_SAVE = op.splitext(STC_HEMI)[0].replace('-{hemi}','')
     STC_HEMI_SMOOTH = _get_stc_name('{method}-smoothed-{hemi}')
     STC_HEMI_SMOOTH_SAVE = op.splitext(STC_HEMI_SMOOTH)[0].replace('-{hemi}','')
-    STC_MORPH = op.join(MEG_DIR, task, '{}', '{}-{}-inv.stc') # cond, method
+    STC_MORPH = op.join(SUBJECT_MEG_FOLDER, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
     # LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
     LBL = op.join(MMVT_SUBJECT_FOLDER, 'meg', 'labels_data_{}_{}_{}_{}.npz')  # task, atlas, extract_method, hemi
@@ -989,7 +988,7 @@ def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
         inv_fname = INV_EEG if fwd_usingEEG and not fwd_usingMEG else INV
     inv_fname, inv_exist = locating_meg_file(inv_fname, '*inv.fif')
     if not inv_exist:
-        files = glob.glob(op.join(MEG_DIR, SUBJECT, '*{}*'.format(inv_fname)))
+        files = glob.glob(op.join(SUBJECT_MEG_FOLDER, '*{}*'.format(inv_fname)))
         if len(files) > 0:
             inv_fname = utils.select_one_file(files)
     return inv_fname
@@ -2570,7 +2569,7 @@ def get_meg_files(subject, necessary_fnames, args, events=None):
         else:
             fnames.append(fname)
     # local_fol = op.join(MEG_DIR, args.task)
-    prepare_subject_folder(subject, args.remote_subject_meg_dir, MEG_DIR, {'.': fnames}, args)
+    prepare_subject_folder(subject, args.remote_subject_meg_dir, args.meg_dir, {'.': fnames}, args)
 
 
 def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject=''):
@@ -3567,8 +3566,7 @@ def init(subject, args, mri_subject='', remote_subject_dir=''):
     if mri_subject == '':
         mri_subject = subject
     fname_format, fname_format_cond, conditions = init_main(subject, mri_subject, remote_subject_dir, args)
-    init_globals_args(
-        subject, mri_subject, fname_format, fname_format_cond, MEG_DIR, SUBJECTS_MRI_DIR, MMVT_DIR, args)
+    init_globals_args(subject, mri_subject, fname_format, fname_format_cond, args=args)
     fname_format = fname_format.replace('{subject}', SUBJECT)
     fname_format = fname_format.replace('{ana_type}', 'raw')
     if '{file_type}' in fname_format:
@@ -3848,6 +3846,9 @@ def read_cmd_args(argv=None):
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
+    pu.set_default_folders(args)
+    if args.meg_dir == '':
+        args.meg_dir = MEG_DIR
     args.mri_necessary_files = {'surf': ['rh.pial', 'lh.pial', 'rh.sphere.reg', 'lh.sphere.reg'],
                                 'label': ['{}.{}.annot'.format(hemi, args.atlas) for hemi in utils.HEMIS]}
     if not args.mri_subject:
@@ -3864,6 +3865,7 @@ def read_cmd_args(argv=None):
         args.use_empty_room_for_noise_cov = True
         args.baseline_min = 0
         args.baseline_max = 0
+
     # todo: Was set as a remark, why?
     if args.n_jobs == -1:
         args.n_jobs = utils.get_n_jobs(args.n_jobs)
