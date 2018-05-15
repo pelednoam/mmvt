@@ -305,8 +305,11 @@ def install_blender_reqs(gui=True):
 
 
 def send_email():
-    ip = utils.get_ip_address()
-    utils.send_email('mmvt_setup', ip, 'MultiModalityVisualizationTool@gmail.com')
+    try:
+        ip = utils.get_ip_address()
+        utils.send_email('mmvt_setup', ip, 'MultiModalityVisualizationTool@gmail.com')
+    except:
+        pass
 
 
 def main(args):
