@@ -22,10 +22,15 @@ def change_colorbar_default_cm(val):
 
 
 def set_colorbar_defaults():
+    init = ColorbarPanel.init
+    ColorbarPanel.should_not_lock_values = True
+    ColorbarPanel.init = False
     set_colorbar_title('')
     set_colorbar_max_min(1, -1, True)
     set_colorbar_prec(2)
     set_colormap(ColorbarPanel.default_cm[1])
+    ColorbarPanel.should_not_lock_values = False
+    ColorbarPanel.init = init
 
 
 def set_colorbar_default_cm():
@@ -145,8 +150,10 @@ def set_colorbar_max_min(max_val, min_val, force_update=False):
         init = ColorbarPanel.init
         if force_update:
             ColorbarPanel.init = True
+        ColorbarPanel.should_not_lock_values = True
         bpy.context.scene.colorbar_max = max_val
         bpy.context.scene.colorbar_min = min_val
+        ColorbarPanel.should_not_lock_values = False
         set_colorbar_default_cm()
         # mu.set_graph_att('colorbar_max', max_val)
         # mu.set_graph_att('colorbar_min', min_val)
@@ -228,7 +235,9 @@ def get_colorbar_ticks(ticks_num=2, prec=None, cb_min=None, cb_max=None):
 
 def set_colormap(colormap_name):
     if colormap_name in ColorbarPanel.maps_names:
+        ColorbarPanel.should_not_lock_values = True
         bpy.context.scene.colorbar_files = colormap_name
+        ColorbarPanel.should_not_lock_values = False
     elif colormap_name is not None:
         print('No such colormap! {}'.format(colormap_name))
 
@@ -274,6 +283,8 @@ def hide_center(do_hide):
 def colormap_update(self, context):
     if ColorbarPanel.init:
         load_colormap()
+        if not ColorbarPanel.should_not_lock_values:
+            lock_colorbar_values()
 
 
 def colorbar_update(self, context):
@@ -282,6 +293,8 @@ def colorbar_update(self, context):
         set_colorbar_title(bpy.context.scene.colorbar_title)
         set_colorbar_max(bpy.context.scene.colorbar_max)
         set_colorbar_min(bpy.context.scene.colorbar_min)
+        if not ColorbarPanel.should_not_lock_values:
+            lock_colorbar_values()
         # todo: we shouldn't change coloring_use_abs, because in some cases the user will want to plot only the
         # positive values (fMRI for example)
         # bpy.context.scene.coloring_use_abs = np.sign(bpy.context.scene.colorbar_max) != \
@@ -323,7 +336,8 @@ def colorbar_draw(self, context):
     row = layout.row(align=0)
     row.prop(context.scene, "colorbar_min", text="min:")
     row.prop(context.scene, "colorbar_max", text="max:")
-    layout.prop(context.scene, 'hide_cb_center', text='Hide center')
+    if np.sign(bpy.context.scene.colorbar_min) != np.sign(bpy.context.scene.colorbar_max):
+        layout.prop(context.scene, 'hide_cb_center', text='Hide center')
     layout.prop(context.scene, 'colorbar_prec', text='precision')
     layout.prop(context.scene, 'lock_min_max', text='Lock values')
     if bpy.data.screens.get('Neuro_vertical_colorbar') is not None:
@@ -375,6 +389,7 @@ class ColorbarPanel(bpy.types.Panel):
     colorbar_updated = False
     cm = None
     maps_names = []
+    should_not_lock_values = False
     default_cm = ('YlOrRd', 'BuPu-YlOrRd')
 
     def draw(self, context):
@@ -410,12 +425,14 @@ def init(addon):
     bpy.context.scene.show_cb_in_render = False
     mu.select_hierarchy('colorbar_camera', False, False)
     if not ColorbarPanel.colorbar_updated and not colorbar_values_are_locked():
+        ColorbarPanel.should_not_lock_values = True
         # bpy.context.scene.colorbar_min = -1
         # bpy.context.scene.colorbar_max = 1
         # bpy.context.scene.colorbar_title = '     MEG'
         bpy.context.scene.colorbar_y = 0.18
         bpy.context.scene.colorbar_text_y = -1.53
         bpy.context.scene.colorbar_prec = 2
+        ColorbarPanel.should_not_lock_values = False
     # if not colorbar_values_are_locked():
     #     if 'fMRI' in bpy.context.scene.colorbar_title:
     #         bpy.context.scene.colorbar_files = 'PuBu-RdOrYl'
