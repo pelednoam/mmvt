@@ -256,11 +256,13 @@ def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
 def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=False, events=None,
                  stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False, reject=True,
                  reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
-                 power_line_freq=60, epoches_fname=None, task='', windows_length=1000, windows_shift=500,
-                 windows_num=0, overwrite_epochs=False, eve_template='*eve.fif', raw_fname=''):
-    epoches_fname = EPO if epoches_fname is None else epoches_fname
-    if op.isfile(epoches_fname) and not overwrite_epochs:
-        epochs = mne.read_epochs(epoches_fname)
+                 power_line_freq=60, epo_fname='', task='', windows_length=1000, windows_shift=500,
+                 windows_num=0, overwrite_epochs=False, eve_template='*eve.fif', raw_fname='',
+                 using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
+                 ar_n_interpolates=None, bad_ar_threshold = 0.5, n_jobs=6):
+    epo_fname = get_epo_fname(epo_fname)
+    if op.isfile(epo_fname) and not overwrite_epochs:
+        epochs = mne.read_epochs(epo_fname)
         return epochs
     picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
     # events[:, 2] = [str(ev)[event_digit] for ev in events[:, 2]]
@@ -307,6 +309,13 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         events_conditions = {k: unique_events[0] for k, v in conditions.items()}
     else:
         events_conditions = {k: v for k,v in conditions.items() if v in np.unique(events[:, 2])}
+
+    if using_auto_reject and is_autoreject_installed:
+        clean_epochs = calc_epochs_using_auto_reject(
+            raw, events, events_conditions, tmin, tmax, picks, baseline, ar_compute_thresholds_method,
+            ar_consensus_percs, ar_n_interpolates, bad_ar_threshold, epo_fname, overwrite_epochs, n_jobs)
+        return clean_epochs
+
     epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                         baseline=baseline, preload=True, reject=reject_dict)
     min_bad_num = len(events) * 0.5
@@ -325,101 +334,79 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
     if len(epochs) < min_bad_num:
         raise Exception('Not enough good epochs!')
     print('{} good epochs'.format(len(epochs)))
-    save_epochs(epochs, epoches_fname)
+    save_epochs(epochs, epo_fname)
     return epochs
 
 
-def calc_epochs_using_auto_reject(raw, events, events_conditions, tmin, tmax, picks, baseline,
-                                  compute_thresholds_method='random_search', consensus_percs=None, n_interpolates=None,
-                                  bad_ar_threshold=0.5, n_jobs=10, overwrite=False):
-    from autoreject import LocalAutoRejectCV, compute_thresholds
+def is_autoreject_installed():
+    try:
+        from autoreject import LocalAutoRejectCV, compute_thresholds
+        return True
+    except:
+        print('You should install first autoreject (http://autoreject.github.io/)!')
+        return False
 
-    # if (os.path.isfile(self._fname('epochs', 'epo', '.fif', event, 'ar')) and
-    #         not overwrite):
-    #     print('Autoreject already calculated, use \'overwrite=True\' to ' +
-    #           'recalculate.')
-    #     return
+
+def calc_epochs_using_auto_reject(raw_or_epochs, events, events_conditions, tmin, tmax, picks, baseline,
+                                  compute_thresholds_method='random_search', consensus_percs=None, n_interpolates=None,
+                                  bad_ar_threshold=0.5, epo_fname='', overwrite=False, n_jobs=6):
+    try:
+        from autoreject import LocalAutoRejectCV, compute_thresholds
+    except:
+        print('You should install first autoreject (http://autoreject.github.io/)!')
+        return False
+
+    epo_fname = get_epo_fname(epo_fname, load_autoreject_if_exist=False)
+    ar_epo_fname = '{}ar-epo.fif'.format(epo_fname[:-len('epo.fif')])
+    if op.isfile(ar_epo_fname) and not overwrite:
+        print('Autoreject already calculated, use \'overwrite=True\' to recalculate.')
+        epochs_ar = mne.read_epochs(ar_epo_fname)
+        return epochs_ar
+
     if consensus_percs is None:
         consensus_percs = np.linspace(0, 1.0, 11)
     if n_interpolates is None:
         n_interpolates = [1,2,3,5,7,10,20], #np.array([1, 4, 32])
     # The reject params will be set to None because we do not want epochs to be dropped when instantiating mne.Epochs.
-    epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
-                        baseline=baseline, preload=True, reject=None, detrend=0)
+    if isinstance(raw_or_epochs, mne.io.fiff.Raw):
+        epochs = mne.Epochs(
+            raw_or_epochs, events, events_conditions, tmin, tmax, proj=True, picks=picks, baseline=baseline,
+            preload=True, reject=None, detrend=0)
+    elif isinstance(raw_or_epochs, mne.Epochs):
+        epochs = raw_or_epochs
     # compute_thresholds_method in ['bayesian_optimization' or 'random_search']
     thresh_func = partial(compute_thresholds, random_state=89, method=compute_thresholds_method, n_jobs=n_jobs)
     ar = LocalAutoRejectCV(thresh_func=thresh_func, consensus_percs=consensus_percs,
                            n_interpolates=n_interpolates, verbose='tqdm', picks=picks)
     ar.fit(epochs)
     rejected = float(len(ar.bad_epochs_idx)) / len(epochs)
-    print('Autoreject rejected %.0f%% of epochs' % (100 * rejected))
+    print('Autoreject rejected {} of epochs'.format(100 * rejected))
     epochs_ar = ar.transform(epochs)
     # if autoreject would throw out over half of epochs for a channel, mark as bad
     previous_bads = epochs_ar.info['bads']
     for i in range(ar.bad_segments.shape[1]):
-        if (sum(ar.bad_segments[:, i]) > len(ar.bad_segments[:, i]) * bad_ar_threshold):
+        if sum(ar.bad_segments[:, i]) > len(ar.bad_segments[:, i]) * bad_ar_threshold:
             epochs_ar.info['bads'].append(epochs_ar.ch_names[i])
     if previous_bads != epochs_ar.info['bads']:
-        difference = [ch for ch in previous_bads
-                      if ch not in epochs_ar.info['bads']]
-        print('Greater than %.0f%% ' % (100 * bad_ar_threshold) +
-              'of epochs thrown out for: ' + ' '.join([str(ch) for ch in difference]))
-
-        # raw = raw.interpolate_bads(reset_bads=True)
-        self.markAutoReject(event, bad_ar_threshold)
-
-    self._save_epochs(epochs_ar, event, ar=True)
-
-
-def plotAutoReject(event, keyword=None):
-    epochs_ar = self._load_epochs(event, ar=True)
-    epochs_comparison = self._load_epochs(event, keyword=keyword)
-    ar = self.autorejects[event]
-
-    set_matplotlib_defaults(plt, style='seaborn-white')
-    if self.eeg:
-        loss = ar.loss_['eeg'].mean(axis=-1)  # losses are stored by channel type.
-        epochs_ar.plot(scalings=dict(eeg=40e-6))
+        difference = [ch for ch in previous_bads if ch not in epochs_ar.info['bads']]
+        print('Greater than {} of epochs thrown out for: {}'.format(
+            100 * bad_ar_threshold, ' '.join([str(ch) for ch in difference])))
+        epochs_ar = calc_epochs_using_auto_reject(
+            epochs_ar, events, events_conditions, tmin, tmax, picks, baseline, compute_thresholds_method,
+            consensus_percs, n_interpolates, bad_ar_threshold, epo_fname, overwrite, n_jobs)
     else:
-        loss = ar.loss_['meg'].mean(axis=-1)  # losses are stored by channel type.
-    epochs_ar.plot_drop_log()
-
-    plt.matshow(loss.T * 1e6, cmap=plt.get_cmap('viridis'))
-    plt.xticks(range(len(ar.consensus_percs)), ar.consensus_percs)
-    plt.yticks(range(len(ar.n_interpolates)), ar.n_interpolates)
-
-    # Draw rectangle at location of best parameters
-    ax = plt.gca()
-    idx, jdx = np.unravel_index(loss.argmin(), loss.shape)
-    rect = patches.Rectangle((idx - 0.5, jdx - 0.5), 1, 1, linewidth=2,
-                             edgecolor='r', facecolor='none')
-    ax.add_patch(rect)
-    ax.xaxis.set_ticks_position('bottom')
-    plt.xlabel(r'Consensus percentage $\kappa$')
-    plt.ylabel(r'Max sensors interpolated $\rho$')
-    plt.title('Mean cross validation error (x 1e6)')
-    plt.colorbar()
-    plt.show()
-
-    fig = plot_epochs(epochs_comparison, bad_epochs_idx=ar.bad_epochs_idx,
-                      fix_log=ar.fix_log, scalings=dict(eeg=40e-6),
-                      title='Dropped and interpolated Epochs')
-
-    ylim = dict(eeg=(-15, 15))
-    epochs_comparison.average().plot(ylim=ylim, spatial_colors=True,
-                                     window_title='Before Autoreject')
-    epochs_ar.average().plot(ylim=ylim, spatial_colors=True,
-                             window_title='After Autoreject')
+        save_epochs(epochs_ar, ar_epo_fname)
+    return epochs_ar
 
 
-def save_epochs(epochs, epoches_fname=None):
-    epoches_fname = EPO if epoches_fname is None else epoches_fname
-    if '{cond}' in epoches_fname:
+def save_epochs(epochs, epo_fname=''):
+    epo_fname = get_epo_fname(epo_fname)
+    if '{cond}' in epo_fname:
         for event in epochs.event_id: #events.keys():
-            epochs[event].save(get_cond_fname(epoches_fname, event))
+            epochs[event].save(get_cond_fname(epo_fname, event))
     else:
         try:
-            epochs.save(epoches_fname)
+            epochs.save(epo_fname)
         except:
             print(traceback.format_exc())
 
@@ -444,7 +431,9 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.pick_meg, args.pick_eeg, args.pick_eog, args.reject,
         args.reject_grad, args.reject_mag, args.reject_eog, args.remove_power_line_noise, args.power_line_freq,
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
-        args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template)
+        args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template,
+        args.using_auto_reject, args.ar_compute_thresholds_method, args.ar_consensus_percs,
+        args.ar_n_interpolates, args.bad_ar_threshold, args.n_jobs)
 
 
 def calc_epochs_wrapper(
@@ -452,7 +441,9 @@ def calc_epochs_wrapper(
         stim_channels=None, pick_meg=True, pick_eeg=False, pick_eog=False,
         reject=True, reject_grad=4000e-13, reject_mag=4e-12, reject_eog=150e-6, remove_power_line_noise=True,
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
-        windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname='', eve_template='*eve.fif'):
+        windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname='', eve_template='*eve.fif',
+        using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
+        ar_n_interpolates=None, bad_ar_threshold=0.5, n_jobs=6):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
@@ -478,11 +469,12 @@ def calc_epochs_wrapper(
                 if raw_fname == '':
                     raw_fname = get_raw_fname(raw_fname)
                 raw = load_raw(raw_fname, bad_channels, l_freq, h_freq)
-            epochs = calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat,
-                                  stim_channels, pick_meg, pick_eeg, pick_eog, reject,
-                                  reject_grad, reject_mag, reject_eog, remove_power_line_noise, power_line_freq,
-                                  epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
-                                  eve_template, raw_fname)
+            epochs = calc_epoches(
+                raw, conditions, tmin, tmax, baseline, read_events_from_file, events_mat, stim_channels, pick_meg,
+                pick_eeg, pick_eog, reject, reject_grad, reject_mag, reject_eog, remove_power_line_noise,
+                power_line_freq, epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
+                eve_template, raw_fname, using_auto_reject, ar_compute_thresholds_method, ar_consensus_percs,
+                ar_n_interpolates, bad_ar_threshold, n_jobs)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -1092,10 +1084,14 @@ def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     return fwd_fname
 
 
-def get_epo_fname(epo_fname=''):
+def get_epo_fname(epo_fname='', load_autoreject_if_exist=True):
     if epo_fname == '':
         epo_fname = EPO
-    epo_fname, epo_exist = locating_meg_file(epo_fname, '*epo.fif')
+    epo_exist = False
+    if load_autoreject_if_exist:
+        epo_fname, epo_exist = locating_meg_file(epo_fname, '*ar-epo.fif')
+    if not epo_exist or not load_autoreject_if_exist:
+        epo_fname, epo_exist = locating_meg_file(epo_fname, '*epo.fif')
     return epo_fname
 
 
@@ -3926,6 +3922,13 @@ def read_cmd_args(argv=None):
     parser.add_argument('--con_mode', required=False, default='cwt_morlet')
     parser.add_argument('--cwt_n_cycles', required=False, default=7, type=int)
     parser.add_argument('--overwrite_connectivity', required=False, default=0, type=au.is_true)
+    # AutoReject
+    parser.add_argument('--using_auto_reject', required=False, default=True, type=au.is_true)
+    parser.add_argument('--ar_compute_thresholds_method', required=False, default='random_search',
+                        choices=['random_search', 'bayesian_optimization'])
+    parser.add_argument('--bad_ar_threshold', required=False, default=0.5, type=float)
+    parser.add_argument('--ar_consensus_percs', required=False, default=None)
+    parser.add_argument('--ar_n_interpolates', required=False, default=None)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
