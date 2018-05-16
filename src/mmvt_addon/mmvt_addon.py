@@ -309,6 +309,8 @@ set_normal_view = show_hide_panel.set_normal_view
 hide_hemi = show_hide_panel.hide_hemi
 show_hemi = show_hide_panel.show_hemi
 subcorticals_are_hiding = show_hide_panel.subcorticals_are_hiding
+show_meg_sensors = appearance_panel.show_meg_sensors
+hide_meg_sensors = appearance_panel.hide_meg_sensors
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Appearance links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 appearance = appearance_panel
 setup_layers = appearance_panel.setup_layers

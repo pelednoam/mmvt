@@ -471,7 +471,7 @@ def select_one_file(files, template='', files_desc='', print_title=True, is_dir=
         return files[0]
     elif len(files) == 0:
         print('No {} was found ({})'.format('file' if not is_dir else 'dir', template))
-        return None
+        return ''
     if print_title:
         print('More than one {} {} were found {}, please pick one.'.format(
             files_desc, 'files' if not is_dir else 'dirs',  'in {}'.format(template) if template != '' else ''))
@@ -485,7 +485,7 @@ def select_one_file(files, template='', files_desc='', print_title=True, is_dir=
         print('Please enter a valid integer')
         file_num = input(input_str)
     if file_num == 0:
-        return None
+        return ''
     else:
         file_num = int(file_num) - 1
         return files[file_num]

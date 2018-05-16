@@ -677,9 +677,9 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     if evokes_all is not None:
         events_keys.append('all')
     task = '{}_'.format(task) if task != '' else ''
-    np.save(op.join(fol, '{}sensors_evoked_data.npy'.format(task)), data)
-    np.savez(op.join(fol, '{}sensors_evoked_data_meta.npz'.format(task)), names=ch_names, conditions=events_keys, dt=dt)
-    np.save(op.join(fol, '{}sensors_evoked_minmax.npy'.format(task)), [-max_abs, max_abs])
+    np.save(op.join(fol, '{}_{}sensors_evoked_data.npy'.format(modality, task)), data)
+    np.savez(op.join(fol, '{}_{}sensors_evoked_data_meta.npz'.format(modality, task)), names=ch_names, conditions=events_keys, dt=dt)
+    np.save(op.join(fol, '{}_{}sensors_evoked_minmax.npy'.format(modality, task)), [-max_abs, max_abs])
 
 
 def equalize_epoch_counts(events, method='mintime'):
@@ -2414,20 +2414,23 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
-def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
-                        trans_file=''):
+def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
+                        trans_file='', info_fname='', info=None):
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
-    if not op.isfile(INFO):
-        raw_fname, raw_exist = locating_meg_file(RAW, args.raw_template)
-        if not raw_exist:
-            print('No raw or raw info file!')
-            return False
-        raw = mne.io.read_raw_fif(raw_fname)
-        info = raw.info
-        utils.save(info, INFO)
-    else:
-        info = utils.load(INFO)
+    if info is None:
+        if info_fname == '':
+            info_fname = INFO
+        if not op.isfile(info_fname):
+            raw_fname, raw_exist = locating_meg_file(RAW, args.raw_template)
+            if not raw_exist:
+                print('No raw or raw info file!')
+                return False
+            raw = mne.io.read_raw_fif(raw_fname)
+            info = raw.info
+            utils.save(info, info_fname)
+        else:
+            info = utils.load(info_fname)
     picks = mne.io.pick.pick_types(info, meg=pick_meg, eeg=pick_eeg)
     sensors_pos = np.array([info['chs'][k]['loc'][:3] for k in picks])
     sensors_names = np.array([info['ch_names'][k] for k in picks])
@@ -2445,7 +2448,7 @@ def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwr
         return True
     ret = False
     if len(sensors_pos) > 0:
-        trans_file = find_trans_file(trans_file, args.remote_subject_dir)
+        trans_file = find_trans_file(trans_file, args.remote_subject_dir, mri_subject, SUBJECTS_MRI_DIR)
         if not op.isfile(trans_file):
             print('No trans files!')
         else:
@@ -2460,33 +2463,39 @@ def read_sensors_layout(mri_subject, args, pick_meg=True, pick_eeg=False, overwr
     return ret
 
 
-def find_trans_file(trans_file, remote_subject_dir=''):
+def find_trans_file(trans_file='', remote_subject_dir='', subject='', subjects_dir=''):
+    subject = MRI_SUBJECT if subject == '' else subject
+    subject_dir = SUBJECTS_MRI_DIR if subjects_dir == '' else subjects_dir
     trans_file = COR if trans_file == '' else trans_file
     if not op.isfile(trans_file):
-        trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, '**', '*COR*.fif'), recursive=True)
+        trans_files = glob.glob(op.join(subject_dir, subject, '**', '*COR*.fif'), recursive=True)
         if len(trans_files) == 0 and remote_subject_dir != '':
             trans_files = glob.glob(op.join(remote_subject_dir, '**', '*COR*.fif'), recursive=True)
         if len(trans_files) == 0:
-            trans_files = glob.glob(op.join(utils.get_parent_fol(COR), '**', '*COR*.fif'), recursive=True)
-        bem_trans_files = glob.glob(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-head.fif'))
+            trans_files = glob.glob(op.join(utils.get_parent_fol(trans_file), '**', '*COR*.fif'), recursive=True)
+        bem_trans_files = glob.glob(op.join(subjects_dir, subject, 'bem', '*-head.fif'))
         if len(bem_trans_files):
             trans_files += bem_trans_files
         else:
             trans_files += glob.glob(op.join(remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
-        ok_trans_files = []
-        for trans_file in trans_files:
-            try:
-                trans = mne.transforms.read_trans(trans_file)
-                head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
-                if trans is not None and not np.all(head_mri_t['trans'] == np.eye(4)):
-                    ok_trans_files.append(trans_file)
-            except:
-                pass
-
+        ok_trans_files = filter_trans_files(trans_files)
         trans_file = utils.select_one_file(
             ok_trans_files, template='*COR*.fif', files_desc='MRI-Head transformation',
             file_func=lambda fname:read_trans(fname))
     return trans_file
+
+
+def filter_trans_files(trans_files):
+    ok_trans_files = []
+    for trans_file in trans_files:
+        try:
+            trans = mne.transforms.read_trans(trans_file)
+            head_mri_t = mne.transforms._ensure_trans(trans, 'head', 'mri')
+            if trans is not None and not np.all(head_mri_t['trans'] == np.eye(4)):
+                ok_trans_files.append(trans_file)
+        except:
+            pass
+    return ok_trans_files
 
 
 def read_trans(fname):

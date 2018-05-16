@@ -738,6 +738,10 @@ def create_seghead(subject, subjects_dir=None, print_only=False, **kargs):
     rs(mkheadsurf)
 
 
+def is_fs_atlas(atlas):
+    return atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
+
+
 if __name__ == '__main__':
     import argparse
     from src.utils.utils import Bag

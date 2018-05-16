@@ -433,7 +433,7 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
                         op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
         return True
 
-    if is_fs_atlas(atlas):
+    if fu.is_fs_atlas(atlas):
         morph_labels_from_fsaverage = False
         do_solve_labels_collisions = False
         save_annot_file = False
@@ -462,13 +462,9 @@ def both_annot_files_exist(subject, atlas):
         SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas)))
 
 
-def is_fs_atlas(atlas):
-    return atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
-
-
 def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
                     overwrite_vertices_labels_lookup=False, n_jobs=6):
-    if is_fs_atlas(atlas) and both_annot_files_exist(subject, atlas):
+    if fu.is_fs_atlas(atlas) and both_annot_files_exist(subject, atlas):
         return True
     annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
     if not annot_was_created:

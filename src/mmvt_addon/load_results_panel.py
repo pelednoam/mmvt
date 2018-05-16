@@ -16,7 +16,7 @@ except:
 
 import os.path as op
 import shutil
-import numpy as np
+import glob
 
 
 def _addon():
@@ -40,6 +40,19 @@ if IN_BLENDER:
         def draw(self, context):
             if LoadResultsPanel.init:
                 load_results_draw(self, context)
+
+
+    class LoadEvokesFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+        bl_idname = "mmvt.load_evokes_file"
+        bl_label = "Load evokes file"
+
+        filename_ext = '.fif'
+        filter_glob = bpy.props.StringProperty(default='*.fif', options={'HIDDEN'}, maxlen=255)
+
+        def execute(self, context):
+            import_evokes(self.filepath)
+            return {'FINISHED'}
+
 
 
     class ChooseSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -115,6 +128,8 @@ if IN_BLENDER:
         if MNE_EXIST:
             layout.operator(ChooseSTCFile.bl_idname, text="Load stc file", icon='LOAD_FACTORY').filepath=op.join(
                 mu.get_user_fol(), 'meg', '*.stc')
+            layout.operator(LoadEvokesFile.bl_idname, text="Load evokes file", icon='LOAD_FACTORY').filepath=op.join(
+                mu.get_user_fol(), 'meg', '*ave.fif')
         if bpy.context.scene.nii_label_output == '':
             layout.operator(ChooseNiftiiFile.bl_idname, text="Load surface nii file", icon='LOAD_FACTORY').filepath = op.join(
                 mu.get_user_fol(), 'fmri', '*.nii*')
@@ -138,6 +153,7 @@ if IN_BLENDER:
             bpy.utils.register_class(LoadResultsPanel)
             bpy.utils.register_class(ChooseSTCFile)
             bpy.utils.register_class(ChooseNiftiiFile)
+            bpy.utils.register_class(LoadEvokesFile)
         except:
             print("Can't register LoadResults Panel!")
 
@@ -147,6 +163,7 @@ if IN_BLENDER:
             bpy.utils.unregister_class(LoadResultsPanel)
             bpy.utils.unregister_class(ChooseSTCFile)
             bpy.utils.unregister_class(ChooseNiftiiFile)
+            bpy.utils.unregister_class(LoadEvokesFile)
         except:
             pass
 
@@ -206,4 +223,21 @@ def clean_nii_temp_files(fmri_file_template, user_fol=''):
     mu.delete_files('{}{}'.format(file_temp, 'mgz'))
 
 
+def import_evokes(evokes_fname):
+    import importlib
+    import mne
+    mu.add_mmvt_code_root_to_path()
+    from src.preproc import meg
+    importlib.reload(meg)
 
+    opt_trans_files = glob.glob(op.join(mu.get_parent_fol(evokes_fname), '*.fif'))
+    trans_files = meg.filter_trans_files(opt_trans_files)
+    trans_file = mu.select_one_file(trans_files, template='*.fif', files_desc='MRI-Head transformation')
+    args = mu.get_remote_subject_info_args()
+    evokes = mne.read_evokeds(evokes_fname)
+    events_keys = [ev.comment for ev in evokes]
+    meg.read_sensors_layout(mu.get_user(), args, info=evokes[0].info, trans_file=trans_file)
+    meg.save_evokes_to_mmvt(evokes, events_keys, mu.get_user())
+    _addon().import_meg_sensors()
+    _addon().add_data_to_meg_sensors()
+    _addon().show_meg_sensors()

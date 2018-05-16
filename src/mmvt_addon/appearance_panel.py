@@ -61,6 +61,14 @@ def show_hide_meg_sensors(do_show=True):
     bpy.context.scene.layers[_addon().MEG_LAYER] = do_show
 
 
+def show_meg_sensors():
+    bpy.context.scene.layers[_addon().MEG_LAYER] = True
+
+
+def hide_meg_sensors():
+    bpy.context.scene.layers[_addon().MEG_LAYER] = False
+
+
 def showing_meg_sensors():
     return bpy.context.scene.layers[_addon().MEG_LAYER]
 

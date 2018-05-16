@@ -5,7 +5,7 @@ CM = 'hot'
 
 
 def run(mmvt):
-    # todo: save the orginal state, not only the background color
+    # todo: save the original state, not only the background color
     org_background_color = mmvt.appearance.get_panels_background_color()
     org_path = mmvt.render.get_output_path()
     mmvt.show_hide.hide_hemi('rh')

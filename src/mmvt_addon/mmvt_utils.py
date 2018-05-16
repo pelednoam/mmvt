@@ -121,6 +121,7 @@ get_mmvt_dir = su.get_mmvt_dir
 get_subjects_dir = su.get_subjects_dir
 get_real_atlas_name = su.get_real_atlas_name
 get_parent_fol = su.get_parent_fol
+select_one_file = su.select_one_file
 
 floats_const_pattern = r"""
      [-+]?
@@ -2518,6 +2519,25 @@ def select_time_range(t_start=None, t_end=None):
         bpy.data.scenes['Scene'].frame_preview_start = t_start
     if t_end is not None:
         bpy.data.scenes['Scene'].frame_preview_end = t_end
+
+
+def load_remote_subject_info():
+    remote_subject_info_fname = op.join(get_user_fol(), 'remote_subject_info.pkl')
+    if op.isfile(remote_subject_info_fname):
+        remote_subject_info = load(remote_subject_info_fname)
+    else:
+        remote_subject_info = None
+    return remote_subject_info
+
+
+def get_remote_subject_info_args():
+    remote_subject_info = load_remote_subject_info()
+    if remote_subject_info is not None:
+        args = Bag(remote_subject_info)
+    else:
+        args = Bag(dict(remote_subject_dir=get_subjects_dir()))
+    return args
+
 
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
