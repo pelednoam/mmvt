@@ -365,8 +365,8 @@ def calc_epochs_using_auto_reject(raw_or_epochs, events, events_conditions, tmin
 
     if consensus_percs is None:
         consensus_percs = np.linspace(0, 1.0, 11)
-    if n_interpolates is None:
-        n_interpolates = [1,2,3,5,7,10,20], #np.array([1, 4, 32])
+    # if n_interpolates is None:
+    #     n_interpolates = [1,2,3,5,7,10,20], #np.array([1, 4, 32])
     # The reject params will be set to None because we do not want epochs to be dropped when instantiating mne.Epochs.
     if isinstance(raw_or_epochs, mne.io.fiff.Raw):
         epochs = mne.Epochs(
