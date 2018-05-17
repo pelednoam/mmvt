@@ -247,6 +247,8 @@ def find_blender():
     elif utils.is_linux():
         blender_fol = find_blender_in_linux('../', False)
         if blender_fol == '':
+            blender_fol = find_blender_in_linux('../')
+        if blender_fol == '':
             blender_fol = find_blender_in_linux('~/')
     elif utils.is_osx():
         blender_fol = '/Applications/Blender/blender.app/Contents/MacOS'
@@ -348,7 +350,7 @@ def main(args):
             # rerun setup with Blender's python
             call_args = utils.create_call_args(args)
             setup_cmd = '{} -m src.setup --blender_fol "{}" {}'.format(blender_python_exe, blender_fol, call_args)
-            utils.run_script(setup_cmd)
+            utils.run_script(setup_cmd, print_only=False)
         return
     else:
         print(sys.version_info)

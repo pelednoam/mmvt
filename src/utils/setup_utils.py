@@ -211,9 +211,12 @@ class Bag( dict ):
         self.__dict__ = self
 
 
-def run_script(cmd, verbose=False):
+def run_script(cmd, verbose=False, print_only=False):
     import subprocess
     import sys
+    if print_only:
+        print(cmd)
+        return ''
     try:
         if verbose:
             print('running: {}'.format(cmd))
