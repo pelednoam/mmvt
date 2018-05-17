@@ -298,7 +298,7 @@ def get_blender_python_exe(blender_fol, gui=True):
 def install_blender_reqs(blender_fol='', gui=True):
     # http://stackoverflow.com/questions/9956741/how-to-install-multiple-python-packages-at-once-using-pip
     try:
-        if blender_fol != '':
+        if blender_fol == '':
             blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
         resource_fol = utils.get_resources_fol()
         blender_bin_fol, python_exe = get_blender_python_exe(blender_fol, gui)
@@ -352,8 +352,6 @@ def main(args):
             setup_cmd = '{} -m src.setup --blender_fol "{}" {}'.format(blender_python_exe, blender_fol, call_args)
             utils.run_script(setup_cmd, print_only=False)
         return
-    else:
-        print(sys.version_info)
 
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
