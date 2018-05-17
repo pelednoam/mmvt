@@ -846,7 +846,7 @@ def add_colorbar_to_image(image_fname, cb_ticks_num=None, cb_ticks_font_size=Non
     cb_ticks = cb_ticks.replace('-', '*') # Bug in argparse. todo: change the , to space
     flags = '--figure_fname "{}" --data_max "{}" --data_min "{}" --colors_map {} --background_color {} '.format(
         image_fname, data_max, data_min, _addon().get_colormap(), get_background_rgb_string()) + \
-        '--cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} --perc {}'.format(
+        '--cb_title "{}" --cb_ticks "{}" --cb_ticks_font_size {} --cb_ticks_perc {}'.format(
             _addon().get_colorbar_title(), cb_ticks, cb_ticks_font_size, _addon().get_colorbar_prec())
     mu.run_mmvt_func('src.utils.figures_utils', 'add_colorbar_to_image', flags=flags)
 

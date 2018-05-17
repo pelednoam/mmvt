@@ -15,7 +15,7 @@ PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
 # @utils.tryit()
 def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True, cb_ticks=None,
                    background_color='black', cb_ticks_font_size=10, cb_title='', colorbar_name='', dpi=100,
-                   h=None, w=None, set_cb_max_min_using_ticks=True, perc=2, **kargs):
+                   h=None, w=None, set_cb_max_min_using_ticks=True, cb_ticks_perc=2, **kargs):
     import matplotlib as mpl
 
     if ',' in background_color:
@@ -30,10 +30,10 @@ def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True
         fig.canvas.draw()
         ax = plt.gca() #plt.subplot(199)
         ax.tick_params(axis='y', colors='white' if background_color in ['black', [0, 0, 0]] else 'black')
-    cb_ticks = [utils.round_n_digits(x, perc) for x in cb_ticks]
+    cb_ticks = [utils.round_n_digits(x, cb_ticks_perc) for x in cb_ticks]
     if len(cb_ticks) >= 2 and set_cb_max_min_using_ticks:
-        vmin = utils.round_n_digits(min(data_min, cb_ticks[0]), perc)
-        vmax = utils.round_n_digits(max(data_max, cb_ticks[-1]), perc)
+        vmin = utils.round_n_digits(min(data_min, cb_ticks[0]), cb_ticks_perc)
+        vmax = utils.round_n_digits(max(data_max, cb_ticks[-1]), cb_ticks_perc)
     else:
         vmin, vmax = data_min, data_max
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
@@ -227,8 +227,8 @@ def combine_nine_images(figs, new_image_fname, dpi=100, facecolor='black', **kar
 
 
 def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, background_color='black',
-                          cb_ticks=[], cb_ticks_font_size=10, cb_title='', set_cb_max_min_using_ticks=True, perc=2,
-                          **kargs):
+                          cb_ticks=[], cb_ticks_font_size=10, cb_title='', set_cb_max_min_using_ticks=True,
+                          cb_ticks_perc=2, **kargs):
     fol = utils.get_fname_folder(figure_fname)
     if ',' in background_color:
         background_color = [float(x) for x in background_color.split(',')]
@@ -237,7 +237,7 @@ def add_colorbar_to_image(figure_fname, data_max, data_min, colors_map, backgrou
     cb_fname = op.join(fol, '{}_colorbar.jpg'.format(colors_map))
     plot_color_bar(data_max, data_min, colors_map, do_save=True, cb_ticks=cb_ticks, fol=fol,
                    background_color=background_color, cb_ticks_font_size=cb_ticks_font_size, cb_title=cb_title,
-                   set_cb_max_min_using_ticks=set_cb_max_min_using_ticks, perc=perc)
+                   set_cb_max_min_using_ticks=set_cb_max_min_using_ticks, cb_ticks_perc=cb_ticks_perc)
     cb_img = Image.open(cb_fname)
     # crop_image(figure_fname, figure_fname, dx=150, dy=0, dw=150, dh=0)
     combine_brain_with_color_bar(figure_fname, cb_img, overwrite=True, cb_ticks=cb_ticks)
@@ -411,6 +411,7 @@ if __name__ is '__main__':
     parser.add_argument('--cb_title', required=False, default='')
     parser.add_argument('--cb_ticks', required=False, default='', type=au.float_arr_type)
     parser.add_argument('--cb_ticks_font_size', required=False, default=10, type=int)
+    parser.add_argument('--cb_ticks_perc', required=False, default=2, type=int)
     parser.add_argument('--add_cb', required=False, default=1, type=au.is_true)
     parser.add_argument('--crop_figures', required=False, default=1, type=au.is_true)
     parser.add_argument('--remove_original_figures', required=False, default=0, type=au.is_true)
