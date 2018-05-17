@@ -228,7 +228,7 @@ def run_script(cmd, verbose=False):
 
     if isinstance(output, str):
         output = output.decode(sys.getfilesystemencoding(), 'ignore')
-    print(output)
+    # print(output)
     return output
 
 
@@ -283,3 +283,20 @@ def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
     return s.getsockname()[0]
+
+
+def create_call_args(args):
+    call_args = ''
+    for arg, value in args.items():
+        if isinstance(value, list):
+            value = ','.join(map(str, value))
+        call_args += '--{} "{}" '.format(arg, value)
+    return call_args
+
+
+def get_command_output(cmd):
+    import sys
+    output = run_script(cmd)
+    if not isinstance(output, str):
+        output = output.decode(sys.getfilesystemencoding(), 'ignore')
+    return output

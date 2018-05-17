@@ -117,6 +117,11 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
 
 
 def mmvt_input(message, gui, style=1):
+    try:
+        import pymsgbox
+    except:
+        gui=False
+
     if gui:
         ret = utils.message_box(message, TITLE, style)
     else:
@@ -210,6 +215,27 @@ def install_reqs(only_verbose=False):
     return retcode
 
 
+def find_blender_in_linux(fol, look_for_dirs=True):
+    blender_fol = ''
+    if look_for_dirs:
+        output = utils.get_command_output("find {} -name 'blender' -type d".format(fol))
+        blender_fols = output.split('\n')
+        blender_fols = [fol for fol in blender_fols if op.isdir(fol) and op.isfile(
+            op.join(utils.get_parent_fol(fol), 'blender.svg')) or 'blender.app' in fol]
+        if len(blender_fols) >= 1:
+            # todo: let the user select which one
+            blender_fol = utils.get_parent_fol(blender_fols[0])
+    else:
+        output = utils.get_command_output("find {} -name 'blender'".format(fol))
+        blender_fols = output.split('\n')
+        blender_fols = [fol for fol in blender_fols if utils.is_link(fol) and
+                        op.isfile(op.join(fol, 'blender.svg'))]
+        if len(blender_fols) >= 1:
+            # todo: let the user select which one
+            blender_fol = blender_fols[0]
+    return blender_fol
+
+
 def find_blender():
     blender_fol = ''
     if utils.is_windows():
@@ -219,14 +245,9 @@ def find_blender():
         elif op.isdir(op.join('D:\\', blender_win_fol)):
             blender_fol = op.join('D:\\', blender_win_fol)
     elif utils.is_linux():
-        output = utils.run_script("find ~/ -name 'blender' -type d")
-        if not isinstance(output, str):
-            output = output.decode(sys.getfilesystemencoding(), 'ignore')
-        blender_fols = output.split('\n')
-        blender_fols = [fol for fol in blender_fols if op.isfile(op.join(
-            utils.get_parent_fol(fol), 'blender.svg')) or 'blender.app' in fol]
-        if len(blender_fols) == 1:
-            blender_fol = utils.get_parent_fol(blender_fols[0])
+        blender_fol = find_blender_in_linux('../', False)
+        if blender_fol == '':
+            blender_fol = find_blender_in_linux('~/')
     elif utils.is_osx():
         blender_fol = '/Applications/Blender/blender.app/Contents/MacOS'
         # output = utils.run_script("find ~/ -name 'blender' -type d")
@@ -250,34 +271,37 @@ def create_fsaverage_link(links_fol_name='links'):
             utils.create_folder_link(fsveareg_fol, fsaverage_link)
 
 
-def install_blender_reqs(gui=True):
+def get_blender_python_exe(blender_fol, gui=True):
+    blender_parent_fol = utils.get_parent_fol(blender_fol)
+    bin_template = op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.7?', 'python') if utils.is_osx() else \
+        op.join(blender_fol, '2.7?', 'python')
+    blender_bin_folders = sorted(glob.glob(bin_template))
+    if len(blender_bin_folders) == 0:
+        print("Couldn't find Blender's bin folder! ({})".format(bin_template))
+        blender_bin_fol = ''
+        choose_folder = mmvt_input('Please choose the Blender bin folder where python file exists', gui) == 'Ok'
+        if choose_folder:
+            fol = utils.choose_folder_gui(blender_parent_fol, 'Blender bin folder') if gui else input()
+            if fol != '':
+                blender_bin_fol = glob.glob(op.join(fol, '2.7?', 'python'))[-1]
+        if blender_bin_fol == '':
+            return '', ''
+    else:
+        # todo: let the use select the folder if more than one
+        blender_bin_fol = blender_bin_folders[-1]
+    python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
+    return blender_bin_fol, python_exe
+
+
+def install_blender_reqs(blender_fol='', gui=True):
     # http://stackoverflow.com/questions/9956741/how-to-install-multiple-python-packages-at-once-using-pip
     try:
-        blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
+        if blender_fol != '':
+            blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
         resource_fol = utils.get_resources_fol()
-        blender_parent_fol = utils.get_parent_fol(blender_fol)
-
-        # Get pip
-        bin_template = op.join(utils.get_parent_fol(blender_fol),  'Resources', '2.7?', 'python') if utils.is_osx() else \
-            op.join(blender_fol, '2.7?', 'python')
-        blender_bin_folders = sorted(glob.glob(bin_template))
-        if len(blender_bin_folders) == 0:
-            print("Couldn't find Blender's bin folder! ({})".format(bin_template))
-            blender_bin_fol = ''
-            choose_folder = mmvt_input('Please choose the Blender bin folder where python file exists', gui) == 'Ok'
-            if choose_folder:
-                fol = utils.choose_folder_gui(blender_parent_fol, 'Blender bin folder') if gui else input()
-                if fol != '':
-                    blender_bin_fol = glob.glob(op.join(fol, '2.7?', 'python'))[-1]
-            if blender_bin_fol == '':
-                return
-        else:
-            # todo: let the use select the folder if more than one
-            blender_bin_fol = blender_bin_folders[-1]
-        python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
+        blender_bin_fol, python_exe = get_blender_python_exe(blender_fol, gui)
         current_dir = os.getcwd()
         os.chdir(blender_bin_fol)
-        # if utils.is_osx():
         # install blender reqs:
         pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
         reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator scikit-learn'
@@ -313,6 +337,22 @@ def send_email():
 
 
 def main(args):
+    # If python version is < 3.5, use Blender's python
+    if sys.version_info[0] < 3 or sys.version_info[0] == 3 and sys.version_info[1] < 5:
+        blender_fol = find_blender()
+        blender_bin_fol, python_exe = get_blender_python_exe(blender_fol)
+        blender_python_exe = op.join(blender_bin_fol, 'bin', python_exe)
+        if not op.isfile(blender_python_exe):
+            print('You must use python 3.5 or newer, or install first Blender')
+        else:
+            # rerun setup with Blender's python
+            call_args = utils.create_call_args(args)
+            setup_cmd = '{} -m src.setup --blender_fol "{}" {}'.format(blender_python_exe, blender_fol, call_args)
+            utils.run_script(setup_cmd)
+        return
+    else:
+        print(sys.version_info)
+
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
         install_reqs(args.only_verbose)
@@ -345,7 +385,7 @@ def main(args):
 
     # 5) Install python packages in Blender
     if utils.should_run(args, 'install_blender_reqs'):
-        install_blender_reqs()
+        install_blender_reqs(args.blender_fol)
 
     if utils.should_run(args, 'send_email'):
         send_email()
@@ -359,7 +399,7 @@ def main(args):
     if 'find_blender' in args.function:
         find_blender()
 
-    print('Finish!')
+    # print('Finish!')
 
 
 def print_help():
@@ -390,6 +430,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--only_verbose', help='only verbose', required=False, default='0', type=au.is_true)
     parser.add_argument('-d', '--default_folders', help='default options', required=False, default='1', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('--blender_fol', help='', required=False, default='')
     parser.add_argument('--links_file_name', help='', required=False, default='links.csv')
     parser.add_argument('--overwrite_links', help='', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
