@@ -240,5 +240,5 @@ def import_evokes(evokes_fname):
     meg.save_evokes_to_mmvt(evokes, events_keys, mu.get_user())
     _addon().import_meg_sensors()
     _addon().add_data_to_meg_sensors()
-    _addon().load_all_panels()
+    # _addon().load_all_panels()
     _addon().show_meg_sensors()
