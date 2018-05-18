@@ -474,33 +474,6 @@ class Filtering(bpy.types.Operator):
             self.objs_colors = mu.change_selected_fcurves_colors(mu.OBJ_TYPES_ROIS)
             _addon().color_contours(filter_obj_names, specific_colors=self.objs_colors, move_cursor=False)
 
-    # def get_objects_to_color(self, names, objects_indices):
-    #     curves_num = 0
-    #     for ind in range(min(self.topK, len(objects_indices))):
-    #         orig_name = names[objects_indices[ind]]
-    #         if 'unknown' not in orig_name:
-    #             obj = bpy.data.objects.get(orig_name)
-    #             if not obj is None and not obj.animation_data is None:
-    #                 curves_num += len(obj.animation_data.action.fcurves)
-    #
-    #     colors = cu.get_distinct_colors(curves_num)
-    #     objects_names, objects_colors, objects_data = defaultdict(list), defaultdict(list), defaultdict(list)
-    #     for ind in range(min(self.topK, len(objects_indices)) - 1, -1, -1):
-    #         if bpy.data.objects.get(names[objects_indices[ind]]):
-    #             orig_name = names[objects_indices[ind]]
-    #             obj_type = mu.check_obj_type(orig_name)
-    #             objects_names[obj_type].append(orig_name)
-    #             objects_colors[obj_type].append(cu.name_to_rgb('green'))
-    #             objects_data[obj_type].append(1.0)
-    #             if 'unknown' not in orig_name:
-    #                 filter_roi_func(orig_name)
-    #                 for fcurve in bpy.data.objects[orig_name].animation_data.action.fcurves:
-    #                     fcurve.color_mode = 'CUSTOM'
-    #                     fcurve.color = tuple(next(colors))
-    #         else:
-    #             print("Can't find {}!".format(names[objects_indices[ind]]))
-    #     return objects_names, objects_colors, objects_data
-
     def invoke(self, context, event=None):
         _addon().change_view3d()
         #todo: why should we call setup layers here??
@@ -521,31 +494,7 @@ class Filtering(bpy.types.Operator):
         current_file_to_upload = files_names[self.type_of_filter]
 
         if self.type_of_filter == 'Electrodes':
-            # todo: should be called once (maybe those files are already loaded?
-            fol = op.join(mu.get_user_fol(), 'electrodes')
-            bip = 'bipolar_' if bpy.context.scene.bipolar else ''
-            meta_files = glob.glob(op.join(fol, 'electrodes_{}meta*.npz'.format(bip)))
-            if len(meta_files) > 0:
-                data_files = glob.glob(op.join(fol, 'electrodes_{}data*.npy'.format(bip)))
-                print('Loading data file: {}'.format(data_files[0]))
-                print('Loading meta data file: {}'.format(meta_files[0]))
-                data = np.load(data_files[0])
-                meta = np.load(meta_files[0])
-            else:
-                data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data*.npz'.format(bip)))
-                print('Loading data file: {}'.format(data_files[0]))
-                meta = np.load(data_files[0])
-                data = meta['data']
-            if len(data_files) == 0:
-                print('No data files!')
-            elif len(data_files) == 1:
-                current_file_to_upload = data_files[0]
-            else:
-                print('More the one data file!')
-                current_file_to_upload = data_files[0]
-                # todo: should decide which one to pick
-                # current_file_to_upload = current_file_to_upload.format(
-                #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
+            data, meta = get_deep_electrodes_data()
             self.filter_electrodes_or_sensors('Deep_electrodes', data, meta)
         elif self.type_of_filter == 'EEG':
             data, meta = _addon().get_eeg_sensors_data()
@@ -562,6 +511,36 @@ class Filtering(bpy.types.Operator):
             mu.view_all_in_graph_editor(context)
         # bpy.context.screen.areas[2].spaces[0].dopesheet.filter_fcurve_name = '*'
         return {"FINISHED"}
+
+
+def get_deep_electrodes_data():
+    # todo: should be called once (maybe those files are already loaded?
+    fol = op.join(mu.get_user_fol(), 'electrodes')
+    bip = 'bipolar_' if bpy.context.scene.bipolar else ''
+    meta_files = glob.glob(op.join(fol, 'electrodes_{}meta*.npz'.format(bip)))
+    if len(meta_files) > 0:
+        data_files = glob.glob(op.join(fol, 'electrodes_{}data*.npy'.format(bip)))
+        print('Loading data file: {}'.format(data_files[0]))
+        print('Loading meta data file: {}'.format(meta_files[0]))
+        data = np.load(data_files[0])
+        meta = np.load(meta_files[0])
+    else:
+        data_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_{}data*.npz'.format(bip)))
+        print('Loading data file: {}'.format(data_files[0]))
+        meta = np.load(data_files[0])
+        data = meta['data']
+    # todo: check if this part is needed
+    if len(data_files) == 0:
+        print('No data files!')
+    elif len(data_files) == 1:
+        current_file_to_upload = data_files[0]
+    else:
+        print('More the one data file!')
+        current_file_to_upload = data_files[0]
+        # todo: should decide which one to pick
+        # current_file_to_upload = current_file_to_upload.format(
+        #     stat='avg' if bpy.context.scene.selection_type == 'conds' else 'diff')
+    return data, meta
 
 
 bpy.types.Scene.closest_curve_str = ''
