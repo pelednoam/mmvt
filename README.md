@@ -12,6 +12,7 @@ The module supports many types of analyzed data:
 * MEG raw data (fif files)
 * FieldTrip (MATLAB software toolbox for neuroimaging analysis)
 <br><br>
+
 The users can also reprocess raw data using wrappers for FaFast and MNE-python (a python package for sensor and source-space analysis of MEG and EEG data).
 <br><br>
 
