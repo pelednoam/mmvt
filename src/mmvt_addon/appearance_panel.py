@@ -457,7 +457,6 @@ def set_layers_depth_trans(material_name='Activity_map_mat', depth=None):
 def appearance_draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
-    layout.prop(context.scene, "filter_view_type", expand=True)
     layout.prop(context.scene, "surface_type", expand=True)
     # if 'Key' in bpy.data.shape_keys and is_inflated() and is_activity():
     #     layout.prop(context.scene, 'inflating')
@@ -486,6 +485,7 @@ def appearance_draw(self, context):
     layout.prop(context.scene, 'show_appearance_settings', text='Show settings')
     if bpy.context.scene.show_appearance_settings:
         layout.prop(context.scene, 'panels_background_color', text='Background')
+        layout.prop(context.scene, "filter_view_type", expand=True)
 
 
 def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
