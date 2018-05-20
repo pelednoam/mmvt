@@ -259,12 +259,20 @@ class FixBrainMaterials(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class UpdateMMVT(bpy.types.Operator):
+    bl_idname = "mmvt.update_mmvt"
+    bl_label = "update mmvt"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        update_code()
+        return {"FINISHED"}
+
+
 class ImportBrain(bpy.types.Operator):
     bl_idname = "mmvt.brain_importing"
     bl_label = "import2 brain"
     bl_options = {"UNDO"}
-    current_root_path = ''
-    brain_layer = -1
 
     def invoke(self, context, event=None):
         import_brain()
@@ -398,7 +406,7 @@ def get_electrodes_radius():
     return bpy.context.scene.electrodes_radius
 
 
-def create_electrode(x, y, z, elc_name, electrode_size=None, layers_array=None, parnet_name=''):
+def create_electrode(pos, elc_name, electrode_size=None, layers_array=None, parnet_name=''):
     if parnet_name == '':
         parnet_name = _addon().electrodes_panel_parent
     if electrode_size is None:
@@ -406,6 +414,7 @@ def create_electrode(x, y, z, elc_name, electrode_size=None, layers_array=None, 
     if layers_array is None:
         layers_array = [False] * 20
         layers_array[_addon().ELECTRODES_LAYER] = True
+    x, y, z = pos * 0.1
     if not bpy.data.objects.get(elc_name) is None:
         elc_obj = bpy.data.objects[elc_name]
         elc_obj.location = [x, y, z]
@@ -416,6 +425,13 @@ def create_electrode(x, y, z, elc_name, electrode_size=None, layers_array=None, 
         cur_obj.select = True
         cur_obj.parent = bpy.data.objects[parnet_name]
         mu.create_and_set_material(cur_obj)
+
+
+def update_code():
+    import git
+    g = git.cmd.Git(mu.get_mmvt_code_root())
+    g.pull()
+    _addon().load_all_panels()
 
 
 def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrode_size=None,
@@ -449,10 +465,11 @@ def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrod
     layers_array = [False] * 20
     layers_array[electrodes_layer] = True
 
-    for (x, y, z), elc_name in zip(elecs_pos, elecs_names):
+    for elc_pos, elc_name in zip(elecs_pos, elecs_names):
         if not isinstance(elc_name, str):
             elc_name = elc_name.astype(str)
-        create_electrode(x * 0.1, y * 0.1, z * 0.1, elc_name, electrode_size, layers_array, parnet_name)
+        create_electrode(elc_pos, elc_name, electrode_size, layers_array, parnet_name)
+
 
 
 @mu.tryit(None, False)
@@ -1073,8 +1090,8 @@ def data_draw(self, context):
     layout = self.layout
     # layout.prop(context.scene, 'conf_path')
     # col = self.layout.column(align=True)
+    layout.operator(UpdateMMVT.bl_idname, text="Update MMVT", icon='POSE_HLT')
     col = layout.box().column()
-
     col.prop(context.scene, 'atlas', text="Atlas")
     col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
     col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
@@ -1357,7 +1374,7 @@ def init_meg():
 def register():
     try:
         unregister()
-
+        bpy.utils.register_class(UpdateMMVT)
         bpy.utils.register_class(StartFlatProcess)
         bpy.utils.register_class(DataMakerPanel)
         bpy.utils.register_class(AddDataToElectrodes)
@@ -1384,6 +1401,7 @@ def register():
 
 def unregister():
     try:
+        bpy.utils.unregister_class(UpdateMMVT)
         bpy.utils.unregister_class(StartFlatProcess)
         bpy.utils.unregister_class(DataMakerPanel)
         bpy.utils.unregister_class(AddDataToElectrodes)
