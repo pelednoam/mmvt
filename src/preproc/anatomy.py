@@ -204,9 +204,12 @@ def create_surfaces(subject, hemi='both', overwrite=False):
                     if surf_type != 'dural':
                         raise Exception("Can't find the surface {}!".format(surf_name))
                     else:
-                        print('No dural surf! Run the following command from ielu folder')
-                        print('''python2 -c "from ielu import pipeline as pipe; pipe.create_dural_surface(subject='{}')"'''.format(subject))
-                        continue
+                        from src.misc.dural import create_dural
+                        create_dural.create_dural_surface(subject, SUBJECTS_DIR)
+                        verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+                        # print('No dural surf! Run the following command from ielu folder')
+                        # print('''python2 -c "from ielu import pipeline as pipe; pipe.create_dural_surface(subject='{}')"'''.format(subject))
+                        # continue
                 if surf_type == 'inflated':
                     verts_offset = 55 if hemi == 'rh' else -55
                     verts[:, 0] = verts[:, 0] + verts_offset
