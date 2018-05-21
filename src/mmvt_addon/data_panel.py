@@ -428,7 +428,12 @@ def create_electrode(pos, elc_name, electrode_size=None, layers_array=None, parn
 
 
 def update_code():
-    import git
+    try:
+        import git
+    except:
+        print('You should install first gitpython. Run the following command:')
+        print('python -m src.setup -f install_blender_req')
+        return
     g = git.cmd.Git(mu.get_mmvt_code_root())
     g.pull()
     _addon().load_all_panels()

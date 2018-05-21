@@ -369,8 +369,8 @@ def clipped_zoom(img, x=-1, y=-1, pixels_zoom=30, smooth=False, **kwargs):
     zoom_factor = max(h, w) / (pixels_zoom * 2)
 
     # width and height of the zoomed image
-    zh = int(np.round(zoom_factor * h))
-    zw = int(np.round(zoom_factor * w))
+    zh = mu.round_np_to_int(zoom_factor * h)
+    zw = mu.round_np_to_int(zoom_factor * w)
 
     # for multichannel images we don't want to apply the zoom factor to the RGB
     # dimension, so instead we create a tuple of zoom factors, one per array
@@ -512,7 +512,8 @@ def ornt2axcodes(ornt, labels=None):
         if np.isnan(axno):
             axcodes.append(None)
             continue
-        axint = int(np.round(axno))
+        # axint = int(np.round(axno))
+        axint = mu.round_np_to_int(axno)
         if axint != axno:
             raise ValueError('Non integer axis number %f' % axno)
         elif direction == 1:

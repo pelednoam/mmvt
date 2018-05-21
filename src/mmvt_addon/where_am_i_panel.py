@@ -88,6 +88,7 @@ def where_i_am_draw(self, context):
     row.prop(context.scene, "tkreg_ras_y", text="y")
     row.prop(context.scene, "tkreg_ras_z", text="z")
     row.operator(ClipboardToTkreg.bl_idname, text="", icon='PASTEDOWN')
+    row.operator(TkregToClipboard.bl_idname, text="", icon='PASTEFLIPUP')
     if not t1_trans() is None:
         layout.label(text='mni305:')
         row = layout.row(align=0)
@@ -284,10 +285,10 @@ def get_ras():
 def set_voxel(coo):
     # print('set_voxel')
     WhereAmIPanel.call_update = False
-    bpy.context.scene.voxel_x = int(np.round(coo[0]))
-    bpy.context.scene.voxel_y = int(np.round(coo[1]))
+    bpy.context.scene.voxel_x = mu.round_np_to_int(coo[0])
+    bpy.context.scene.voxel_y = mu.round_np_to_int(coo[1])
     WhereAmIPanel.call_update = True
-    bpy.context.scene.voxel_z = int(np.round(coo[2]))
+    bpy.context.scene.voxel_z = mu.round_np_to_int(coo[2])
 
 
 def get_T1_voxel():
@@ -296,10 +297,10 @@ def get_T1_voxel():
 
 def set_ct_coo(coo):
     WhereAmIPanel.call_update = False
-    bpy.context.scene.ct_voxel_x = int(np.round(coo[0]))
-    bpy.context.scene.ct_voxel_y = int(np.round(coo[1]))
+    bpy.context.scene.ct_voxel_x = mu.round_np_to_int(coo[0])
+    bpy.context.scene.ct_voxel_y = mu.round_np_to_int(coo[1])
     WhereAmIPanel.call_update = True
-    bpy.context.scene.ct_voxel_z = int(np.round(coo[2]))
+    bpy.context.scene.ct_voxel_z = mu.round_np_to_int(coo[2])
     _addon().set_ct_intensity()
 
 
@@ -668,6 +669,10 @@ def clipboard_to_tkreg():
         create_slices()
 
 
+def tkreg_to_clipboard():
+    bpy.context.window_manager.clipboard = ','.join([str(x) for x in get_tkreg_ras()])
+
+
 class WaitForSlices(bpy.types.Operator):
     bl_idname = "mmvt.wait_for_slices"
     bl_label = "wait_for_slices"
@@ -730,6 +735,17 @@ class ClipboardToTkreg(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         clipboard_to_tkreg()
+        return {"FINISHED"}
+
+
+class TkregToClipboard(bpy.types.Operator):
+    bl_idname = "mmvt.tkreg_to_clipboard"
+    bl_label = "mmvt tkreg_to_clipboard"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        tkreg_to_clipboard()
         return {"FINISHED"}
 
 
@@ -945,6 +961,7 @@ def register():
         bpy.utils.register_class(ClosestLabel)
         bpy.utils.register_class(ChooseVoxelID)
         bpy.utils.register_class(ClipboardToTkreg)
+        bpy.utils.register_class(TkregToClipboard)
         bpy.utils.register_class(WaitForSlices)
         # print('Where am I Panel was registered!')
     except:
@@ -959,6 +976,7 @@ def unregister():
         bpy.utils.unregister_class(ClosestLabel)
         bpy.utils.unregister_class(ChooseVoxelID)
         bpy.utils.unregister_class(ClipboardToTkreg)
+        bpy.utils.unregister_class(TkregToClipboard)
         bpy.utils.unregister_class(WaitForSlices)
     except:
         # print("Can't unregister Where am I Panel!")

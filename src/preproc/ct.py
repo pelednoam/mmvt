@@ -65,7 +65,7 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
     if register_ct_name == '':
         register_ct_name = 'ct_reg_to_mr.mgz'
     if print_only:
-        print(f'Removign large negative values: {op.join(ct_fol, ct_name)} -> {op.join(ct_fol, nnv_ct_name)}')
+        print('Removing large negative values: {} -> {}'.format(op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name)))
     else:
         ctu.remove_large_negative_values_from_ct(
             op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name), threshold, overwrite)

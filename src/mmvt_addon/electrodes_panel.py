@@ -302,6 +302,8 @@ def show_hide_hemi_electrodes(hemi, val):
     if leads_parent is not None:
         for lead_obj in leads_parent.children:
             lead_group = lead_obj.name.split('_')[0]
+            if lead_group not in ElecsPanel.groups_first_electrode:
+                continue
             group_hemi = get_elec_hemi(ElecsPanel.groups_first_electrode[lead_group])
             if group_hemi == hemi:
                 lead_obj.hide = not val

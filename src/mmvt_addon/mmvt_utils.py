@@ -1503,6 +1503,10 @@ def round_n_digits(x, n):
     return ceil_floor(x * math.pow(10, n)) / math.pow(10, n)
 
 
+def round_np_to_int(x):
+    return np.rint(x).astype(int)
+
+
 def get_data_max_min(data, norm_by_percentile, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):
     if data_per_hemi:
         if norm_by_percentile:
