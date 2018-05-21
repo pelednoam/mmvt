@@ -197,7 +197,10 @@ def electode_was_manually_selected(selected_electrode_name):
     if not ElecsPanel.init or len(ElecsPanel.leads) == 0:
         return
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
-    group = ElecsPanel.groups[selected_electrode_name]
+    group = ElecsPanel.groups.get(selected_electrode_name)
+    if group is None:
+        print("Can't find electrode {} in the leads dict!".format(selected_electrode_name))
+        return
     # It's enough to update the lead to update also the elecctrode, according to bpy.context.active_object
     try:
         bpy.context.scene.leads = group

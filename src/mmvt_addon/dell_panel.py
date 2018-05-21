@@ -166,6 +166,8 @@ def create_new_electrode_between():
     DellPanel.hemis.append(hemi)
     DellPanel.groups[group_ind].append(new_num)
     _addon().create_electrode(new_pos, new_name)
+    mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold),
+            op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold))))
     _addon().object_coloring(bpy.data.objects[new_name], tuple(color))
 
 
@@ -551,7 +553,12 @@ def dell_draw(self, context):
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             name = bpy.context.selected_objects[0].name
             ind = DellPanel.names.index(name)
-            layout.label(text='{} index: {} hemi: {}'.format(name, ind, DellPanel.hemis[ind]))
+            groups = [k for k, g in enumerate(DellPanel.groups) if ind in g]
+            if len(groups) == 1:
+                group_str = 'group {}, {} in group'.format(groups[0], len(DellPanel.groups[groups[0]]))
+            else:
+                group_str = ''
+            layout.label(text='{} index: {} hemi: {} {}'.format(name, ind, DellPanel.hemis[ind], group_str))
         layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
         if len(DellPanel.groups) > 0:
             box = layout.box()
