@@ -87,8 +87,8 @@ def where_i_am_draw(self, context):
     row.prop(context.scene, "tkreg_ras_x", text="x")
     row.prop(context.scene, "tkreg_ras_y", text="y")
     row.prop(context.scene, "tkreg_ras_z", text="z")
-    row.operator(ClipboardToTkreg.bl_idname, text="", icon='PASTEDOWN')
-    row.operator(TkregToClipboard.bl_idname, text="", icon='PASTEFLIPUP')
+    row.operator(TkregToClipboard.bl_idname, text="", icon='PASTEDOWN')
+    row.operator(ClipboardToTkreg.bl_idname, text="", icon='PASTEFLIPUP')
     if not t1_trans() is None:
         layout.label(text='mni305:')
         row = layout.row(align=0)
