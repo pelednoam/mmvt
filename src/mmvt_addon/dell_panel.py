@@ -176,8 +176,9 @@ def mark_electrode_lead_as_noise():
     print('Setting group {} as noise'.format(group_inds[0]))
     g = DellPanel.groups[group_inds[0]]
     for elc_ind in g:
-        DellPanel.noise.add(elc_ind)
-        _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(bpy.context.scene.dell_ct_noise_color))
+        mark_elc_as_noise(None, elc_ind)
+        # DellPanel.noise.add(elc_ind)
+        # _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(bpy.context.scene.dell_ct_noise_color))
     lead_obj = bpy.data.objects.get('{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]))
     if lead_obj is not None:
         bpy.data.objects.remove(lead_obj, True)
@@ -193,8 +194,8 @@ def save_dell_objects():
 
 
 def mark_selected_electrodes_as_noise():
-    names = [o.name for o in bpy.context.selected_objects]
-    for elc_name in names:
+    for elc_obj in bpy.context.selected_objects:
+        elc_name = elc_obj.name
         if elc_name not in DellPanel.names:
             continue
         elc_ind = DellPanel.names.index(elc_name)
@@ -202,8 +203,7 @@ def mark_selected_electrodes_as_noise():
         if len(group_inds) == 1:
             DellPanel.groups[group_inds[0]].remove(elc_ind)
         print('Removing {} from Dell objects'.format(elc_name))
-        DellPanel.noise.add(elc_ind)
-        _addon().object_coloring(bpy.data.objects[elc_name], tuple(bpy.context.scene.dell_ct_noise_color))
+        mark_elc_as_noise(elc_obj, elc_ind)
     DellPanel.groups = [g for g in DellPanel.groups if len(g) > 0]
     # save_dell_objects()
 
@@ -219,18 +219,17 @@ def mark_selected_noise_as_electrodes():
 
 
 def mark_non_group_electrodes_as_noise():
-    bad_electrodes = []
+    # bad_electrodes = []
     for elc_obj in bpy.data.objects['Deep_electrodes'].children:
-        elc_obj.select = False
+        # elc_obj.select = False
         elc_name = elc_obj.name
-        if elc_name not in DellPanel.names:
-            bad_electrodes.append(elc_obj)
-            continue
+        # if elc_name not in DellPanel.names:
+        #     bad_electrodes.append(elc_obj)
+        #     continue
         elc_ind = DellPanel.names.index(elc_name)
         group_inds = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g]
         if len(group_inds) == 0:
-            DellPanel.noise.add(elc_ind)
-            _addon().object_coloring(bpy.data.objects[elc_name], tuple(bpy.context.scene.dell_ct_noise_color))
+            mark_elc_as_noise(elc_obj, elc_ind)
     #         bad_electrodes.append(elc_obj)
     #         if elc_name in DellPanel.names:
     #             elc_ind = DellPanel.names.index(elc_name)
@@ -242,6 +241,21 @@ def mark_non_group_electrodes_as_noise():
     # for bad_elec in bad_electrodes:
     #     bad_elec.select = True
     #     bpy.ops.object.delete()
+
+
+def mark_elc_as_noise(elc_obj=None, elc_ind=-1):
+    if elc_obj is None and elc_ind in DellPanel.names:
+        elc_obj = bpy.data.objects.get(DellPanel.names[elc_ind])
+        if elc_obj is None:
+            print('No object for {}!'.format(DellPanel.names[elc_ind]))
+    if elc_ind == -1:
+        if elc_obj.name in DellPanel.names:
+            elc_ind = DellPanel.names.index(elc_obj.name)
+        else:
+            print('{} is not in DellPanel.names!'.format(elc_obj.name))
+    DellPanel.noise.add(elc_ind)
+    elc_obj.hide = not bpy.context.scene.ct_mark_noise
+    _addon().object_coloring(elc_obj, tuple(bpy.context.scene.dell_ct_noise_color))
 
 
 def create_new_electrode():
