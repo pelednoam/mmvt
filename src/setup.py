@@ -218,15 +218,15 @@ def install_reqs(only_verbose=False):
 def find_blender_in_linux(fol, look_for_dirs=True):
     blender_fol = ''
     if look_for_dirs:
-        output = utils.get_command_output("find {} -name 'blender' -type d".format(fol))
+        output = utils.get_command_output("find {} -name '*blender*' -type d".format(fol))
         blender_fols = output.split('\n')
-        blender_fols = [fol for fol in blender_fols if op.isdir(fol) and op.isfile(
-            op.join(utils.get_parent_fol(fol), 'blender.svg')) or 'blender.app' in fol]
+        blender_fols = [fol for fol in blender_fols if op.isfile(
+            op.join(fol, 'blender.svg')) or 'blender.app' in fol]
         if len(blender_fols) >= 1:
             # todo: let the user select which one
-            blender_fol = utils.get_parent_fol(blender_fols[0])
+            blender_fol = blender_fols[0]
     else:
-        output = utils.get_command_output("find {} -name 'blender'".format(fol))
+        output = utils.get_command_output("find {} -name '*blender*'".format(fol))
         blender_fols = output.split('\n')
         blender_fols = [fol for fol in blender_fols if utils.is_link(fol) and
                         op.isfile(op.join(fol, 'blender.svg'))]
@@ -247,7 +247,7 @@ def find_blender():
     elif utils.is_linux():
         blender_fol = find_blender_in_linux('../', False)
         if blender_fol == '':
-            blender_fol = find_blender_in_linux('../')
+            blender_fol = find_blender_in_linux('../../')
         if blender_fol == '':
             blender_fol = find_blender_in_linux('~/')
     elif utils.is_osx():
@@ -306,7 +306,7 @@ def install_blender_reqs(blender_fol='', gui=True):
         os.chdir(blender_bin_fol)
         # install blender reqs:
         pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
-        reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator scikit-learn gitpython'
+        reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator Pillow scikit-learn gitpython'
         if not utils.is_windows():
             utils.run_script(pip_cmd)
             install_cmd = '{} install {}'.format(op.join('bin', 'pip'), reqs)
@@ -348,10 +348,13 @@ def main(args):
             print('You must use python 3.5 or newer, or install first Blender')
         else:
             # rerun setup with Blender's python
+            args.blender_fol = blender_fol
             call_args = utils.create_call_args(args)
-            setup_cmd = '{} -m src.setup --blender_fol "{}" {}'.format(blender_python_exe, blender_fol, call_args)
+            setup_cmd = '{} -m src.setup {}'.format(blender_python_exe, call_args)
             utils.run_script(setup_cmd, print_only=False)
         return
+
+    print(args)
 
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):

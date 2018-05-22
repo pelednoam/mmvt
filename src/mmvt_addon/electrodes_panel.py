@@ -194,7 +194,7 @@ def electode_was_manually_selected(selected_electrode_name):
     tkreg_ras = bpy.context.scene.cursor_location * 10
     _addon().set_tkreg_ras(tkreg_ras, move_cursor=False)
     _addon().create_slices(pos=tkreg_ras)
-    _addon().freeeview.save_cursor_position()
+    _addon().freeview.save_cursor_position()
     if not ElecsPanel.init or len(ElecsPanel.leads) == 0:
         return
     # print(selected_electrode_name, bpy.context.active_object, bpy.context.selected_objects)
