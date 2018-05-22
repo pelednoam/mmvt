@@ -166,7 +166,33 @@ def export_electrodes(group_hemi_default='G'):
     print('The electrodes were exported to {}'.format(csv_fname))
 
 
-def delete_selected_electrodes():
+def mark_electrode_lead_as_noise():
+    elc_name = bpy.context.selected_objects[0].name
+    elc_ind = DellPanel.names.index(elc_name)
+    group_inds = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g]
+    if len(group_inds) == 0:
+        print('Selected electrode has no group')
+        return
+    print('Setting group {} as noise'.format(group_inds[0]))
+    g = DellPanel.groups[group_inds[0]]
+    for elc_ind in g:
+        DellPanel.noise.add(elc_ind)
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(bpy.context.scene.dell_ct_noise_color))
+    lead_obj = bpy.data.objects.get('{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]))
+    if lead_obj is not None:
+        bpy.data.objects.remove(lead_obj, True)
+        # lead_obj.hide = True
+    del DellPanel.groups[group_inds[0]]
+    # save_dell_objects()
+
+
+def save_dell_objects():
+    output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
+    mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
+             bpy.context.scene.dell_ct_threshold), output_fname)
+
+
+def mark_selected_electrodes_as_noise():
     names = [o.name for o in bpy.context.selected_objects]
     for elc_name in names:
         if elc_name not in DellPanel.names:
@@ -174,12 +200,22 @@ def delete_selected_electrodes():
         elc_ind = DellPanel.names.index(elc_name)
         group_inds = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g]
         if len(group_inds) == 1:
-            DellPanel.groups[group_inds[0]] = [ind for ind in DellPanel.groups[group_inds[0]] if ind != elc_ind]
+            DellPanel.groups[group_inds[0]].remove(elc_ind)
         print('Removing {} from Dell objects'.format(elc_name))
+        DellPanel.noise.add(elc_ind)
+        _addon().object_coloring(bpy.data.objects[elc_name], tuple(bpy.context.scene.dell_ct_noise_color))
+    DellPanel.groups = [g for g in DellPanel.groups if len(g) > 0]
+    # save_dell_objects()
+
+
+def mark_selected_noise_as_electrodes():
+    names = [o.name for o in bpy.context.selected_objects]
+    for elc_name in names:
+        if elc_name not in DellPanel.names:
+            continue
+        elc_ind = DellPanel.names.index(elc_name)
+        DellPanel.noise.discard(elc_ind)
         _addon().object_coloring(bpy.data.objects[elc_name], (0.8, 0.8, 0.8))
-    output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
-    mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
-             bpy.context.scene.dell_ct_threshold), output_fname)
 
 
 def mark_non_group_electrodes_as_noise():
@@ -223,10 +259,8 @@ def create_new_electrode():
     DellPanel.hemis.append(hemi)
     DellPanel.groups[group_ind].append(new_index)
     _addon().data.create_electrode(new_pos, new_name)
-    output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
-    mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
-             bpy.context.scene.dell_ct_threshold), output_fname)
     _addon().object_coloring(bpy.data.objects[new_name], tuple(color))
+    # save_dell_objects()
 
 
 def create_new_electrode_between():
@@ -245,10 +279,8 @@ def create_new_electrode_between():
     DellPanel.hemis.append(hemi)
     DellPanel.groups[group_ind].append(new_index)
     _addon().data.create_electrode(new_pos, new_name)
-    output_fname =op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
-    mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
-             bpy.context.scene.dell_ct_threshold), output_fname)
     _addon().object_coloring(bpy.data.objects[new_name], tuple(color))
+    # save_dell_objects()
 
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
@@ -301,7 +333,7 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
     #             group[0], group[-1], elc_ind, int(bpy.context.scene.dell_ct_threshold))))
 
     DellPanel.dists_to_cylinder = {DellPanel.names[p]:d for p, d in dists_to_cylinder.items()}
-    log = (DellPanel.names[best_elc_ind], [DellPanel.names[ind] for ind in group])
+    # log = (DellPanel.names[best_elc_ind], [DellPanel.names[ind] for ind in group])
     # DellPanel.log.append(log)
     # DellPanel.current_log = [log]
     # mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
@@ -553,7 +585,7 @@ def open_interactive_ct_viewer():
 
 
 def check_if_outside_pial():
-    aseg = None if not bpy.context.scene.dell_brain_mask_use_aseg else DellPanel.aseg
+    # aseg = None if not bpy.context.scene.dell_brain_mask_use_aseg else DellPanel.aseg
     subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     voxels = fect.t1_ras_tkr_to_ct_voxels(DellPanel.pos, DellPanel.ct.header, DellPanel.brain.header)
     voxels_in, voxels_in_indices = fect.mask_voxels_outside_brain(
@@ -644,7 +676,6 @@ def dell_draw(self, context):
             pos = DellPanel.pos[ind]
             layout.label(text='{} index: {} hemi: {} {}'.format(name, ind, DellPanel.hemis[ind], group_str))
             layout.label(text='pos: {}'.format(pos))
-            layout.operator(CreateNewElectrode.bl_idname, text="Create new electrode", icon='OUTLINER_OB_META')
         layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
         if len(DellPanel.groups) > 0:
             box = layout.box()
@@ -657,17 +688,21 @@ def dell_draw(self, context):
         row.operator(SaveElectrodesObjects.bl_idname, text="Save", icon='SAVE_PREFS')
         row.operator(RefreshElectrodesObjects.bl_idname, text="Load", icon='OUTLINER_OB_FORCE_FIELD')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
+            layout.operator(CreateNewElectrode.bl_idname, text="Create new electrode", icon='OUTLINER_OB_META')
             if not electrode_with_group_selected:
                 layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
             else:
                 layout.operator(SaveCTElectrodesFigures.bl_idname, text="Save CT figures", icon='OUTLINER_OB_FORCE_FIELD')
+            layout.operator(MarkElectrodeLeadAsNoise.bl_idname, text="Mark electrode's lead as noise",
+                            icon='PANEL_CLOSE')
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
                             icon='WORLD_DATA')
             layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
             layout.operator(FindGroupBetweenTwoElectrodesOnDural.bl_idname, text="Find group on dural", icon='EXPORT')
         if len(bpy.context.selected_objects) > 0:
-            layout.operator(DeleteSelectedElectrodes.bl_idname, text="Delete selected electrodes", icon='PANEL_CLOSE')
+            layout.operator(MarkSelectedElectrodesAsNoise.bl_idname, text="Mark selected electrodes as noise", icon='PANEL_CLOSE')
+            layout.operator(MarkSelectedNoiseAsElectrodes.bl_idname, text="Mark selected noise as electrodes", icon='EYEDROPPER')
 
         # if len(bpy.context.selected_objects) == 4 and all(
         #         bpy.context.selected_objects[k].name in DellPanel.names for k in range(4)):
@@ -680,7 +715,7 @@ def dell_draw(self, context):
         # layout.operator(SaveCTNeighborhood.bl_idname, text="Save CT neighborhood", icon='EDIT')
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     if parent is not None and len(parent.children) > 0:
-        layout.operator(MarkNonGroupElectrodesAsNoise.bl_idname, text="Mark non group electrodes as noise", icon='PANEL_CLOSE')
+        layout.operator(MarkNonGroupElectrodesAsNoise.bl_idname, text="Mark non group electrodes as noise", icon='RADIO')
         layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
@@ -984,13 +1019,33 @@ class MarkNonGroupElectrodesAsNoise(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
-class DeleteSelectedElectrodes(bpy.types.Operator):
-    bl_idname = "mmvt.delete_selected_electrodes"
-    bl_label = "delete_selected_electrodes"
+class MarkSelectedNoiseAsElectrodes(bpy.types.Operator):
+    bl_idname = "mmvt.mark_selected_noise_as_electrodes"
+    bl_label = "mark_selected_noise_as_electrodes"
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        delete_selected_electrodes()
+        mark_selected_noise_as_electrodes()
+        return {'PASS_THROUGH'}
+
+
+class MarkSelectedElectrodesAsNoise(bpy.types.Operator):
+    bl_idname = "mmvt.mark_selected_electrodes_as_noise"
+    bl_label = "mark_selected_electrodes_as_noise"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        mark_selected_electrodes_as_noise()
+        return {'PASS_THROUGH'}
+
+
+class MarkElectrodeLeadAsNoise(bpy.types.Operator):
+    bl_idname = "mmvt.mark_electrode_lead_as_noise"
+    bl_label = "mark_electrode_lead_as_noise"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        mark_electrode_lead_as_noise()
         return {'PASS_THROUGH'}
 
 
@@ -1113,7 +1168,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         DellPanel.output_fol = op.join(mu.get_user_fol(), 'ct', 'finding_electrodes_in_ct')
         DellPanel.ct_found = init_ct(ct_name, brain_mask_name, aseg_name)
         if DellPanel.ct_found:
-            init_electrodes()
+            # init_electrodes()
             DellPanel.colors = cycle(mu.get_distinct_colors(10))
             input_fname = op.join(
                 DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
@@ -1132,22 +1187,24 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
                 if parent is None:
                     parent = _addon().create_empty_if_doesnt_exists(
                         'Deep_electrodes', _addon().BRAIN_EMPTY_LAYER, [False] * 20, 'Deep_electrodes')
-                for obj in parent.children:
-                    obj.select = False
-                for obj in parent.children:
-                    if obj.name not in DellPanel.names:
-                        obj.select = True
-                        bpy.ops.object.delete()
-                bad_names, bad_indices = [], []
-                for elc_ind, elc_name in enumerate(DellPanel.names):
-                    if bpy.data.objects.get(elc_name) is None:
-                        bad_names.append(elc_name)
-                        bad_indices.append(elc_ind)
-                DellPanel.names = [n for n in DellPanel.names if n not in bad_names]
-                for bad_ind in bad_indices:
-                    group_inds = [k for k, g in enumerate(DellPanel.groups) if bad_ind in g]
-                    if len(group_inds) > 0:
-                        DellPanel.groups[group_inds[0]] = [e for e in DellPanel.groups[group_inds[0]] if e != bad_ind]
+
+                # for obj in parent.children:
+                #     obj.select = False
+                # for obj in parent.children:
+                #     if obj.name not in DellPanel.names:
+                #         obj.select = True
+                #         bpy.ops.object.delete()
+                # bad_names, bad_indices = [], []
+                # for elc_ind, elc_name in enumerate(DellPanel.names):
+                #     if bpy.data.objects.get(elc_name) is None:
+                #         bad_names.append(elc_name)
+                #         bad_indices.append(elc_ind)
+                # DellPanel.names = [n for n in DellPanel.names if n not in bad_names]
+                # for bad_ind in bad_indices:
+                #     group_inds = [k for k, g in enumerate(DellPanel.groups) if bad_ind in g]
+                #     if len(group_inds) > 0:
+                #         DellPanel.groups[group_inds[0]] = [e for e in DellPanel.groups[group_inds[0]] if e != bad_ind]
+
                 # todo: Why should we check that?
                 # elcs_names = [o.name for o in parent.children]
                 # if len(DellPanel.names) != len(parent.children) or set(DellPanel.names) != set(elcs_names):
@@ -1218,12 +1275,12 @@ def init_dural():
         return False
 
 
-def init_electrodes():
-    elcs_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes_positions.npz'))
-    if len(elcs_files) == 1:
-        elcs_dict = mu.Bag(np.load(elcs_files[0]))
-        bipolar = '-' in elcs_dict.names[0]
-        groups = set([mu.elec_group(elc_name, bipolar) for elc_name in elcs_dict.names])
+# def init_electrodes():
+    # elcs_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes_positions.npz'))
+    # if len(elcs_files) == 1:
+        # elcs_dict = mu.Bag(np.load(elcs_files[0]))
+        # bipolar = '-' in elcs_dict.names[0]
+        # groups = set([mu.elec_group(elc_name, bipolar) for elc_name in elcs_dict.names])
         # bpy.context.scene.dell_ct_n_components = len(elcs_dict.names)
         # bpy.context.scene.dell_ct_n_groups = len(groups)
 
@@ -1273,8 +1330,10 @@ def register():
         bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(CheckIfElectrodeOutsidePial)
         bpy.utils.register_class(DeleteElectrodes)
-        bpy.utils.register_class(DeleteSelectedElectrodes)
+        bpy.utils.register_class(MarkSelectedElectrodesAsNoise)
+        bpy.utils.register_class(MarkSelectedNoiseAsElectrodes)
         bpy.utils.register_class(MarkNonGroupElectrodesAsNoise)
+        bpy.utils.register_class(MarkElectrodeLeadAsNoise)
         bpy.utils.register_class(DeleteElectrodesFromGroup)
         bpy.utils.register_class(ExportDellElectrodes)
         bpy.utils.register_class(CreateNewElectrodeBetween)
@@ -1305,8 +1364,10 @@ def unregister():
         bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(CheckIfElectrodeOutsidePial)
         bpy.utils.unregister_class(DeleteElectrodes)
-        bpy.utils.unregister_class(DeleteSelectedElectrodes)
+        bpy.utils.unregister_class(MarkSelectedElectrodesAsNoise)
         bpy.utils.unregister_class(MarkNonGroupElectrodesAsNoise)
+        bpy.utils.unregister_class(MarkElectrodeLeadAsNoise)
+        bpy.utils.unregister_class(MarkSelectedNoiseAsElectrodes)
         bpy.utils.unregister_class(DeleteElectrodesFromGroup)
         bpy.utils.unregister_class(ExportDellElectrodes)
         bpy.utils.unregister_class(CreateNewElectrodeBetween)
