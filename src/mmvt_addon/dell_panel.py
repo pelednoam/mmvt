@@ -1158,6 +1158,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
     DellPanel.addon = addon
     try:
         if not DELL_EXIST:
+            print("Can't find find_electrodes_in_ct!")
             DellPanel.init = False
             return
         ret = init_dural()
@@ -1240,19 +1241,21 @@ def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='
     user_fol = mu.get_user_fol()
     mu.make_dir(op.join(user_fol, 'ct', 'finding_electrodes_in_ct'))
     ct_fname = op.join(user_fol, 'ct', ct_name)
-    if not op.isfile(ct_fname):
+    if op.isfile(ct_fname):
+        print('Dell panel: loading {}'.format(ct_fname))
+        DellPanel.ct = nib.load(ct_fname)
+        DellPanel.ct_data = DellPanel.ct.get_data()
+    else:
         print("Dell: Can't find the ct!")
-        return False
+        # return False
     subjects_dir = su.get_subjects_dir()
     brain_mask_fname = op.join(subjects_dir, mu.get_user(), 'mri', brain_mask_name)
-    if not op.isfile(brain_mask_fname):
+    if op.isfile(brain_mask_fname):
+        DellPanel.brain = nib.load(brain_mask_fname)
+        DellPanel.brain_mask = DellPanel.brain.get_data()
+    else:
         print("Dell: Can't find brain.mgz!")
-        return False
-    print('Dell panel: loading {}'.format(ct_fname))
-    DellPanel.ct = nib.load(ct_fname)
-    DellPanel.ct_data = DellPanel.ct.get_data()
-    DellPanel.brain = nib.load(brain_mask_fname)
-    DellPanel.brain_mask = DellPanel.brain.get_data()
+        # return False
     aseg_fname = op.join(subjects_dir, mu.get_user(), 'mri', aseg_name)
     DellPanel.aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
     return True
