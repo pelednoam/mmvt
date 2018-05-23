@@ -558,7 +558,7 @@ class SelectionListener(bpy.types.Operator):
                 set_cursor_pos()
                 # print('cursor position was changed by the user!')
                 _addon().create_slices(pos=tkreg_ras)
-                _addon().freeeview.save_cursor_position()
+                _addon().freeview.save_cursor_position()
                 clear_slice()
             if bpy.context.scene.find_closest_label_on_click: # coloring_panel.WIC_CONTOURS in _addon().what_is_colored():
                 _addon().find_closest_label(plot_contour=bpy.context.scene.plot_closest_label_contour)
