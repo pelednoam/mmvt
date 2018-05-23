@@ -418,6 +418,9 @@ class SliceBrainButton(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         slice_brain()
+        cur_obj = bpy.context.scene.objects.active
+        cur_obj.data.uv_textures['UVMap'].data[0].image = bpy.data.images[cur_obj.name.split('_')[0]+'.PNG']
+        # need to handle normals direction.
         return {'FINISHED'}
 
 
