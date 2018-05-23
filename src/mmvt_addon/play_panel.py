@@ -276,10 +276,9 @@ def create_movie():
     output_file = op.join(bpy.context.scene.output_path, 'combine_images_cmd.txt')
     if op.isfile(output_file):
         os.remove(output_file)
-    cmd = '{} -m src.utils.movies_utils --fol {} --copy_files 1 --frame_rate {}'.format(
-        bpy.context.scene.python_cmd, bpy.context.scene.output_path, bpy.context.scene.frames_num)
-    print('Running {}'.format(cmd))
-    mu.run_command_in_new_thread(cmd, False)
+    flags = '--fol {} --copy_files 1 --frame_rate {}'.format(
+        bpy.context.scene.output_path, bpy.context.scene.frames_num)
+    mu.run_mmvt_func('src.utils.movies_utils', 'combine_images', flags=flags)
 
 
 def save_graph_data(data, graph_colors, image_fol):
@@ -742,8 +741,10 @@ class CreateMovie(bpy.types.Operator):
             if op.isfile(output_file):
                 movies = glob.glob(op.join(bpy.context.scene.output_path, '**', '*.mp4'), recursive=True)
                 if len(movies) > 0:
-                    shutil.copy(movies[0], op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
-                        mu.namebase(bpy.context.scene.output_path))))
+                    output_fname = op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
+                        mu.namebase(bpy.context.scene.output_path)))
+                    if output_fname != movies[0]:
+                        shutil.copy(movies[0], output_fname)
                 #     temp_fol = op.join(bpy.context.scene.output_path, 'new_images')
                 #     if op.isdir(temp_fol):
                 #         shutil.rmtree(temp_fol)

@@ -418,7 +418,8 @@ def find_random_group(runs_num=100):
         if len(group) == 0:
             elcs = list(set(range(len(DellPanel.names))) - set(mu.flat_list_of_lists(DellPanel.groups)) - DellPanel.noise)
             run_num += 1
-        # else:
+        else:
+            _addon().render.save_image(add_colorbar=False)
         #     log = (DellPanel.names[elc_ind], [DellPanel.names[ind] for ind in group])
         #     DellPanel.log.append(log)
 
