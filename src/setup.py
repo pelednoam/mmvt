@@ -195,7 +195,7 @@ def create_real_folder(real_fol):
 
 
 def install_reqs(only_verbose=False):
-    import pip
+    # import pip
     try:
         from pip import main as pipmain
     except:
