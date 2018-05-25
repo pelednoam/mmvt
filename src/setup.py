@@ -313,7 +313,7 @@ def install_blender_reqs(blender_fol='', gui=True):
             utils.run_script(install_cmd)
         else:
             # https://stackoverflow.com/questions/130763/request-uac-elevation-from-within-a-python-script
-            install_cmd = '{} install '.format(op.join('Scripts', 'pip'), reqs)
+            install_cmd = '{} install {}'.format(op.join('Scripts', 'pip'), reqs)
             print(
                 'Sorry, automatically installing external python libs in python will be implemented in the future.\n' +
                 'Meanwhile, you can do the following:\n' +
