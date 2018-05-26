@@ -124,6 +124,18 @@ def plot_blob(cluster_labels, faces_verts, is_inflated=None, use_abs=None):
         fMRIPanel.colors_in_hemis[other_hemi] = False
 
 
+def calc_clusters():
+    import importlib
+    mu.add_mmvt_code_root_to_path()
+    from src.preproc import fMRI
+    importlib.reload(fMRI)
+    surf_template_fname = 'fmri_{}.?h.npy'.format(_addon().coloring.get_select_fMRI_contrast())
+    print(mu.get_user(), surf_template_fname, bpy.context.scene.fmri_clustering_threshold, bpy.context.scene.atlas)
+    fMRI.find_clusters(mu.get_user(), surf_template_fname, bpy.context.scene.fmri_clustering_threshold,
+                       bpy.context.scene.atlas)
+    init(_addon())
+
+
 # @mu.profileit()
 def find_closest_cluster(only_within=False):
     # cursor = np.array(bpy.context.scene.cursor_location)
@@ -187,6 +199,16 @@ def find_closest_cluster(only_within=False):
             print('only within: dist to big ({})'.format(min_dist))
 
 
+class CalcClusters(bpy.types.Operator):
+    bl_idname = 'mmvt.calc_clusters'
+    bl_label = 'calc_clusters'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        calc_clusters()
+        return {'FINISHED'}
+
+
 class NextCluster(bpy.types.Operator):
     bl_idname = 'mmvt.next_cluster'
     bl_label = 'nextCluster'
@@ -248,7 +270,7 @@ def load_current_fmri_clusters_labels_file():
 
 
 def get_contrast_fname(constrast_name, hemi):
-    contrast_fnames = glob.glob(op.join(mu.get_user_fol(), 'fmri', 'fmri_{}*_{}.npy'.format(
+    contrast_fnames = glob.glob(op.join(mu.get_user_fol(), 'fmri', 'fmri_{}*{}.npy'.format(
         constrast_name.split('_')[0], hemi)))
     if len(contrast_fnames) == 0:
         print("fmri_clusters_labels_files_update: Couldn't find  any clusters data! ({})".format(constrast_name))
@@ -462,6 +484,11 @@ def fMRI_draw(self, context):
     user_fol = mu.get_user_fol()
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
+    if not fMRIPanel.fMRI_clusters_files_exist:
+        row = layout.row(align=True)
+        row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
+        layout.operator(CalcClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
+        return
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
     if len(fMRIPanel.clusters_labels_files) > 1:
         layout.prop(context.scene, 'fmri_clusters_labels_parcs', text='')
@@ -691,7 +718,9 @@ def init(addon):
     files_names, clusters_labels_files, clusters_labels_items = get_clusters_files(user_fol)
     fMRIPanel.fMRI_clusters_files_exist = len(files_names) > 0 # and len(fmri_blobs) > 0
     if not fMRIPanel.fMRI_clusters_files_exist:
-        return None
+        register()
+        fMRIPanel.init = True
+        return
     # files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     fMRIPanel.clusters_labels_file_names = files_names
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
@@ -743,6 +772,7 @@ def register():
     try:
         unregister()
         bpy.utils.register_class(fMRIPanel)
+        bpy.utils.register_class(CalcClusters)
         bpy.utils.register_class(NextCluster)
         bpy.utils.register_class(PrevCluster)
         bpy.utils.register_class(NearestCluster)
@@ -760,6 +790,7 @@ def register():
 def unregister():
     try:
         bpy.utils.unregister_class(fMRIPanel)
+        bpy.utils.unregister_class(CalcClusters)
         bpy.utils.unregister_class(NextCluster)
         bpy.utils.unregister_class(PrevCluster)
         bpy.utils.unregister_class(NearestCluster)

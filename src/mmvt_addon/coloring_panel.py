@@ -35,6 +35,10 @@ def _addon():
     return ColoringMakerPanel.addon
 
 
+def get_select_fMRI_contrast():
+    return bpy.context.scene.fmri_files
+
+
 def get_activity_values(hemi):
     hemi = 'rh' if 'rh' in hemi else 'lh'
     return ColoringMakerPanel.activity_values[hemi]
