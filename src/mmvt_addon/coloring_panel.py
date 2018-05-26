@@ -1538,8 +1538,8 @@ def _fmri_files_update(fmri_file_name):
     fmri_data_maxmin_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format(fmri_file_name))
     if not op.isfile(fmri_data_maxmin_fname):
         data_min, data_max = calc_fmri_min_max(fmri_data_maxmin_fname, fname_template)
-    #     bpy.context.scene.fmri_files))
-    data_min, data_max = mu.load(fmri_data_maxmin_fname)
+    else:
+        data_min, data_max = mu.load(fmri_data_maxmin_fname)
     if data_max <= data_min:
         os.remove(fmri_data_maxmin_fname)
     if not op.isfile(fmri_data_maxmin_fname):
