@@ -39,6 +39,14 @@ def get_select_fMRI_contrast():
     return bpy.context.scene.fmri_files
 
 
+def get_fMRI_constrasts():
+    return ColoringMakerPanel.fMRI_contrasts_names
+
+
+def fMRI_constrasts_exist():
+    return ColoringMakerPanel.fMRI_constrasts_exist
+
+
 def get_activity_values(hemi):
     hemi = 'rh' if 'rh' in hemi else 'lh'
     return ColoringMakerPanel.activity_values[hemi]
@@ -2471,6 +2479,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     stc_exist = False
     curvs = {hemi:None for hemi in mu.HEMIS}
     activity_types = []
+    fMRI_contrasts_names = []
+    fMRI_constrasts_exist = False
     run_meg_minmax_prec_update = True
     # activity_map_coloring = activity_map_coloring
 
@@ -2734,14 +2744,16 @@ def init_fmri_files(current_fmri_file=''):
     user_fol = mu.get_user_fol()
     fmri_files = glob.glob(op.join(user_fol, 'fmri', 'fmri_*lh*.npy'))
     if len(fmri_files) > 0:
-        files_names = [mu.get_label_hemi_invariant_name(mu.namebase(fname)[5:]) for fname in fmri_files]
-        clusters_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+        ColoringMakerPanel.fMRI_contrasts_names = [
+            mu.get_label_hemi_invariant_name(mu.namebase(fname)[5:]) for fname in fmri_files]
+        clusters_items = [(c, c, '', ind) for ind, c in enumerate(ColoringMakerPanel.fMRI_contrasts_names )]
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
             items=clusters_items, description="fMRI files", update=fmri_files_update)
         if current_fmri_file == '':
-            bpy.context.scene.fmri_files = files_names[0]
+            bpy.context.scene.fmri_files = ColoringMakerPanel.fMRI_contrasts_names [0]
         else:
             bpy.context.scene.fmri_files = current_fmri_file
+    ColoringMakerPanel.fMRI_constrasts_exist = len(ColoringMakerPanel.fMRI_contrasts_names) > 0
 
 
 def init_static_conn():
