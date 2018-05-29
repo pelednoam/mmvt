@@ -1,20 +1,20 @@
 <img src=https://user-images.githubusercontent.com/1643819/36446044-0ba7e0b4-164e-11e8-8ff8-f2963bcf78be.png align="right"/>
-<br><br>
+
 
 ## Multi-Modality Visualization Tool
 
 The visualization and exploration of neuroimaging data are important for the analysis of anatomical and functional images and statistical parametric maps. While two-dimensional orthogonal views of neuroimaging data are used to display activity and statistical analysis, real three-dimensional (3D) depictions are helpful for showing the spatial distribution of a functional network, as well as its temporal evolution. For our best knowledge, currently, there is no neuroimaging 3D tool which can visualize both MEG, fMRI and invasive electrodes (ECOG, depth electrodes, DBS, etc.). Here we present the Multi-Modality Visualization Tool (MMVT). The tool was built for researchers who wish to have a better understanding of their neuroimaging anatomical and functional data. The true power of the tool is by visualizing and analyzing data from multi-modalities. MMVT is built as two separated modules: The first is implemented as an add-on in 'Blender”, an open-source 3D visualization software. The add-on is an interactive graphical interface which enables to visualize functional and statistical data (MEG and/or fMRI) on the cortex and subcortical surfaces, invasive electrodes activity and etc. The tool can also be used for a better 3D visualization of the anatomical data and the invasive electrodes locations. The other module is a standalone software, for importing and preprocessing. The users can select the data they want to import to Blender and how they want to process it.
-<br><br>
+
 The module supports many types of analyzed data:
 * FsFast (FreeSurfer Functional Analysis Stream)
 * SPM (Statistical Parametric Mapping)
 * MNE (a software package for processing MEG and EEG)
 * MEG raw data (fif files)
 * FieldTrip (MATLAB software toolbox for neuroimaging analysis)
-<br><br>
+
 
 The users can also reprocess raw data using wrappers for FaFast and MNE-python (a python package for sensor and source-space analysis of MEG and EEG data).
-<br><br>
+
 
 <a href="https://doi.org/10.5281/zenodo.438343"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.438343.svg" alt="DOI"></a>
 
@@ -46,6 +46,12 @@ Please go through the installation in this wiki [page](https://github.com/peledn
 
 The tool itself can run on windows, mac and linux.
 In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only on linux/mac). Beside of that, you can use the tool also on windows.
+
+## Update the code
+You can now update the program without using the "git pull" function.
+* Lunch MMVT.
+* Open the "Import objects and data" panel.
+* Press the "Update MMVT" button at the top of the panel.
 
 ## Template brain and data
 We've imported [colin27](http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27Highres) into MMVT, and included data we morphed from a patient. The data includes recording from EEG, MEG, fMRI, and sEEG for the [MSIT](https://www.nature.com/articles/nprot.2006.48) task. The data can be downloaded from [here](https://www.dropbox.com/s/hpt5t9gt8migna8/colin27.zip?dl=0) (1GB). Extract the zip file in the mmvt_blend folder which was created in your mmvt_root folder. Then, open Blender, close the splash screen and open (File->open) colin's blend file (colin27_laus125.blend). After that, you'll need to press space anywhere on the screen, write "run mmvt" and press enter. We've also written several self-explanatory tasks for this data, that can be found [here](https://tinyurl.com/yd2axzsg) (feel free the add comments).
