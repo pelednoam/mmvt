@@ -1488,7 +1488,10 @@ def calc_stc_minmax(meg_min_max_prec=None, stc_name=''):
         return ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max, stc_data_len
 
     if ColoringMakerPanel.stc is None:
-        ColoringMakerPanel.stc = mne.read_source_estimate(get_stc_full_fname())
+        if op.isfile(get_stc_full_fname()):
+            ColoringMakerPanel.stc = mne.read_source_estimate(get_stc_full_fname())
+        else:
+            return 0, 0, 0
     data_min = mu.min_stc(ColoringMakerPanel.stc, meg_min_prec)
     data_max = mu.max_stc(ColoringMakerPanel.stc, meg_max_prec)
     if data_min == data_max == 0:
