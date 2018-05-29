@@ -834,7 +834,10 @@ def calc_labeles_contours(subject, atlas, overwrite=True, verbose=False):
                     label_nei[vert_ind] = contours[vert]
             if verbose:
                 print(label.name, len(np.where(label_nei)[0]) / len(verts))
-        centers = [l.center_of_mass(restrict_vertices=True) for l in labels]
+        if utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.sphere')):
+            centers = [l.center_of_mass(restrict_vertices=True) for l in labels]
+        else:
+            centers = None
         np.savez(output_fname.format(hemi=hemi), contours=contours, max=len(labels),
                  labels=[l.name for l in labels], centers=centers)
     return utils.both_hemi_files_exist(output_fname)
