@@ -1191,13 +1191,13 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
             # files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
             # if len(files) > 0:
             if op.isfile(input_fname):
-                # try:
-                (DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
-                 bpy.context.scene.dell_ct_threshold) = mu.load(input_fname)
-
-                # except:
-                #     (DellPanel.pos, DellPanel.names, DellPanel.hemis,
-                #      bpy.context.scene.dell_ct_threshold) = mu.load(input_fname)
+                try:
+                    (DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
+                     bpy.context.scene.dell_ct_threshold) = mu.load(input_fname)
+                except:
+                    # support old files
+                    (DellPanel.pos, DellPanel.names, DellPanel.hemis,
+                     bpy.context.scene.dell_ct_threshold) = mu.load(input_fname)
                 # (DellPanel.pos, DellPanel.names, DellPanel.hemis, bpy.context.scene.dell_ct_threshold) = mu.load(files[0])
                 parent = bpy.data.objects.get('Deep_electrodes')
                 if parent is None:
