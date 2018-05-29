@@ -1,28 +1,33 @@
 import os
 import os.path as op
 import mne
-import mne.stats.cluster_level as mne_clusters
 import nibabel as nib
 import numpy as np
 import time
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import shutil
 import glob
 import traceback
 from collections import defaultdict
-import mne.label
-
-from src.utils import utils
-from src.utils import freesurfer_utils as fu
-from src.preproc import meg as meg
-from src.utils import preproc_utils as pu
-from src.utils import labels_utils as lu
 
 try:
     from sklearn.neighbors import BallTree
 except:
     print('No sklearn!')
+
+try:
+    import mne.label
+    import mne.stats.cluster_level as mne_clusters
+    MNE_EXIST = True
+except:
+    MNE_EXIST = False
+
+try:
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    MATPLOTLIB_EXIST = True
+except:
+    MATPLOTLIB_EXIST = False
+    print('No matplotlib!')
 
 try:
     from surfer import Brain
@@ -31,6 +36,13 @@ try:
     SURFER = True
 except:
     SURFER = False
+
+
+from src.utils import utils
+from src.utils import freesurfer_utils as fu
+from src.preproc import meg as meg
+from src.utils import preproc_utils as pu
+from src.utils import labels_utils as lu
 
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
@@ -238,7 +250,7 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
         else:
             clusters_labels['values'].extend(clusters_labels_hemi)
 
-    name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('fmri_', '')
+    name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('.{hemi}', '').replace('fmri_', '')
     if task != '':
         name = '{}_{}'.format(name, task)
     clusters_labels_output_fname = op.join(

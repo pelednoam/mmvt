@@ -195,7 +195,7 @@ def create_real_folder(real_fol):
 
 
 def install_reqs(only_verbose=False):
-    import pip
+    # import pip
     try:
         from pip import main as pipmain
     except:
@@ -313,12 +313,12 @@ def install_blender_reqs(blender_fol='', gui=True):
             utils.run_script(install_cmd)
         else:
             # https://stackoverflow.com/questions/130763/request-uac-elevation-from-within-a-python-script
-            install_cmd = '{} install '.format(op.join('Scripts', 'pip'), reqs)
+            install_cmd = '{} install {}'.format(op.join('Scripts', 'pip'), reqs)
             print(
                 'Sorry, automatically installing external python libs in python will be implemented in the future.\n' +
                 'Meanwhile, you can do the following:\n' +
                 '1) Open a terminal window as administrator: ' +
-                'Right click on the "Command Prompt" shortcut from the star menu and choose "Run as administrator"\n' +
+                'Right click on the "Command Prompt" shortcut from the start menu and choose "Run as administrator"\n' +
                 '2) Change the directory to "{}".\n'.format(blender_bin_fol) +
                 '3) Run "{}"\n'.format(pip_cmd) +
                 '4) Run "{}"\nGood luck!'.format(install_cmd))
