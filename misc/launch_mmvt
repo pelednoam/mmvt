@@ -1,4 +1,4 @@
 #!/bin/tcsh
-setenv FREESURFER_HOME /usr/local/freesurfer
+setenv FREESURFER_HOME /usr/local/freesurfer/stable6
 source $FREESURFER_HOME/SetUpFreeSurfer.csh
 your_mmvt_root_folder/links/blender/blender --enable-new-depsgraph
