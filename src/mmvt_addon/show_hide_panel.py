@@ -541,6 +541,18 @@ class ShowHideRHSubs(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ShowHideHead(bpy.types.Operator):
+    bl_idname = "mmvt.show_hide_head"
+    bl_label = "mmvt show_hide_head"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        bpy.context.scene.objects_show_hide_head = not bpy.context.scene.objects_show_hide_head
+        hide_obj(bpy.data.objects['seghead'], not bpy.context.scene.objects_show_hide_head)
+        return {"FINISHED"}
+
+
 class ShowHideSubCerebellum(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_cerebellum"
     bl_label = "mmvt show_hide_cerebellum"
@@ -583,6 +595,13 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             show_icon = show_hide_icon[action]
             bl_idname = ShowHideLH.bl_idname if hemi == 'Left' else ShowHideRH.bl_idname
             row.operator(bl_idname, text=show_text, icon=show_icon)
+
+        if bpy.data.objects.get('seghead', None) is not None:
+            action = 'show' if not bpy.context.scene.objects_show_hide_head else 'hide'
+            show_text = '{} head'.format('Show' if not bpy.context.scene.objects_show_hide_head else 'Hide')
+            show_icon = show_hide_icon[action]
+            layout.operator(ShowHideHead.bl_idname, text=show_text, icon=show_icon)
+
         subs_exist = bpy.data.objects.get('Subcortical_structures', None) is not None and \
                      len(bpy.data.objects['Subcortical_structures'].children) > 0
         if _addon().is_pial() and subs_exist:
@@ -603,6 +622,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
                 'Hide' if sub_vis else 'Show'))
         action = 'Show' if context.scene.show_hide_cerebellum else 'Hide'
         layout.prop(context.scene, 'show_hide_cerebellum', text='{} Cerebellum'.format(action))
+
         # if bpy.data.objects.get('Cerebellum'):
         #     sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
         #     sub_show_text = '{} Cerebellum'.format('Hide' if sub_vis else 'Show')
@@ -648,6 +668,8 @@ bpy.types.Scene.objects_show_hide_rh_subs = bpy.props.BoolProperty(
     default=True, description="Show right subcorticals")#, update=show_hide_rh)
 bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
     default=True, description="Show Cerebellum")
+bpy.types.Scene.objects_show_hide_head = bpy.props.BoolProperty(
+    default=True, description="Show head")
 bpy.types.Scene.show_hide_cerebellum = bpy.props.BoolProperty(default=False, update=show_hide_cerebellum_update)
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, description="Show only rendered objects", update=show_only_redner_update)
@@ -719,6 +741,7 @@ def register():
         bpy.utils.register_class(ShowHideLHSubs)
         bpy.utils.register_class(ShowHideRHSubs)
         bpy.utils.register_class(ShowHideSubCerebellum)
+        bpy.utils.register_class(ShowHideHead)
         # print('Show Hide Panel was registered!')
     except:
         print("Can't register Show Hide Panel!")
@@ -739,6 +762,7 @@ def unregister():
         bpy.utils.unregister_class(ShowHideLHSubs)
         bpy.utils.unregister_class(ShowHideRHSubs)
         bpy.utils.unregister_class(ShowHideSubCerebellum)
+        bpy.utils.unregister_class(ShowHideHead)
     except:
         pass
         # print("Can't unregister Freeview Panel!")
