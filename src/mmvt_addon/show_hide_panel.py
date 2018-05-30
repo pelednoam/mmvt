@@ -598,7 +598,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
 
         if bpy.data.objects.get('seghead', None) is not None:
             action = 'show' if not bpy.context.scene.objects_show_hide_head else 'hide'
-            show_text = '{} head'.format('Show' if not bpy.context.scene.objects_show_hide_head else 'Hide')
+            show_text = '{} outer skin'.format('Show' if not bpy.context.scene.objects_show_hide_head else 'Hide')
             show_icon = show_hide_icon[action]
             layout.operator(ShowHideHead.bl_idname, text=show_text, icon=show_icon)
 
