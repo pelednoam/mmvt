@@ -1382,7 +1382,7 @@ def create_skull_surfaces(subject, surfaces_fol_name='bem', verts_in_ras=True):
         for k, message in errors.items():
             print('{}: {}'.format(k, message))
 
-    return all([op.isfile(op.join(SUBJECTS_DIR, subject, surfaces_fol_name, '{}.ply'.format(skull_surf))) and \
+    return all([op.isfile(op.join(skull_fol, '{}.ply'.format(skull_surf))) and \
                 op.isfile(op.join(skull_fol, 'faces_verts_{}.npy'.format(skull_surf))) \
                 for skull_surf in ['inner_skull', 'outer_skull']])
 
