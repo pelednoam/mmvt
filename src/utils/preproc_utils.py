@@ -50,6 +50,8 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         subject = get_subject(tup, subject_func)
         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
         remote_subject_dir = utils.build_remote_subject_dir(args.remote_subject_dir, subject)
+        if remote_subject_dir == '':
+            remote_subject_dir = op.join(SUBJECTS_DIR, subject)
         logging.info(args)
         print('****************************************************************')
         print('subject: {}, atlas: {}'.format(subject, args.atlas))

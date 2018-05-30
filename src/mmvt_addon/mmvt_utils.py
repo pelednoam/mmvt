@@ -970,7 +970,16 @@ def add_box_line(col, text1, text2='', percentage=0.3, align=True):
 
 @functools.lru_cache(maxsize=None)
 def get_user():
-    return '_'.join(namebase(bpy.data.filepath).split('_')[:-1])
+    spl = namebase(bpy.data.filepath).split('_')
+    root = get_mmvt_root()
+    k = 1
+    subject = '_'.join(spl[:-k])
+    while not op.isdir(op.join(root, subject)) and k < len(spl):
+        k += 1
+        subject = '_'.join(spl[:-k])
+    if not op.isdir(op.join(root, subject)):
+        raise Exception('No folder was found for {}!'.format(subject))
+    return subject
 
 
 def current_path():
@@ -995,7 +1004,8 @@ def add_mmvt_code_root_to_path():
 
 
 def get_mmvt_root():
-    return get_parent_fol(get_user_fol())
+    return bpy.path.abspath('//')
+    # return get_parent_fol(get_user_fol())
 
 
 def change_fol_to_mmvt_root():
