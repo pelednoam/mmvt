@@ -92,7 +92,8 @@ def is_true(val):
         elif is_int(val):
             return bool(int(val))
         else:
-            raise Exception('Wrong value for boolean variable ("{}")'.format(val))
+            print('*** Wrong value for boolean variable ("{}")!!! ***'.format(val))
+            return False
     else:
         return bool(val)
 
