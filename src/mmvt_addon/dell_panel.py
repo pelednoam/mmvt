@@ -254,8 +254,9 @@ def mark_elc_as_noise(elc_obj=None, elc_ind=-1):
         else:
             print('{} is not in DellPanel.names!'.format(elc_obj.name))
     DellPanel.noise.add(elc_ind)
-    elc_obj.hide = not bpy.context.scene.ct_mark_noise
-    _addon().object_coloring(elc_obj, tuple(bpy.context.scene.dell_ct_noise_color))
+    if elc_obj is not None:
+        elc_obj.hide = not bpy.context.scene.ct_mark_noise
+        _addon().object_coloring(elc_obj, tuple(bpy.context.scene.dell_ct_noise_color))
 
 
 def create_new_electrode():
