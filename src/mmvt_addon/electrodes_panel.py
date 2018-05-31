@@ -460,20 +460,37 @@ def run_ela_alg():
     if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py')):
         print("Can't find ELA folder!")
         return
+
+    atlases = mu.get_annot_files()
+    atlas = bpy.context.scene.atlas
+    if atlas not in atlases:
+        atlas = mu.select_one_file(atlases, files_desc='Choose an atlas')
+        if atlas == '':
+            return
+        if len(atlases) == 1:
+            ret = input(
+                'Only the atlas {} was found, do you want to run the ELA using this atlas (y/n)? '.format(atlas))
+            if not mu.is_true(ret):
+                return
+
     import importlib
     import sys
     if ela_code_fol not in sys.path:
         sys.path.append(ela_code_fol)
     from src import find_rois
     importlib.reload(find_rois)
-    args = find_rois.read_args(['-s', mu.get_user(), '-a', bpy.context.scene.atlas, '-b', str(bpy.context.scene.bipolar)])
+    args = find_rois.get_args(
+        ['-s', mu.get_user(), '-a', atlas, '-b', str(bpy.context.scene.bipolar)])
     find_rois.run_for_all_subjects(args)
+    init(_addon(), False)
 
 
 def elecs_draw(self, context):
     layout = self.layout
     if ElecsPanel.electrodes_labeling_file_exist:
         layout.prop(context.scene, "electrodes_labeling_files", text="")
+    elif ElecsPanel.ela_code_exist:
+        layout.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
     row = layout.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
@@ -538,6 +555,17 @@ class ExportElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         export_electrodes()
         return {'FINISHED'}
+
+
+class RunELA(bpy.types.Operator):
+    bl_idname = 'mmvt.calc_ela'
+    bl_label = 'calc_ela'
+    bl_options = {'UNDO'}
+
+    def invoke(self, context, event=None):
+        run_ela_alg()
+        return {'FINISHED'}
+
 
 class ClearElectrodes(bpy.types.Operator):
     bl_idname = 'mmvt.electrodes_clear'
@@ -719,13 +747,15 @@ class ElecsPanel(bpy.types.Panel):
     cortical_rois, cortical_probs = [], []
     groups_electrodes, groups, groups_hemi = [], {}, {}
     sorted_groups = {'rh':[], 'lh':[]}
+    ela_code_exist = False
     bpy.context.scene.elc_size = 1
 
     def draw(self, context):
         elecs_draw(self, context)
 
 
-def init(addon):
+def init(addon, do_register=True):
+    ElecsPanel.init = False
     ElecsPanel.addon  = addon
     ElecsPanel.parent = bpy.data.objects.get('Deep_electrodes')
     if ElecsPanel.parent is None or len(ElecsPanel.parent.children) == 0:
@@ -768,7 +798,8 @@ def init(addon):
     #     not ElecsPanel.groups_hemi or not ElecsPanel.groups_electrodes:
     #         print('Error in electrodes panel init!')
     # else:
-    register()
+    if do_register:
+        register()
     ElecsPanel.init = True
     # print('Electrodes panel initialization completed successfully!')
 
@@ -829,6 +860,8 @@ def init_electrodes_list():
 
 
 def init_electrodes_labeling(addon):
+    ela_code_fol = op.join(mu.get_parent_fol(mu.get_mmvt_code_root()), 'electrodes_rois')
+    ElecsPanel.ela_code_exist = op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py'))
     labling_files = find_elecrode_labeling_files()
     if len(labling_files) > 0:
         files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
@@ -926,6 +959,7 @@ def register():
         bpy.utils.register_class(KeyboardListener)
         bpy.utils.register_class(ClearElectrodes)
         bpy.utils.register_class(ExportElectrodes)
+        bpy.utils.register_class(RunELA)
         # print('Electrodes Panel was registered!')
     except:
         print("Can't register Electrodes Panel!")
@@ -942,6 +976,7 @@ def unregister():
         bpy.utils.unregister_class(KeyboardListener)
         bpy.utils.unregister_class(ClearElectrodes)
         bpy.utils.unregister_class(ExportElectrodes)
+        bpy.utils.unregister_class(RunELA)
     except:
         pass
         # print("Can't unregister Electrodes Panel!")
