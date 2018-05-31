@@ -30,22 +30,22 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
         ct_files = [op.join(SUBJECTS_DIR, subject, 'ct', 'ct.nii.gz')]
     else:
         if not op.isdir(ct_raw_input_fol):
-            print(f'{ct_fol} does not exist!')
+            print('{} does not exist!'.format(ct_fol))
             return False
         ct_files = glob.glob(op.join(ct_raw_input_fol, '*.dcm'))
         if len(ct_files) == 0:
             sub_folders = [d for d in glob.glob(op.join(ct_raw_input_fol, '*')) if op.isdir(d)]
             if len(sub_folders) == 0:
-                print(f'Cannot find CT files in {ct_raw_input_fol}!')
+                print('Cannot find CT files in {}!'.format(ct_raw_input_fol))
                 return False
             fol = utils.select_one_file(sub_folders, '', 'CT', is_dir=True)
             ct_files = glob.glob(op.join(fol, '*.dcm'))
             if len(ct_files) == 0:
-                print(f'Cannot find CT files in {fol}!')
+                print('Cannot find CT files in {}!'.format(fol))
                 return False
         ct_files.sort(key=op.getmtime)
         if ask_before:
-            ret = input(f'convert {ct_files[0]} to {output_fname}? ')
+            ret = input('convert {} to {}? '.format(ct_files[0], output_fname))
             if not au.is_true(ret):
                 return False
     fu.mri_convert(ct_files[0], output_fname, print_only=print_only)
@@ -73,7 +73,7 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         subject, SUBJECTS_DIR, op.join(ct_fol, nnv_ct_name), op.join(ct_fol, register_ct_name), lta_name='',
         overwrite=overwrite, cost_function=cost_function, print_only=print_only)
     t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
-    print(f'freeview -v {t1_fname} {op.join(ct_fol, register_ct_name)}')
+    print('freeview -v {} {}'.format(t1_fname, op.join(ct_fol, register_ct_name)))
     return True if print_only else op.isfile(op.join(ct_fol, register_ct_name))
 
 

@@ -461,25 +461,14 @@ def run_ela_alg():
         print("Can't find ELA folder!")
         return
 
-    atlases = mu.get_annot_files()
-    atlas = bpy.context.scene.atlas
-    if atlas not in atlases:
-        atlas = mu.select_one_file(atlases, files_desc='Choose an atlas')
-        if atlas == '':
-            return
-        if len(atlases) == 1:
-            ret = input(
-                'Only the atlas {} was found, do you want to run the ELA using this atlas (y/n)? '.format(atlas))
-            if not mu.is_true(ret):
-                return
-
     import importlib
     import sys
     if ela_code_fol not in sys.path:
         sys.path.append(ela_code_fol)
     from src import find_rois
     importlib.reload(find_rois)
-    args = find_rois.get_args(['-s', mu.get_user(), '-a', atlas, '-b', str(bpy.context.scene.bipolar)])
+    args = find_rois.get_args(['-s', mu.get_user(), '-a', bpy.context.scene.ela_atlas,
+                               '-b', str(bpy.context.scene.ela_bipolar)])
     find_rois.run_for_all_subjects(args)
     init(_addon(), False)
 
@@ -488,8 +477,6 @@ def elecs_draw(self, context):
     layout = self.layout
     if ElecsPanel.electrodes_labeling_file_exist:
         layout.prop(context.scene, "electrodes_labeling_files", text="")
-    elif ElecsPanel.ela_code_exist:
-        layout.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
     row = layout.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
@@ -536,6 +523,15 @@ def elecs_draw(self, context):
     row = layout.row(align=True)
     row.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
     row.prop(context.scene, "electrodes_leads_color")
+
+    if ElecsPanel.ela_code_exist and ElecsPanel.atlases_exist:
+        layout.prop(context.scene, "show_ela", text="Show ELA options")
+        if bpy.context.scene.show_ela:
+            col = layout.box().column()
+            col.prop(context.scene, "ela_bipolar", text="Bipolar")
+            col.prop(context.scene, "ela_atlas", text='')
+            col.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
+
 
     # Color picker:
     # row = layout.row(align=True)
@@ -727,6 +723,9 @@ bpy.types.Scene.show_electrodes_groups_leads = bpy.props.BoolProperty(
     default=False, update=show_electrodes_groups_leads_update)
 bpy.types.Scene.electrodes_leads_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0.5, 0.175, 0.02), min=0.0, max=1.0, description="color picker")
+bpy.types.Scene.show_ela = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.ela_bipolar = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=[])
 
 
 class ElecsPanel(bpy.types.Panel):
@@ -748,6 +747,7 @@ class ElecsPanel(bpy.types.Panel):
     sorted_groups = {'rh':[], 'lh':[]}
     ela_code_exist = False
     bpy.context.scene.elc_size = 1
+    atlases_exist = False
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -787,6 +787,7 @@ def init(addon, do_register=True):
     bpy.context.scene.listener_is_running = False
     bpy.context.scene.show_lh_electrodes = True
     bpy.context.scene.show_rh_electrodes = True
+    bpy.context.scene.show_ela = False
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")
@@ -871,6 +872,14 @@ def init_electrodes_labeling(addon):
         # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
         # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)
     ElecsPanel.faces_verts = addon.get_faces_verts()
+
+    atlases = mu.get_annot_files()
+    if len(atlases) > 0:
+        ElecsPanel.atlases_exist = True
+        atlases_items = [(c, c, '', ind) for ind, c in enumerate(atlases)]
+        bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=atlases_items, description='atlases')
+        bpy.context.scene.ela_atlas = atlases[0]
+    bpy.context.scene.ela_bipolar = bpy.context.scene.bipolar
     return len(labling_files) > 0
 
 
