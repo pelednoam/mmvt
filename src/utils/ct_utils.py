@@ -24,7 +24,7 @@ def remove_large_negative_values_from_ct(ct_fname, new_ct_fname='', threshold=-2
         The output fname
     '''
     if not op.isfile(ct_fname):
-        print(f'The CT could not be found in {ct_fname}!')
+        print('The CT could not be found in {}!'.format(ct_fname))
         return ''
     if new_ct_fname == '':
         new_ct_fname = op.join(utils.get_parent_fol(ct_fname), 'ct_no_large_negative_values.mgz')
