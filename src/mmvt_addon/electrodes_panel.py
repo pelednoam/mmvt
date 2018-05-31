@@ -479,8 +479,7 @@ def run_ela_alg():
         sys.path.append(ela_code_fol)
     from src import find_rois
     importlib.reload(find_rois)
-    args = find_rois.get_args(
-        ['-s', mu.get_user(), '-a', atlas, '-b', str(bpy.context.scene.bipolar)])
+    args = find_rois.get_args(['-s', mu.get_user(), '-a', atlas, '-b', str(bpy.context.scene.bipolar)])
     find_rois.run_for_all_subjects(args)
     init(_addon(), False)
 
