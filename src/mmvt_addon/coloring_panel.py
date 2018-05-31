@@ -243,10 +243,13 @@ def object_coloring(obj, rgb):
     # obj.select = True
     cur_mat = obj.active_material
     new_color = (rgb[0], rgb[1], rgb[2], 1)
+    obj_type = mu.check_obj_type(obj.name)
+    if obj_type == mu.OBJ_TYPE_SUBCORTEX:
+        return
     try:
         cur_mat.diffuse_color = new_color[:3]
     except:
-        print('object_coloring: No diffuse_color')
+        print('object_coloring: No diffuse_color for {}'.format(obj.name))
         return False
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
@@ -656,6 +659,7 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
     if atlas not in ColoringMakerPanel.labels_vertices:
         load_labels_vertices(atlas)
         if atlas not in ColoringMakerPanel.labels_vertices:
+            # todo: run directly
             print('Creating a label vertices file for atlas {}'.format(atlas))
             print('Please try again after the file will be created.')
             mu.run_mmvt_func('src.preproc.anatomy', 'save_labels_vertices', flags='-a {}'.format(atlas))

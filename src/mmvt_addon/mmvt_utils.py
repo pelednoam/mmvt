@@ -122,6 +122,7 @@ get_subjects_dir = su.get_subjects_dir
 get_real_atlas_name = su.get_real_atlas_name
 get_parent_fol = su.get_parent_fol
 select_one_file = su.select_one_file
+is_true = su.is_true
 
 floats_const_pattern = r"""
      [-+]?
@@ -688,14 +689,16 @@ def obj_is_cortex(obj_name):
 
 
 def get_obj_hemi(obj_name):
-    obj_type = check_obj_type(obj_name)
-    if obj_type == OBJ_TYPE_CORTEX_LH:
-        hemi = 'lh'
-    elif obj_type == OBJ_TYPE_CORTEX_RH:
-        hemi = 'rh'
-    else:
-        hemi = None
+    _, _, _, hemi = get_hemi_delim_and_pos(obj_name)
     return hemi
+    # obj_type = check_obj_type(obj_name)
+    # if obj_type == OBJ_TYPE_CORTEX_LH:
+    #     hemi = 'lh'
+    # elif obj_type == OBJ_TYPE_CORTEX_RH:
+    #     hemi = 'rh'
+    # else:
+    #     hemi = None
+    # return hemi
 
 
 def run_command_in_new_thread(cmd, queues=True, shell=True, read_stdin=True, read_stdout=True, read_stderr=False,
@@ -998,7 +1001,7 @@ def get_mmvt_code_root():
 
 
 def add_mmvt_code_root_to_path():
-    code_root_fol = op.join(get_mmvt_code_root())
+    code_root_fol = get_mmvt_code_root()
     if code_root_fol not in sys.path:
         sys.path.append(code_root_fol)
 
@@ -2551,6 +2554,11 @@ def get_remote_subject_info_args():
     else:
         args = Bag(dict(remote_subject_dir=get_subjects_dir()))
     return args
+
+
+def get_annot_files():
+    subjects_dir = get_link_dir(get_links_dir(), 'subjects')
+    return [namebase(fname)[3:] for fname in glob.glob(op.join(subjects_dir, get_user(), 'label', 'rh.*.annot'))]
 
 
 # def mouse_coo_to_3d_loc(event, context):

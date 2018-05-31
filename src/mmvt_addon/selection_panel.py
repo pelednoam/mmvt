@@ -87,16 +87,17 @@ def _curves_sep_update(force=False):
         data_mean = np.median(data[data_ind]) if bpy.context.scene.curves_sep > 0 else 0
         for c in range(C):
             fcurve = fcurves[fcurve_ind]
+            fcurve_T = min(T, len(fcurve.keyframe_points)) - 1
             if not force and SelectionMakerPanel.curves_sep.get(mu.get_fcurve_name(fcurve), -1) == \
                     bpy.context.scene.curves_sep:
                 fcurve_ind += 1
                 continue
-            for t in range(T):
+            for t in range(fcurve_T):
                 fcurve.keyframe_points[t].co[1] = \
                     get_data(data_ind, t, c) - data_mean + (N / 2 - 0.5 - sep_inds[fcurve_ind]) * bpy.context.scene.curves_sep
             fcurve_ind += 1
             if bpy.context.scene.curves_sep == 0:
-                fcurve.keyframe_points[0].co[1] = fcurve.keyframe_points[T].co[1] = 0
+                fcurve.keyframe_points[0].co[1] = fcurve.keyframe_points[fcurve_T].co[1] = 0
     for fcurve in fcurves:
         SelectionMakerPanel.curves_sep[mu.get_fcurve_name(fcurve)] = bpy.context.scene.curves_sep
     # mu.change_fcurves_colors(fcurves=fcurves)

@@ -409,8 +409,9 @@ def plot_labels_probs(elc):
                 if not _addon().colorbar_values_are_locked():
                     _addon().set_colorbar_title('Electrodes probabilities')
                     _addon().set_colormap('YlOrRd')
-                _addon().labels_coloring_hemi(labels_data, ElecsPanel.faces_verts, hemi, 0,
-                                              colors_min=0, colors_max=1)
+                atlas = bpy.context.scene.electrodes_labeling_files.split('_')[1:-6][0]
+                _addon().labels_coloring_hemi(
+                    labels_data, ElecsPanel.faces_verts, hemi, 0, colors_min=0, colors_max=1, atlas=atlas)
                 colors = mu.get_distinct_colors(len(elc['cortical_rois']))
                 if bpy.context.scene.electrodes_label_contours:
                     _addon().color_contours(elc['cortical_rois'], specific_colors=colors)
@@ -420,8 +421,11 @@ def plot_labels_probs(elc):
             _addon().clear_cortex()
         _addon().clear_subcortical_regions()
         if len(elc['subcortical_rois']) > 0:
-            for region, color in zip(elc['subcortical_rois'], elc['subcortical_colors'][:, :3]):
+            cm = _addon().get_cm()
+            colors = mu.calc_colors_from_cm(elc['subcortical_probs'], 0, 256, cm)
+            for region, color in zip(elc['subcortical_rois'], colors):
                 _addon().color_subcortical_region(region, color)
+
     elif bpy.context.scene.electrodes_what_to_color == 'verts':
         if len(elc['cortical_indices']) > 0:
             hemi = bpy.data.objects[elc['hemi']]
@@ -448,6 +452,22 @@ def unselect_prev_electrode(prev_electrodes):
         if not prev_elc is None:
             _addon().de_select_electrode_and_sensor(prev_elc, False)
         # prev_elc.select = False
+
+
+def run_ela_alg():
+    mmvt_code_fol = mu.get_mmvt_code_root()
+    ela_code_fol = op.join(mu.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
+    if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py')):
+        print("Can't find ELA folder!")
+        return
+    import importlib
+    import sys
+    if ela_code_fol not in sys.path:
+        sys.path.append(ela_code_fol)
+    from src import find_rois
+    importlib.reload(find_rois)
+    args = find_rois.read_args(['-s', mu.get_user(), '-a', bpy.context.scene.atlas, '-b', str(bpy.context.scene.bipolar)])
+    find_rois.run_for_all_subjects(args)
 
 
 def elecs_draw(self, context):
@@ -767,7 +787,6 @@ def init_sorted_groups():
         ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
 
 
-
 def init_leads_list(leads=None):
     # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
     if leads is None:
@@ -810,7 +829,6 @@ def init_electrodes_list():
 
 
 def init_electrodes_labeling(addon):
-    #todo: this panel should work also without labeling file
     labling_files = find_elecrode_labeling_files()
     if len(labling_files) > 0:
         files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
@@ -827,7 +845,8 @@ def init_electrodes_labeling(addon):
 def find_elecrode_labeling_files():
     files = []
     blender_electrodes_names = set([o.name for o in bpy.data.objects['Deep_electrodes'].children])
-    labeling_template = '{}_{}_electrodes_cigar_r_*_l_*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)
+    # labeling_template = '{}_{}_electrodes_cigar_r_*_l_*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)
+    labeling_template = '{}_*_electrodes_cigar_r_*_l_*.pkl'.format(mu.get_user(), bpy.context.scene.atlas)
     labling_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', labeling_template))
     for labling_file in labling_files:
         try:
