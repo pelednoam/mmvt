@@ -78,7 +78,7 @@ def open_freeview():
     else:
         ct_cmd = ''
     if bpy.context.scene.freeview_load_dura:
-        dura_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'surf', '{hemi}.dural')
+        dura_fname = FreeviewPanel.dura_srf_fname
         if FreeviewPanel.dura_srf_exist:
             dura_cmd = '-f "{}":edgecolor=blue "{}":edgecolor=blue '.format(
                 dura_fname.format(hemi='rh'), dura_fname.format(hemi='lh'))
@@ -378,8 +378,15 @@ def init(addon, addon_prefs=None):
     #     if op.isfile(subjects_ct_fname):
     #         shutil.copy(subjects_ct_fname, mmvt_ct_fname)
     FreeviewPanel.CT_files_exist = op.isfile(mmvt_ct_fname)
-    FreeviewPanel.dura_srf_exist = mu.both_hemi_files_exist(
-        op.join(mu.get_subjects_dir(), mu.get_user(), 'surf', '{hemi}.dural'))
+    if mu.both_hemi_files_exist(op.join(mu.get_subjects_dir(), mu.get_user(), 'surf', '{hemi}.dural')):
+        FreeviewPanel.dura_srf_exist = True
+        FreeviewPanel.dura_srf_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'surf', '{hemi}.dural')
+    elif mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'surf', '{hemi}.dural')):
+        FreeviewPanel.dura_srf_exist = True
+        FreeviewPanel.dura_srf_fname = op.join(mu.get_user_fol(), mu.get_user(), 'surf', '{hemi}.dural')
+    else:
+        FreeviewPanel.dura_srf_exist = False
+
     FreeviewPanel.init = True
     FreeviewPanel.freeview_is_open = False
     register()

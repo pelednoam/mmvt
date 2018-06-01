@@ -534,10 +534,8 @@ def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
 
 @pu.tryit_ret_bool
 def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
-    from scipy.spatial.distance import cdist
     from collections import Counter
 
-    in_dural = {}
     elcs_groups = {}
     groups = defaultdict(list)
     sorted_groups = dict(rh=[], lh=[])
@@ -554,19 +552,7 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
         utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
         return True
 
-    dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
-    if dural_verts is None:
-        from src.misc.dural import create_dural
-        create_dural.create_dural_surface(subject, SUBJECTS_DIR)
-        dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
-    if dural_verts is None:
-        print('No Dural surface!!!')
-        return False
-    for hemi in ['rh', 'lh']:
-        dists = cdist(electrodes_t1_tkreg, dural_verts[hemi])
-        close_verts_indices = np.argmin(dists, axis=1)
-        in_dural[hemi] = [gu.point_in_mesh(u, dural_verts[hemi][vert_ind], dural_normals[hemi][vert_ind], sigma)
-                          for u, vert_ind in zip(electrodes_t1_tkreg, close_verts_indices)]
+    in_dural = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
     hemis = {elc_name:'rh' if in_dural['rh'][ind] else 'lh' if in_dural['lh'][ind] else 'un' for ind, elc_name in
              enumerate(electrodes)}
     for elc_name in electrodes:
@@ -586,6 +572,47 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
     print(sorted_groups)
     utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
     return True
+
+
+def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
+    from scipy.spatial.distance import cdist
+
+    in_dural = {}
+    dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
+    if dural_verts is None:
+        from src.misc.dural import create_dural
+        create_dural.create_dural_surface(subject, SUBJECTS_DIR)
+        dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
+    if dural_verts is None:
+        print('No Dural surface!!!')
+        return False
+    for hemi in ['rh', 'lh']:
+        dists = cdist(electrodes_t1_tkreg, dural_verts[hemi])
+        close_verts_indices = np.argmin(dists, axis=1)
+        in_dural[hemi] = [gu.point_in_mesh(u, dural_verts[hemi][vert_ind], dural_normals[hemi][vert_ind], sigma)
+                          for u, vert_ind in zip(electrodes_t1_tkreg, close_verts_indices)]
+    return in_dural
+
+
+def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
+    electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
+    in_dural_hemis = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
+    num_inside_dura = defaultdict(int)
+    electrodes_num = defaultdict(int)
+    for elc_ind, elc_name in enumerate(electrodes):
+        elc_group = utils.elec_group(elc_name, bipolar)
+        in_dural = in_dural_hemis['rh'][elc_ind] or in_dural_hemis['lh'][elc_ind]
+        if in_dural:
+            num_inside_dura[elc_group] += 1
+        electrodes_num[elc_group] += 1
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
+    print('Saving results to {}'.format(output_fname))
+    with open(output_fname, 'w') as output_file:
+        for group, in_dura_num in num_inside_dura.items():
+            output_str = '{}, {}, {}'.format(group, in_dura_num, electrodes_num[group])
+            output_file.write('{}\n'.format(output_str))
+            print(output_str)
+    return op.isfile(output_fname)
 
 
 @pu.tryit_ret_bool
@@ -1192,6 +1219,9 @@ def main(subject, remote_subject_dir, args, flags):
     if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
         flags['create_raw_data_for_blender'] = create_raw_data_for_blender(subject, args)
 
+    if 'electrodes_inside_the_dura' in args.function:
+        flags['electrodes_inside_the_dura'] = check_how_many_electrodes_inside_the_dura(
+            subject, args.sigma, args.bipolar)
 
     return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
