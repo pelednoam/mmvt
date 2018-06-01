@@ -596,6 +596,9 @@ def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
 
 
 def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
+    if op.isfile(output_fname):
+        os.remove(output_fname)
     electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
     in_dural_hemis = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
     num_inside_dura = defaultdict(int)
@@ -606,9 +609,6 @@ def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
         if in_dural:
             num_inside_dura[elc_group] += 1
         electrodes_num[elc_group] += 1
-    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
-    if op.isfile(output_fname):
-        os.remove(output_fname)
     print('Saving results to {}'.format(output_fname))
     with open(output_fname, 'w') as output_file:
         for group, in_dura_num in num_inside_dura.items():
