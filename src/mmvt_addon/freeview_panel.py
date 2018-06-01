@@ -77,6 +77,13 @@ def open_freeview():
             ct_cmd = ''
     else:
         ct_cmd = ''
+    if bpy.context.scene.freeview_load_dura:
+        dura_fname = op.join(mu.get_subjects_dir(), mu.get_user(), 'surf', '{hemi}.dural')
+        if FreeviewPanel.dura_srf_exist:
+            dura_cmd = '-f "{}":edgecolor=blue "{}":edgecolor=blue '.format(
+                dura_fname.format(hemi='rh'), dura_fname.format(hemi='lh'))
+        else:
+            dura_cmd = ''
     T1 = op.join(root, 'freeview', 'T1.mgz')  # sometimes 'orig.mgz' is better
     if not op.isfile(T1):
         T1 = op.join(root, 'freeview', 'orig.mgz')
@@ -95,8 +102,8 @@ def open_freeview():
     else:
         aseg_cmd = ''
     electrodes_cmd = get_electrodes_command(root)
-    cmd = '{} "{}":opacity=0.5 {}{}{}{}{}{}'.format(
-        FreeviewPanel.addon_prefs.freeview_cmd, T1, aseg_cmd, electrodes_cmd, sig_cmd, ct_cmd,
+    cmd = '{} "{}":opacity=0.5 {}{}{}{}{}{}{}'.format(
+        FreeviewPanel.addon_prefs.freeview_cmd, T1, aseg_cmd, electrodes_cmd, sig_cmd, ct_cmd, dura_cmd,
         ' -verbose' if FreeviewPanel.addon_prefs.freeview_cmd_verbose else '',
         ' -stdin' if FreeviewPanel.addon_prefs.freeview_cmd_stdin else '')
     print(cmd)
@@ -291,6 +298,7 @@ bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=True, 
 bpy.types.Scene.fMRI_files_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_fMRI = bpy.props.BoolProperty(default=True, description='Load fMRI')
 bpy.types.Scene.freeview_load_CT = bpy.props.BoolProperty(default=True, description='Load CT')
+bpy.types.Scene.freeview_load_dura = bpy.props.BoolProperty(default=True, description='Load dura')
 bpy.types.Scene.freeview_messages = bpy.props.StringProperty()
 
 
@@ -305,6 +313,7 @@ class FreeviewPanel(bpy.types.Panel):
     freeview_in_queue = None
     freeview_out_queue = None
     freeview_is_open = False
+    dura_srf_exist = False
 
     def draw(self, context):
         layout = self.layout
@@ -329,7 +338,8 @@ class FreeviewPanel(bpy.types.Panel):
                 layout.prop(context.scene, 'freeview_load_fMRI', text="Load fMRI")
             if FreeviewPanel.CT_files_exist:
                 layout.prop(context.scene, 'freeview_load_CT', text="Load CT")
-
+            if FreeviewPanel.dura_srf_exist:
+                layout.prop(context.scene, 'freeview_load_dura', text="Load dura")
             row = layout.row(align=0)
             row.operator(FreeviewGotoCursor.bl_idname, text="Goto Cursor", icon='HAND')
             row.operator(FreeviewSaveCursor.bl_idname, text="Save Cursor", icon='FORCE_CURVE')
@@ -368,6 +378,8 @@ def init(addon, addon_prefs=None):
     #     if op.isfile(subjects_ct_fname):
     #         shutil.copy(subjects_ct_fname, mmvt_ct_fname)
     FreeviewPanel.CT_files_exist = op.isfile(mmvt_ct_fname)
+    FreeviewPanel.dura_srf_exist = mu.both_hemi_files_exist(
+        op.join(mu.get_subjects_dir(), mu.get_user(), 'surf', '{hemi}.dural'))
     FreeviewPanel.init = True
     FreeviewPanel.freeview_is_open = False
     register()

@@ -681,16 +681,20 @@ def dell_draw(self, context):
         row.prop(context.scene, 'ct_plot_lead', text='Plot lead')
         if bpy.context.scene.ct_plot_lead:
             row.prop(context.scene, 'dell_ct_lead_color', text='')
+        select_elc_group = -1
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             name = bpy.context.selected_objects[0].name
             ind = DellPanel.names.index(name)
             groups = [k for k, g in enumerate(DellPanel.groups) if ind in g]
             if len(groups) == 1:
-                group_str = 'group {}, {} in group'.format(groups[0], len(DellPanel.groups[groups[0]]))
+                select_elc_group = groups[0]
+                group_str = 'group {}, {} in group'.format(select_elc_group , len(DellPanel.groups[groups[0]]))
             else:
                 group_str = ''
             pos = DellPanel.pos[ind]
             layout.label(text='{} index: {} hemi: {} {}'.format(name, ind, DellPanel.hemis[ind], group_str))
+            if select_elc_group >= 0:
+                layout.prop(context.scene, "dell_selected_electrode_group_name", text="Group name")
             layout.label(text='pos: {}'.format(pos))
         layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
         if len(DellPanel.groups) > 0:
@@ -1142,6 +1146,7 @@ bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_move_x = bpy.props.IntProperty(default=0, step=1, name='x', update=dell_move_elec_update)
 bpy.types.Scene.dell_move_y = bpy.props.IntProperty(default=0, step=1, name='y', update=dell_move_elec_update)
 bpy.types.Scene.dell_move_z = bpy.props.IntProperty(default=0, step=1, name='z', update=dell_move_elec_update)
+bpy.types.Scene.dell_selected_electrode_group_name = bpy.props.StringProperty()
 
 
 class DellPanel(bpy.types.Panel):
