@@ -601,6 +601,9 @@ def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
 
 @utils.tryit()
 def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
+    if bipolar:
+        print('This function is only for monopolar electrodes')
+        return False
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
     if op.isfile(output_fname):
         os.remove(output_fname)
@@ -608,18 +611,26 @@ def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
     in_dural_hemis = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
     num_inside_dura = defaultdict(int)
     electrodes_num = defaultdict(int)
+    groups_inside = defaultdict(dict)
     for elc_ind, elc_name in enumerate(electrodes):
-        elc_group = utils.elec_group(elc_name, bipolar)
+        elc_group, elc_num = utils.elec_group_number(elc_name, bipolar)
         in_dural = in_dural_hemis['rh'][elc_ind] or in_dural_hemis['lh'][elc_ind]
+        groups_inside[elc_group][elc_num] = in_dural
+        electrodes_num[elc_group] += 1
+    for elc_ind, elc_name in enumerate(electrodes):
+        elc_group, elc_num = utils.elec_group_number(elc_name, bipolar)
+        in_dural = groups_inside[elc_group][elc_num]
         if in_dural:
             num_inside_dura[elc_group] += 1
-        electrodes_num[elc_group] += 1
+        else: # Check if the elc is inside the brain
+            if any([groups_inside[elc_group][k] for k in range(elc_num + 1,  electrodes_num[elc_group])]):
+                num_inside_dura[elc_group] += 1
     print('Saving results to {}'.format(output_fname))
     with open(output_fname, 'w') as output_file:
         for group, in_dura_num in num_inside_dura.items():
             output_str = '{}, {}, {}'.format(group, in_dura_num, electrodes_num[group])
             output_file.write('{}\n'.format(output_str))
-            # print(output_str)
+            print(output_str)
     return op.isfile(output_fname)
 
 
