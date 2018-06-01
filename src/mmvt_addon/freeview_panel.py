@@ -294,7 +294,7 @@ class FreeviewOpen(bpy.types.Operator):
 
 
 bpy.types.Scene.electrodes_exist = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=True, description='Load electrodes')
+bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=False, description='Load electrodes')
 bpy.types.Scene.fMRI_files_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_fMRI = bpy.props.BoolProperty(default=True, description='Load fMRI')
 bpy.types.Scene.freeview_load_CT = bpy.props.BoolProperty(default=True, description='Load CT')
@@ -360,6 +360,7 @@ def init(addon, addon_prefs=None):
     # print('Use -verbose? {}'.format(addon_prefs.freeview_cmd_verbose))
     # print('Use -stdin? {}'.format(addon_prefs.freeview_cmd_stdin))
     FreeviewPanel.addon_prefs = addon_prefs
+    bpy.context.scene.freeview_load_electrodes = False
     bpy.context.scene.freeview_listen_to_keyboard = False
     bpy.context.scene.freeview_listener_is_running = False
     bpy.context.scene.fMRI_files_exist = len(glob.glob(op.join(mu.get_user_fol(), 'fmri', '*_lh.npy'))) > 0

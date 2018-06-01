@@ -159,10 +159,14 @@ def read_electrodes_file(subject, bipolar, postfix=''):
         print("Can't find {} electrodes file (bipolar={})".format(subject, bipolar))
         return [], []
     else:
-        d = np.load(electrodes_fname)
-        # fix for a bug in ielu
-        names = [n.replace('elec_unsorted', '') for n in d['names']]
-        return names, d['pos']
+        try:
+            d = np.load(electrodes_fname)
+            # fix for a bug in ielu
+            names = [n.replace('elec_unsorted', '') for n in d['names']]
+            return names, d['pos']
+        except:
+            os.remove(electrodes_fname)
+            return read_electrodes_file(subject, bipolar, postfix)
 
 
 def save_electrodes_file(subject, bipolar, elecs_names, elecs_coordinates, fname_postfix):
@@ -176,7 +180,7 @@ def fix_str_items_in_csv(csv):
     lines = []
     for line in csv:
         fix_line = list(map(lambda x: str(x).replace('"', ''), line))
-        if not np.all([len(v)==0 for v in fix_line[1:]]) and np.all([utils.is_float(x) for x in fix_line[1:]]):
+        if not np.all([len(v) == 0 for v in fix_line[1:]]) and np.all([utils.is_float(x) for x in fix_line[1:4]]):
             lines.append(fix_line)
         else:
             print('csv: ignoring the following line: {}'.format(line))
