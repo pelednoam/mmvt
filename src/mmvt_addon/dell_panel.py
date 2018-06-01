@@ -1132,7 +1132,7 @@ bpy.types.Scene.ct_plot_lead = bpy.props.BoolProperty(default=True, update=ct_pl
 bpy.types.Scene.dell_ct_print_distances = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_delete_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_brain_mask_sigma = bpy.props.FloatProperty(min=0, max=5, default=1)
 bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
@@ -1233,13 +1233,13 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
                 DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
             init_groups()
         bpy.context.scene.dell_ct_error_radius = 2
-        bpy.context.scene.dell_ct_min_elcs_for_lead = 4
+        bpy.context.scene.dell_ct_min_elcs_for_lead = 6
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
         bpy.context.scene.dell_ct_min_distance = 2.5
         bpy.context.scene.dell_brain_mask_sigma = 1
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
-        bpy.context.scene.dell_do_post_search = False
+        bpy.context.scene.dell_do_post_search = True
         bpy.context.scene.use_only_brain_mask = False
         bpy.context.scene.dell_binary_erosion = False
         bpy.context.scene.dell_debug = False
