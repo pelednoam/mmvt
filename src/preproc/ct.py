@@ -274,8 +274,8 @@ def read_cmd_args(argv=None):
     global SUBJECTS_DIR, MMVT_DIR
     SUBJECTS_DIR = args.mri_dir
     MMVT_DIR = args.mmvt_dir
-    print('Subjects dir: '.format(SUBJECTS_DIR))
-    print('MMVT dir: '.format(MMVT_DIR))
+    print('Subjects dir: {}'.format(SUBJECTS_DIR))
+    print('MMVT dir: {}'.format(MMVT_DIR))
     return args
 
 
