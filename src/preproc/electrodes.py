@@ -1,6 +1,7 @@
 import numpy as np
 from functools import partial
 import os.path as op
+import os
 import shutil
 import mne
 import scipy.io as sio
@@ -606,12 +607,14 @@ def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
             num_inside_dura[elc_group] += 1
         electrodes_num[elc_group] += 1
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
+    if op.isfile(output_fname):
+        os.remove(output_fname)
     print('Saving results to {}'.format(output_fname))
     with open(output_fname, 'w') as output_file:
         for group, in_dura_num in num_inside_dura.items():
             output_str = '{}, {}, {}'.format(group, in_dura_num, electrodes_num[group])
             output_file.write('{}\n'.format(output_str))
-            print(output_str)
+            # print(output_str)
     return op.isfile(output_fname)
 
 
