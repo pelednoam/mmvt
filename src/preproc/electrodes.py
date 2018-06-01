@@ -595,6 +595,7 @@ def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
     return in_dural
 
 
+@utils.tryit()
 def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
     if op.isfile(output_fname):
