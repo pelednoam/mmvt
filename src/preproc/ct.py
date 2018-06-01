@@ -269,6 +269,11 @@ def read_cmd_args(argv=None):
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
     args.necessary_files = {'mri': ['brain.mgz']}
+
+    global SUBJECTS_DIR, MMVT_DIR
+    SUBJECTS_DIR = args.mri_dir
+    MMVT_DIR = args.mmvt_dir
+    print(SUBJECTS_DIR, MMVT_DIR)
     return args
 
 
