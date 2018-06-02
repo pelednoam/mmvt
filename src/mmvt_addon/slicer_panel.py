@@ -489,8 +489,12 @@ bpy.types.Scene.slices_x_min = bpy.props.FloatProperty(default=1, update=slices_
 bpy.types.Scene.slices_plot_cross = bpy.props.BoolProperty(default=True, update=slices_update)
 bpy.types.Scene.slices_mark_voxel = bpy.props.BoolProperty(default=True, update=slices_update)
 bpy.types.Scene.pial_vol_mask_exist = bpy.props.BoolProperty()
+bpy.types.Scene.dural_vol_mask_exist = bpy.props.BoolProperty()
 bpy.types.Scene.slices_show_pial = bpy.props.BoolProperty(default=False, update=slices_update)
 bpy.types.Scene.slices_show_pial_color = bpy.props.FloatVectorProperty(
+    name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
+bpy.types.Scene.slices_show_dural = bpy.props.BoolProperty(default=False, update=slices_update)
+bpy.types.Scene.slices_show_dural_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
 
 
@@ -528,6 +532,11 @@ def slicer_draw(self, context):
         row.prop(context.scene, 'slices_show_pial', text='Plot pial')
         if context.scene.slices_show_pial:
             row.prop(context.scene, 'slices_show_pial_color', text='')
+    if bpy.context.scene.dural_vol_mask_exist:
+        row = layout.row(align=0)
+        row.prop(context.scene, 'slices_show_dural', text='Plot dural')
+        if context.scene.slices_show_dural:
+            row.prop(context.scene, 'slices_show_dural_color', text='')
 
     # col = layout.box().column()
     # col.prop(context.scene, 'new_electrode_lead', text='Lead')
@@ -579,8 +588,11 @@ def init(addon):
             items.append(('ct', 'CT', '', items_ind))
         bpy.types.Scene.slices_modality = bpy.props.EnumProperty(items=items, update=slices_modality_update)
     pial_vol_mask_fname = op.join(mu.get_user_fol(), 'freeview', 'pial_vol_mask.npy')
+    dural_vol_mask_fname = op.join(mu.get_user_fol(), 'freeview', 'dural_vol_mask.npy')
     bpy.context.scene.pial_vol_mask_exist = op.isfile(pial_vol_mask_fname)
+    bpy.context.scene.dural_vol_mask_exist = op.isfile(dural_vol_mask_fname)
     bpy.context.scene.slices_show_pial = False
+    bpy.context.scene.slices_show_dural = False
     bpy.context.scene.slices_modality_mix = 0
     bpy.context.scene.slices_zoom = 1
     bpy.context.scene.new_electrode_num = 1

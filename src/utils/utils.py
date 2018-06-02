@@ -246,20 +246,21 @@ def read_ply_file(ply_file, npz_fname=''):
     return verts, faces
 
 
-def load_surf(subject, mmvt_dir, subjects_dir):
+def load_surf(subject, mmvt_dir, subjects_dir, surf_type='pial'):
     verts = {}
     for hemi in HEMIS:
-        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.pial.npz'.format(hemi))):
+        if op.isfile(op.join(mmvt_dir, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))):
             hemi_verts, _ = read_pial(subject, mmvt_dir, hemi)
-        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi))):
+        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))):
             hemi_verts, _ = read_ply_file(
-                op.join(subjects_dir, subject, 'surf', '{}.pial.ply'.format(hemi)))
-        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.pial'.format(hemi))):
+                op.join(subjects_dir, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type)))
+        elif op.isfile(op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))):
             import nibabel as nib
-            hemi_verts, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', '{}.pial'.format(hemi)))
+            hemi_verts, _ = nib.freesurfer.read_geometry(
+                op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type)))
         else:
-            print("Can't find {} pial ply/npz files!".format(hemi))
-            return False
+            print("Can't find {} {} ply/npz files!".format(hemi, surf_type))
+            return None
         verts[hemi] = hemi_verts
     return verts
 
@@ -931,8 +932,9 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                 local_fname = op.join(local_subject_dir, fol, new_file_name)
                             else:
                                 local_fname = op.join(local_subject_dir, fol, namebase_with_ext(remote_fname))
-                            print('coping {} to {}'.format(remote_fname, local_fname))
-                            shutil.copyfile(remote_fname, local_fname)
+                            if remote_fname != local_fname:
+                                print('coping {} to {}'.format(remote_fname, local_fname))
+                                shutil.copyfile(remote_fname, local_fname)
                         else:
                             print("Remote file can't be found! {}".format(remote_fname))
                 except:

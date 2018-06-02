@@ -64,9 +64,12 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     extras = [0] * 3
     pial_vol_mask_fname = op.join(mmvt_dir, subject, 'freeview', 'pial_vol_mask.npy')
     pial_vol_mask = np.load(pial_vol_mask_fname) if op.isfile(pial_vol_mask_fname) else None
+    dural_vol_mask_fname = op.join(mmvt_dir, subject, 'freeview', 'dural_vol_mask.npy')
+    dural_vol_mask = np.load(dural_vol_mask_fname) if op.isfile(dural_vol_mask_fname) else None
     self = mu.Bag(dict(
         data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r, colors_ratio=colors_ratio,
-        colormap=colormap, coordinates=[], modality=modality, extras=extras, pial_vol_mask=pial_vol_mask))
+        colormap=colormap, coordinates=[], modality=modality, extras=extras, pial_vol_mask=pial_vol_mask,
+        dural_vol_mask=dural_vol_mask))
     return self
 
 
@@ -126,6 +129,13 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
                     smooth)
             else:
                 pial_vol_mask_data = None
+            if s.dural_vol_mask is not None and bpy.context.scene.slices_show_dural:
+                dural_vol_mask_data = get_image_data(
+                    s.dural_vol_mask, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num,
+                    smooth)
+            else:
+                dural_vol_mask_data = None
+
             # todo: Should do that step in the state init
             if modality == 'ct':
                 d[np.where(d == 0)] = -200
@@ -137,7 +147,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
                 clim, colors_ratio = s.clim, s.colors_ratio
             pixels[modality] = calc_slice_pixels(
                 d, sizes, max_sizes, clim, colors_ratio, s.colormap, zoom_around_voxel, zoom_voxels_num, mark_voxel,
-                pial_vol_mask_data)
+                pial_vol_mask_data, dural_vol_mask_data)
         # image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
         #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]),
         #                      state[modality].extras[ii])
@@ -159,6 +169,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             images[prespective] = pixels
     # print(np.dot(state[modality].affine, [x, y, z, 1])[:3])
     return images
+
 
 
 def calc_cross(x_vox, state, ii):
@@ -214,7 +225,7 @@ def get_image_data(image_data, order, flips, ii, pos, cross=None, zoom_around_vo
 
 
 def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom_around_voxel, pixels_zoom,
-                      mark_voxel=True, pial_vol_mask_data=None):
+                      mark_voxel=True, pial_vol_mask_data=None, dural_vol_mask_data=None):
     colors = calc_colors(data, clim[0], colors_ratio, colormap)
 
     extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
@@ -232,6 +243,8 @@ def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom
 
     if pial_vol_mask_data is not None:
         colors[np.where(pial_vol_mask_data)] = tuple(bpy.context.scene.slices_show_pial_color)
+    if dural_vol_mask_data is not None:
+        colors[np.where(dural_vol_mask_data)] = tuple(bpy.context.scene.slices_show_dural_color)
 
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
