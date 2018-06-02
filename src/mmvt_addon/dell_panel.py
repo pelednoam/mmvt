@@ -61,10 +61,10 @@ def dell_move_elec_update(self, context):
     DellPanel.pos[elc_ind] = tkreg_ras
 
 
-@mu.profileit('cumtime', op.join(mu.get_user_fol()))
+# @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_electrodes_pipeline():
-    user_fol = mu.get_user_fol()
-    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
+    # user_fol = mu.get_user_fol()
+    # subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima.npy')
     if bpy.context.scene.dell_binary_erosion:
         DellPanel.ct_data = fect.binary_erosion(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
@@ -84,14 +84,14 @@ def find_electrodes_pipeline():
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
     print('mask_voxels_outside_brain...')
     ct_electrodes, _ = fect.mask_voxels_outside_brain(
-        ct_voxels, DellPanel.ct.header, DellPanel.brain, subject_fol, bpy.context.scene.dell_brain_mask_sigma,
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), bpy.context.scene.dell_brain_mask_sigma,
         bpy.context.scene.use_only_brain_mask)
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
     # DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
     DellPanel.hemis = fect.find_electrodes_hemis(
-        subject_fol, DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
+        mu.get_user_fol(), DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
     DellPanel.names = name_electrodes(DellPanel.hemis)
     output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
@@ -99,6 +99,7 @@ def find_electrodes_pipeline():
     print('import_electrodes...')
     _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
                                parnet_name='Deep_electrodes')
+    print('finish importing the elecctrodes!')
     _addon().show_electrodes()
 
 
@@ -119,9 +120,9 @@ def refresh_pos_and_names():
         DellPanel.names = [o.name for o in objects]
         DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
         DellPanel.groups = []
-        subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
+        # subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
         DellPanel.hemis = fect.find_electrodes_hemis(
-            subject_fol, DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
+            mu.get_user_fol(), DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
         DellPanel.names = name_electrodes(DellPanel.hemis)
         for new_name, obj in zip(DellPanel.names, objects):
             obj.name = new_name
@@ -602,10 +603,10 @@ def open_interactive_ct_viewer():
 
 def check_if_outside_pial():
     # aseg = None if not bpy.context.scene.dell_brain_mask_use_aseg else DellPanel.aseg
-    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
+    # subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     voxels = fect.t1_ras_tkr_to_ct_voxels(DellPanel.pos, DellPanel.ct.header, DellPanel.brain.header)
     voxels_in, voxels_in_indices = fect.mask_voxels_outside_brain(
-        voxels, DellPanel.ct.header, DellPanel.brain, subject_fol,
+        voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(),
         bpy.context.scene.dell_brain_mask_sigma)
     indices_outside_brain = set(range(len(voxels))) - set(voxels_in_indices)
     for ind in indices_outside_brain:
@@ -1240,7 +1241,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_ct_error_radius = 2
         bpy.context.scene.dell_ct_min_elcs_for_lead = 6
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
-        bpy.context.scene.dell_ct_min_distance = 2.5
+        bpy.context.scene.dell_ct_min_distance = 1.5
         bpy.context.scene.dell_brain_mask_sigma = 1
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
@@ -1269,15 +1270,15 @@ def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='
     else:
         print("Dell: Can't find the ct!")
         # return False
-    subjects_dir = su.get_subjects_dir()
-    brain_mask_fname = op.join(subjects_dir, mu.get_user(), 'mri', brain_mask_name)
+    # subjects_dir = su.get_subjects_dir()
+    brain_mask_fname = op.join(mu.get_user_fol(), 'mri', brain_mask_name)
     if op.isfile(brain_mask_fname):
         DellPanel.brain = nib.load(brain_mask_fname)
         DellPanel.brain_mask = DellPanel.brain.get_data()
     else:
         print("Dell: Can't find brain.mgz!")
         # return False
-    aseg_fname = op.join(subjects_dir, mu.get_user(), 'mri', aseg_name)
+    aseg_fname = op.join(mu.get_user_fol(), 'mri', aseg_name)
     DellPanel.aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
     return True
 
