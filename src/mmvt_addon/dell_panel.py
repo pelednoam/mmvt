@@ -19,7 +19,7 @@ try:
     importlib.reload(fect)
     DELL_EXIST = True
 except:
-    # print(traceback.format_exc())
+    print(traceback.format_exc())
     DELL_EXIST = False
 
 try:
@@ -68,7 +68,7 @@ def find_electrodes_pipeline():
     local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima.npy')
     if bpy.context.scene.dell_binary_erosion:
         DellPanel.ct_data = fect.binary_erosion(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
-    if True: #not op.isfile(local_maxima_fname):
+    if not op.isfile(local_maxima_fname):
         print('find_voxels_above_threshold...')
         ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
         print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
@@ -84,12 +84,10 @@ def find_electrodes_pipeline():
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
     print('mask_voxels_outside_brain...')
     ct_electrodes, _ = fect.mask_voxels_outside_brain(
-        ct_voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), bpy.context.scene.dell_brain_mask_sigma,
-        bpy.context.scene.use_only_brain_mask)
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), bpy.context.scene.dell_brain_mask_sigma)
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
     print('find_electrodes_hemis...')
-    # DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
     DellPanel.hemis = fect.find_electrodes_hemis(
         mu.get_user_fol(), DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
     DellPanel.names = name_electrodes(DellPanel.hemis)
@@ -339,30 +337,13 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
         DellPanel.noise.add(elc_ind)
         return []
 
-    # if debug:
-    #     if DellPanel.debug_fol == '':
-    #         DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
-    #     mu.save((elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
-    #         bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
-    #         bpy.context.scene.dell_ct_min_distance, bpy.context.scene.dell_do_post_search), op.join(
-    #         DellPanel.debug_fol, '_find_electrode_lead_{}-{}_{}_{}.pkl'.format(
-    #             group[0], group[-1], elc_ind, int(bpy.context.scene.dell_ct_threshold))))
-
     DellPanel.dists_to_cylinder = {DellPanel.names[p]:d for p, d in dists_to_cylinder.items()}
-    # log = (DellPanel.names[best_elc_ind], [DellPanel.names[ind] for ind in group])
-    # DellPanel.log.append(log)
-    # DellPanel.current_log = [log]
-    # mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
-    #     int(bpy.context.scene.dell_ct_threshold))))
     if bpy.context.scene.ct_plot_lead:
         create_lead(group[0], group[-1])
     DellPanel.groups.append(group)
     for p in noise:
-        # print('Marking {} as noise for group {}-{}'.format(DellPanel.names[p], DellPanel.names[group[0]], DellPanel.names[group[-1]]))
         _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
         DellPanel.noise.add(p)
-    # mu.save((DellPanel.groups, DellPanel.noise), op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
-    #     int(bpy.context.scene.dell_ct_threshold))))
     color = next(DellPanel.colors)
     for elc_ind in group:
         _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
@@ -660,8 +641,8 @@ def dell_draw(self, context):
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
         layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
         layout.prop(context.scene, 'dell_find_nei_maxima', text='Find local nei maxima')
-        layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
-        layout.prop(context.scene, 'dell_binary_erosion', text='USe Binary Erosion')
+        # layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
+        # layout.prop(context.scene, 'dell_binary_erosion', text='USe Binary Erosion')
         layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
     else:
         # row = layout.row(align=0)
@@ -1140,7 +1121,7 @@ bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default
 bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_brain_mask_sigma = bpy.props.FloatProperty(min=0, max=5, default=1)
 bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
+# bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_binary_erosion = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_find_nei_maxima = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
@@ -1246,7 +1227,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
         bpy.context.scene.dell_do_post_search = True
-        bpy.context.scene.use_only_brain_mask = False
+        # bpy.context.scene.use_only_brain_mask = False
         bpy.context.scene.dell_binary_erosion = False
         bpy.context.scene.dell_debug = False
         if bpy.context.scene.dell_debug:
