@@ -393,6 +393,7 @@ def find_all_groups(runs_num=100):
             print('{}) group {}-{} found!'.format(run_num + 1, DellPanel.names[g[0]], DellPanel.names[g[-1]]))
             group_found = find_random_group()
             run_num += 1
+    save_dell_objects()
     print('Done!')
 
 
@@ -694,6 +695,8 @@ def dell_draw(self, context):
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         # if len(bpy.context.selected_objects) == 1:
         #     layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
+        # if len(DellPanel.dell_files) > 1:
+        #     layout.prop(context.scene, 'dell_files', text='Dell files')
         row = layout.row(align=True)
         row.operator(SaveElectrodesObjects.bl_idname, text="Save", icon='SAVE_PREFS')
         row.operator(RefreshElectrodesObjects.bl_idname, text="Load", icon='OUTLINER_OB_FORCE_FIELD')
@@ -1148,6 +1151,7 @@ bpy.types.Scene.dell_move_y = bpy.props.IntProperty(default=0, step=1, name='y',
 bpy.types.Scene.dell_move_z = bpy.props.IntProperty(default=0, step=1, name='z', update=dell_move_elec_update)
 bpy.types.Scene.dell_selected_electrode_group_name = bpy.props.StringProperty()
 bpy.types.Scene.dell_how_many_electrodes_above_threshold = bpy.props.StringProperty()
+bpy.types.Scene.dell_files = bpy.props.EnumProperty(items=[], description="Dell files")
 
 
 class DellPanel(bpy.types.Panel):
@@ -1193,14 +1197,20 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         if DellPanel.ct_found:
             # init_electrodes()
             DellPanel.colors = cycle(mu.get_distinct_colors(10))
-            input_fname = op.join(
-                DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
+            intput_files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
+            if len(intput_files) == 1:
+                input_fname = intput_files[0]
+            else:
+                # todo: let the user choose which one
+                input_fname = op.join(
+                    DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
             # files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
             # if len(files) > 0:
             if op.isfile(input_fname):
                 try:
                     (DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
                      bpy.context.scene.dell_ct_threshold) = mu.load(input_fname)
+                    print('{} groups were loaded from {}'.format(len(DellPanel.groups), input_fname))
                 except:
                     # support old files
                     (DellPanel.pos, DellPanel.names, DellPanel.hemis,
@@ -1210,29 +1220,6 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
                 if parent is None:
                     parent = _addon().create_empty_if_doesnt_exists(
                         'Deep_electrodes', _addon().BRAIN_EMPTY_LAYER, [False] * 20, 'Deep_electrodes')
-
-                # for obj in parent.children:
-                #     obj.select = False
-                # for obj in parent.children:
-                #     if obj.name not in DellPanel.names:
-                #         obj.select = True
-                #         bpy.ops.object.delete()
-                # bad_names, bad_indices = [], []
-                # for elc_ind, elc_name in enumerate(DellPanel.names):
-                #     if bpy.data.objects.get(elc_name) is None:
-                #         bad_names.append(elc_name)
-                #         bad_indices.append(elc_ind)
-                # DellPanel.names = [n for n in DellPanel.names if n not in bad_names]
-                # for bad_ind in bad_indices:
-                #     group_inds = [k for k, g in enumerate(DellPanel.groups) if bad_ind in g]
-                #     if len(group_inds) > 0:
-                #         DellPanel.groups[group_inds[0]] = [e for e in DellPanel.groups[group_inds[0]] if e != bad_ind]
-
-                # todo: Why should we check that?
-                # elcs_names = [o.name for o in parent.children]
-                # if len(DellPanel.names) != len(parent.children) or set(DellPanel.names) != set(elcs_names):
-                #     print('!!! len(DellPanel.names) != len(parent.children) or set(DellPanel.names) != set(elcs_names) !!!')
-                #     DellPanel.names = elcs_names
             else:
                 bpy.context.scene.dell_ct_threshold_percentile = 99.9
             bpy.context.scene.dell_ct_threshold = np.percentile(
@@ -1301,22 +1288,8 @@ def init_dural():
         return False
 
 
-# def init_electrodes():
-    # elcs_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes_positions.npz'))
-    # if len(elcs_files) == 1:
-        # elcs_dict = mu.Bag(np.load(elcs_files[0]))
-        # bipolar = '-' in elcs_dict.names[0]
-        # groups = set([mu.elec_group(elc_name, bipolar) for elc_name in elcs_dict.names])
-        # bpy.context.scene.dell_ct_n_components = len(elcs_dict.names)
-        # bpy.context.scene.dell_ct_n_groups = len(groups)
-
-
 @mu.tryit()
 def init_groups():
-    # groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
-    #     int(bpy.context.scene.dell_ct_threshold)))
-    # DellPanel.groups, DellPanel.noise = mu.load(groups_fname) if op.isfile(groups_fname) else ([], set())
-    # DellPanel.groups = [list(l) for l in DellPanel.groups]
     parent = bpy.data.objects.get('Deep_electrodes', None)
     if parent is None or len(parent.children) == 0:
         return
