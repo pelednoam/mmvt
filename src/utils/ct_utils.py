@@ -105,6 +105,7 @@ def get_data_and_header(subject, mmvt_dir, subjects_dir, ct_name='ct_reg_to_mr.m
         else:
             print("Can't find subject's CT! ({})".format(fname))
             return None, None
+    print('get_data_and_header: loading {}'.format(fname))
     header = nib.load(fname)
     data = header.get_data()
     return data, header

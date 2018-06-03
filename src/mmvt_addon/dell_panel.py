@@ -63,13 +63,21 @@ def dell_move_elec_update(self, context):
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_electrodes_pipeline():
-    # user_fol = mu.get_user_fol()
-    # subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
-    local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima.npy')
+    find_how_many_electrodes_above_threshold()
+    print('import_electrodes...')
+    _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
+                               parnet_name='Deep_electrodes')
+    print('finish importing the elecctrodes!')
+    _addon().show_electrodes()
+
+
+def find_how_many_electrodes_above_threshold():
+    local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima_{}.npy'.format(
+        bpy.context.scene.dell_ct_threshold))
     if bpy.context.scene.dell_binary_erosion:
         DellPanel.ct_data = fect.binary_erosion(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
     if not op.isfile(local_maxima_fname):
-        print('find_voxels_above_threshold...')
+        print('find_voxels_above_threshold ({})'.format(bpy.context.scene.dell_ct_threshold))
         ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
         print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
         print('Finding local maxima')
@@ -87,18 +95,14 @@ def find_electrodes_pipeline():
         ct_voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), bpy.context.scene.dell_brain_mask_sigma)
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
-    print('find_electrodes_hemis...')
     DellPanel.hemis = fect.find_electrodes_hemis(
         mu.get_user_fol(), DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
     DellPanel.names = name_electrodes(DellPanel.hemis)
     output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
+    bpy.context.scene.dell_how_many_electrodes_above_threshold = str(len(DellPanel.names))
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
              bpy.context.scene.dell_ct_threshold), output_fname)
-    print('import_electrodes...')
-    _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
-                               parnet_name='Deep_electrodes')
-    print('finish importing the elecctrodes!')
-    _addon().show_electrodes()
+
 
 
 def save():
@@ -643,7 +647,11 @@ def dell_draw(self, context):
         layout.prop(context.scene, 'dell_find_nei_maxima', text='Find local nei maxima')
         # layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
         # layout.prop(context.scene, 'dell_binary_erosion', text='USe Binary Erosion')
-        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
+        layout.operator(FindHowManyElectrodesAboveThrshold.bl_idname, text="Find how many electrodes", icon='NODE_SEL')
+        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Import electrodes", icon='ROTATE')
+        if bpy.context.scene.dell_how_many_electrodes_above_threshold != '':
+            layout.label(text='Found {} potential electrodes'.format(
+                bpy.context.scene.dell_how_many_electrodes_above_threshold))
     else:
         # row = layout.row(align=0)
         # row.prop(context.scene, 'dell_ct_n_components', text="n_components")
@@ -960,6 +968,16 @@ class GetElectrodesAboveThrshold(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class FindHowManyElectrodesAboveThrshold(bpy.types.Operator):
+    bl_idname = "mmvt.find_how_many_electrodes_above_threshold"
+    bl_label = "find_how_many_electrodes_above_threshold"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        find_how_many_electrodes_above_threshold()
+        return {'PASS_THROUGH'}
+
+
 class PrevCTElectrode(bpy.types.Operator):
     bl_idname = 'mmvt.prev_ct_electrode'
     bl_label = 'prev_ct_electrode'
@@ -1129,6 +1147,7 @@ bpy.types.Scene.dell_move_x = bpy.props.IntProperty(default=0, step=1, name='x',
 bpy.types.Scene.dell_move_y = bpy.props.IntProperty(default=0, step=1, name='y', update=dell_move_elec_update)
 bpy.types.Scene.dell_move_z = bpy.props.IntProperty(default=0, step=1, name='z', update=dell_move_elec_update)
 bpy.types.Scene.dell_selected_electrode_group_name = bpy.props.StringProperty()
+bpy.types.Scene.dell_how_many_electrodes_above_threshold = bpy.props.StringProperty()
 
 
 class DellPanel(bpy.types.Panel):
@@ -1230,6 +1249,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         # bpy.context.scene.use_only_brain_mask = False
         bpy.context.scene.dell_binary_erosion = False
         bpy.context.scene.dell_debug = False
+        bpy.context.scene.dell_how_many_electrodes_above_threshold = ''
         if bpy.context.scene.dell_debug:
             DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         if not DellPanel.init:
@@ -1325,6 +1345,7 @@ def register():
         bpy.utils.register_class(ChooseCTFile)
         bpy.utils.register_class(CalcThresholdPercentile)
         bpy.utils.register_class(GetElectrodesAboveThrshold)
+        bpy.utils.register_class(FindHowManyElectrodesAboveThrshold)
         bpy.utils.register_class(OpenInteractiveCTViewer)
         bpy.utils.register_class(FindElectrodeLead)
         bpy.utils.register_class(FindRandomLead)
@@ -1359,6 +1380,7 @@ def unregister():
         bpy.utils.unregister_class(ChooseCTFile)
         bpy.utils.unregister_class(CalcThresholdPercentile)
         bpy.utils.unregister_class(GetElectrodesAboveThrshold)
+        bpy.utils.unregister_class(FindHowManyElectrodesAboveThrshold)
         bpy.utils.unregister_class(OpenInteractiveCTViewer)
         bpy.utils.unregister_class(FindElectrodeLead)
         bpy.utils.unregister_class(FindRandomLead)

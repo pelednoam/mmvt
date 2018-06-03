@@ -77,8 +77,10 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
     return True if print_only else op.isfile(op.join(ct_fol, register_ct_name))
 
 
-def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz'):
+def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz', overwrite=False):
     output_fname = op.join(MMVT_DIR, subject, 'ct', 'ct_trans.npz')
+    if op.isfile(output_fname) and not overwrite:
+        return True
     ct_fname, ct_exist = utils.locating_file(ct_name, ['*.mgz', '*.nii', '*.nii.gz'], op.join(MMVT_DIR, subject, 'ct'))
     # ct_fname = op.join(MMVT_DIR, subject, 'ct', ct_name)
     if not ct_exist:# op.isfile(ct_fname):
@@ -93,13 +95,15 @@ def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz'):
             return False
     if ct_fname != op.join(MMVT_DIR, subject, 'ct', ct_name):
         utils.make_link(ct_fname, op.join(MMVT_DIR, subject, 'ct', ct_name))
+    print('save_subject_ct_trans: loading {}'.format(ct_fname))
     header = nib.load(ct_fname).header
     ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = anat.get_trans_functions(header)
+    print('save_subject_ct_trans: Saving {}'.format(output_fname))
     np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
     return op.isfile(output_fname)
 
 
-def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz'):
+def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz', overwrite=False):
     ret = True
     data, header = ctu.get_data_and_header(subject, MMVT_DIR, SUBJECTS_DIR, ct_name)
     if data is None or header is None:
@@ -108,7 +112,8 @@ def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz'):
     precentiles = np.percentile(data, (1, 99))
     colors_ratio = 256 / (precentiles[1] - precentiles[0])
     output_fname = op.join(MMVT_DIR, subject, 'ct', 'ct_data.npz')
-    if not op.isfile(output_fname):
+    if not op.isfile(output_fname) or overwrite:
+        print('save_images_data_and_header: saving to {}'.format(output_fname))
         np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
     ret = ret and op.isfile(output_fname)
     return ret
@@ -202,10 +207,11 @@ def main(subject, remote_subject_dir, args, flags):
             args.register_cost_function, args.overwrite, args.print_only)
 
     if utils.should_run(args, 'save_subject_ct_trans'):
-        flags['save_subject_ct_trans'] = save_subject_ct_trans(subject, args.register_ct_name)
+        flags['save_subject_ct_trans'] = save_subject_ct_trans(subject, args.register_ct_name, args.overwrite)
 
     if utils.should_run(args, 'save_images_data_and_header'):
-        flags['save_images_data_and_header'] = save_images_data_and_header(subject, args.register_ct_name)
+        flags['save_images_data_and_header'] = save_images_data_and_header(
+            subject, args.register_ct_name, args.overwrite)
 
     if 'find_electrodes' in args.function:
         flags['find_electrodes'] = find_electrodes(
