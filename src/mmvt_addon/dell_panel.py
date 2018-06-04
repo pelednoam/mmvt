@@ -649,7 +649,7 @@ def dell_draw(self, context):
         row = layout.row(align=0)
         if len(glob.glob(op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(
                 int(bpy.context.scene.dell_ct_threshold))))):
-            row.operator(ImportElectrodesFromDell.bl_idname, text="Import electrodes", icon='EDIT')
+            layout.operator(ImportElectrodesFromDell.bl_idname, text="Import electrodes", icon='EDIT')
         row.prop(context.scene, 'dell_ct_threshold', text="Threshold")
         row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
