@@ -104,7 +104,6 @@ def find_how_many_electrodes_above_threshold():
              bpy.context.scene.dell_ct_threshold), output_fname)
 
 
-
 def save():
     output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
@@ -194,6 +193,13 @@ def save_dell_objects():
     output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
              bpy.context.scene.dell_ct_threshold), output_fname)
+
+
+def import_electrodes_from_dell():
+    _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
+                               parnet_name='Deep_electrodes')
+    print('finish importing the elecctrodes!')
+    _addon().show_electrodes()
 
 
 def mark_selected_electrodes_as_noise():
@@ -641,6 +647,9 @@ def dell_draw(self, context):
             mu.get_user_fol(), 'ct', '*.mgz')
     elif parent is None or len(parent.children) == 0:
         row = layout.row(align=0)
+        if len(glob.glob(op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(
+                int(bpy.context.scene.dell_ct_threshold))))):
+            row.operator(ImportElectrodesFromDell.bl_idname, text="Import electrodes", icon='EDIT')
         row.prop(context.scene, 'dell_ct_threshold', text="Threshold")
         row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
@@ -968,6 +977,16 @@ class GetElectrodesAboveThrshold(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         find_electrodes_pipeline()
+        return {'PASS_THROUGH'}
+
+
+class ImportElectrodesFromDell(bpy.types.Operator):
+    bl_idname = "mmvt.import_electrodes_from_dell"
+    bl_label = "import_electrodes_from_dell"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        import_electrodes_from_dell()
         return {'PASS_THROUGH'}
 
 
@@ -1319,6 +1338,7 @@ def register():
         bpy.utils.register_class(CalcThresholdPercentile)
         bpy.utils.register_class(GetElectrodesAboveThrshold)
         bpy.utils.register_class(FindHowManyElectrodesAboveThrshold)
+        bpy.utils.register_class(ImportElectrodesFromDell)
         bpy.utils.register_class(OpenInteractiveCTViewer)
         bpy.utils.register_class(FindElectrodeLead)
         bpy.utils.register_class(FindRandomLead)
