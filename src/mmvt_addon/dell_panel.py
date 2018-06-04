@@ -19,7 +19,7 @@ try:
     importlib.reload(fect)
     DELL_EXIST = True
 except:
-    # print(traceback.format_exc())
+    print(traceback.format_exc())
     DELL_EXIST = False
 
 try:
@@ -61,15 +61,23 @@ def dell_move_elec_update(self, context):
     DellPanel.pos[elc_ind] = tkreg_ras
 
 
-@mu.profileit('cumtime', op.join(mu.get_user_fol()))
+# @mu.profileit('cumtime', op.join(mu.get_user_fol()))
 def find_electrodes_pipeline():
-    user_fol = mu.get_user_fol()
-    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
-    local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima.npy')
+    find_how_many_electrodes_above_threshold()
+    print('import_electrodes...')
+    _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
+                               parnet_name='Deep_electrodes')
+    print('finish importing the elecctrodes!')
+    _addon().show_electrodes()
+
+
+def find_how_many_electrodes_above_threshold():
+    local_maxima_fname = op.join(DellPanel.output_fol, 'local_maxima_{}.npy'.format(
+        bpy.context.scene.dell_ct_threshold))
     if bpy.context.scene.dell_binary_erosion:
         DellPanel.ct_data = fect.binary_erosion(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
-    if True: #not op.isfile(local_maxima_fname):
-        print('find_voxels_above_threshold...')
+    if not op.isfile(local_maxima_fname):
+        print('find_voxels_above_threshold ({})'.format(bpy.context.scene.dell_ct_threshold))
         ct_voxels = fect.find_voxels_above_threshold(DellPanel.ct_data, bpy.context.scene.dell_ct_threshold)
         print('{} voxels were found above {}'.format(len(ct_voxels), bpy.context.scene.dell_ct_threshold))
         print('Finding local maxima')
@@ -84,22 +92,17 @@ def find_electrodes_pipeline():
     print('{} local maxima after removing neighbors'.format(len(ct_voxels)))
     print('mask_voxels_outside_brain...')
     ct_electrodes, _ = fect.mask_voxels_outside_brain(
-        ct_voxels, DellPanel.ct.header, DellPanel.brain, subject_fol, bpy.context.scene.dell_brain_mask_sigma,
-        bpy.context.scene.use_only_brain_mask)
+        ct_voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(), bpy.context.scene.dell_brain_mask_sigma)
     print('{} voxels in the brain were found'.format(len(ct_electrodes)))
     DellPanel.pos = fect.ct_voxels_to_t1_ras_tkr(ct_electrodes, DellPanel.ct.header, DellPanel.brain.header)
-    print('find_electrodes_hemis...')
-    # DellPanel.hemis, _ = fect.find_electrodes_hemis(user_fol, DellPanel.pos)
     DellPanel.hemis = fect.find_electrodes_hemis(
-        subject_fol, DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
+        mu.get_user_fol(), DellPanel.pos, groups=None, sigma=bpy.context.scene.dell_brain_mask_sigma)
     DellPanel.names = name_electrodes(DellPanel.hemis)
     output_fname = op.join(DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
+    bpy.context.scene.dell_how_many_electrodes_above_threshold = str(len(DellPanel.names))
     mu.save((DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
              bpy.context.scene.dell_ct_threshold), output_fname)
-    print('import_electrodes...')
-    _addon().import_electrodes(elecs_pos=DellPanel.pos, elecs_names=DellPanel.names, bipolar=False,
-                               parnet_name='Deep_electrodes')
-    _addon().show_electrodes()
+
 
 
 def save():
@@ -119,9 +122,9 @@ def refresh_pos_and_names():
         DellPanel.names = [o.name for o in objects]
         DellPanel.pos = np.array([np.array(o.location) for o in objects]) * 10
         DellPanel.groups = []
-        subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
+        # subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
         DellPanel.hemis = fect.find_electrodes_hemis(
-            subject_fol, DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
+            mu.get_user_fol(), DellPanel.pos, None, 1, DellPanel.verts_dural, DellPanel.normals_dural)
         DellPanel.names = name_electrodes(DellPanel.hemis)
         for new_name, obj in zip(DellPanel.names, objects):
             obj.name = new_name
@@ -338,30 +341,13 @@ def _find_electrode_lead(elc_ind, elc_ind2=-1, debug=True):
         DellPanel.noise.add(elc_ind)
         return []
 
-    # if debug:
-    #     if DellPanel.debug_fol == '':
-    #         DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
-    #     mu.save((elc_ind, DellPanel.pos, DellPanel.hemis, DellPanel.groups, bpy.context.scene.dell_ct_error_radius,
-    #         bpy.context.scene.dell_ct_min_elcs_for_lead, bpy.context.scene.dell_ct_max_dist_between_electrodes,
-    #         bpy.context.scene.dell_ct_min_distance, bpy.context.scene.dell_do_post_search), op.join(
-    #         DellPanel.debug_fol, '_find_electrode_lead_{}-{}_{}_{}.pkl'.format(
-    #             group[0], group[-1], elc_ind, int(bpy.context.scene.dell_ct_threshold))))
-
     DellPanel.dists_to_cylinder = {DellPanel.names[p]:d for p, d in dists_to_cylinder.items()}
-    # log = (DellPanel.names[best_elc_ind], [DellPanel.names[ind] for ind in group])
-    # DellPanel.log.append(log)
-    # DellPanel.current_log = [log]
-    # mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
-    #     int(bpy.context.scene.dell_ct_threshold))))
     if bpy.context.scene.ct_plot_lead:
         create_lead(group[0], group[-1])
     DellPanel.groups.append(group)
     for p in noise:
-        # print('Marking {} as noise for group {}-{}'.format(DellPanel.names[p], DellPanel.names[group[0]], DellPanel.names[group[-1]]))
         _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
         DellPanel.noise.add(p)
-    # mu.save((DellPanel.groups, DellPanel.noise), op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
-    #     int(bpy.context.scene.dell_ct_threshold))))
     color = next(DellPanel.colors)
     for elc_ind in group:
         _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
@@ -407,6 +393,7 @@ def find_all_groups(runs_num=100):
             print('{}) group {}-{} found!'.format(run_num + 1, DellPanel.names[g[0]], DellPanel.names[g[-1]]))
             group_found = find_random_group()
             run_num += 1
+    save_dell_objects()
     print('Done!')
 
 
@@ -602,10 +589,10 @@ def open_interactive_ct_viewer():
 
 def check_if_outside_pial():
     # aseg = None if not bpy.context.scene.dell_brain_mask_use_aseg else DellPanel.aseg
-    subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
+    # subject_fol = op.join(mu.get_subjects_dir(), mu.get_user())
     voxels = fect.t1_ras_tkr_to_ct_voxels(DellPanel.pos, DellPanel.ct.header, DellPanel.brain.header)
     voxels_in, voxels_in_indices = fect.mask_voxels_outside_brain(
-        voxels, DellPanel.ct.header, DellPanel.brain, subject_fol,
+        voxels, DellPanel.ct.header, DellPanel.brain, mu.get_user_fol(),
         bpy.context.scene.dell_brain_mask_sigma)
     indices_outside_brain = set(range(len(voxels))) - set(voxels_in_indices)
     for ind in indices_outside_brain:
@@ -659,9 +646,13 @@ def dell_draw(self, context):
         row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
         layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
         layout.prop(context.scene, 'dell_find_nei_maxima', text='Find local nei maxima')
-        layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
-        layout.prop(context.scene, 'dell_binary_erosion', text='USe Binary Erosion')
-        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Find electrodes", icon='ROTATE')
+        # layout.prop(context.scene, 'use_only_brain_mask', text='Use only the brain mask')
+        # layout.prop(context.scene, 'dell_binary_erosion', text='USe Binary Erosion')
+        layout.operator(FindHowManyElectrodesAboveThrshold.bl_idname, text="Find how many electrodes", icon='NODE_SEL')
+        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Import electrodes", icon='ROTATE')
+        if bpy.context.scene.dell_how_many_electrodes_above_threshold != '':
+            layout.label(text='Found {} potential electrodes'.format(
+                bpy.context.scene.dell_how_many_electrodes_above_threshold))
     else:
         # row = layout.row(align=0)
         # row.prop(context.scene, 'dell_ct_n_components', text="n_components")
@@ -704,6 +695,8 @@ def dell_draw(self, context):
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         # if len(bpy.context.selected_objects) == 1:
         #     layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
+        # if len(DellPanel.dell_files) > 1:
+        #     layout.prop(context.scene, 'dell_files', text='Dell files')
         row = layout.row(align=True)
         row.operator(SaveElectrodesObjects.bl_idname, text="Save", icon='SAVE_PREFS')
         row.operator(RefreshElectrodesObjects.bl_idname, text="Load", icon='OUTLINER_OB_FORCE_FIELD')
@@ -978,6 +971,16 @@ class GetElectrodesAboveThrshold(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class FindHowManyElectrodesAboveThrshold(bpy.types.Operator):
+    bl_idname = "mmvt.find_how_many_electrodes_above_threshold"
+    bl_label = "find_how_many_electrodes_above_threshold"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        find_how_many_electrodes_above_threshold()
+        return {'PASS_THROUGH'}
+
+
 class PrevCTElectrode(bpy.types.Operator):
     bl_idname = 'mmvt.prev_ct_electrode'
     bl_label = 'prev_ct_electrode'
@@ -1139,7 +1142,7 @@ bpy.types.Scene.dell_find_all_group_using_timer = bpy.props.BoolProperty(default
 bpy.types.Scene.dell_do_post_search = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_brain_mask_sigma = bpy.props.FloatProperty(min=0, max=5, default=1)
 bpy.types.Scene.dell_brain_mask_use_aseg = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
+# bpy.types.Scene.use_only_brain_mask = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.dell_binary_erosion = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_find_nei_maxima = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.dell_debug = bpy.props.BoolProperty(default=True)
@@ -1147,6 +1150,8 @@ bpy.types.Scene.dell_move_x = bpy.props.IntProperty(default=0, step=1, name='x',
 bpy.types.Scene.dell_move_y = bpy.props.IntProperty(default=0, step=1, name='y', update=dell_move_elec_update)
 bpy.types.Scene.dell_move_z = bpy.props.IntProperty(default=0, step=1, name='z', update=dell_move_elec_update)
 bpy.types.Scene.dell_selected_electrode_group_name = bpy.props.StringProperty()
+bpy.types.Scene.dell_how_many_electrodes_above_threshold = bpy.props.StringProperty()
+bpy.types.Scene.dell_files = bpy.props.EnumProperty(items=[], description="Dell files")
 
 
 class DellPanel(bpy.types.Panel):
@@ -1192,14 +1197,20 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         if DellPanel.ct_found:
             # init_electrodes()
             DellPanel.colors = cycle(mu.get_distinct_colors(10))
-            input_fname = op.join(
-                DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
+            intput_files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
+            if len(intput_files) == 1:
+                input_fname = intput_files[0]
+            else:
+                # todo: let the user choose which one
+                input_fname = op.join(
+                    DellPanel.output_fol, '{}_electrodes.pkl'.format(int(bpy.context.scene.dell_ct_threshold)))
             # files = glob.glob(op.join(DellPanel.output_fol, '*_electrodes.pkl'))
             # if len(files) > 0:
             if op.isfile(input_fname):
                 try:
                     (DellPanel.pos, DellPanel.names, DellPanel.hemis, DellPanel.groups, DellPanel.noise,
                      bpy.context.scene.dell_ct_threshold) = mu.load(input_fname)
+                    print('{} groups were loaded from {}'.format(len(DellPanel.groups), input_fname))
                 except:
                     # support old files
                     (DellPanel.pos, DellPanel.names, DellPanel.hemis,
@@ -1209,29 +1220,6 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
                 if parent is None:
                     parent = _addon().create_empty_if_doesnt_exists(
                         'Deep_electrodes', _addon().BRAIN_EMPTY_LAYER, [False] * 20, 'Deep_electrodes')
-
-                # for obj in parent.children:
-                #     obj.select = False
-                # for obj in parent.children:
-                #     if obj.name not in DellPanel.names:
-                #         obj.select = True
-                #         bpy.ops.object.delete()
-                # bad_names, bad_indices = [], []
-                # for elc_ind, elc_name in enumerate(DellPanel.names):
-                #     if bpy.data.objects.get(elc_name) is None:
-                #         bad_names.append(elc_name)
-                #         bad_indices.append(elc_ind)
-                # DellPanel.names = [n for n in DellPanel.names if n not in bad_names]
-                # for bad_ind in bad_indices:
-                #     group_inds = [k for k, g in enumerate(DellPanel.groups) if bad_ind in g]
-                #     if len(group_inds) > 0:
-                #         DellPanel.groups[group_inds[0]] = [e for e in DellPanel.groups[group_inds[0]] if e != bad_ind]
-
-                # todo: Why should we check that?
-                # elcs_names = [o.name for o in parent.children]
-                # if len(DellPanel.names) != len(parent.children) or set(DellPanel.names) != set(elcs_names):
-                #     print('!!! len(DellPanel.names) != len(parent.children) or set(DellPanel.names) != set(elcs_names) !!!')
-                #     DellPanel.names = elcs_names
             else:
                 bpy.context.scene.dell_ct_threshold_percentile = 99.9
             bpy.context.scene.dell_ct_threshold = np.percentile(
@@ -1245,9 +1233,10 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
         bpy.context.scene.dell_do_post_search = True
-        bpy.context.scene.use_only_brain_mask = False
+        # bpy.context.scene.use_only_brain_mask = False
         bpy.context.scene.dell_binary_erosion = False
         bpy.context.scene.dell_debug = False
+        bpy.context.scene.dell_how_many_electrodes_above_threshold = ''
         if bpy.context.scene.dell_debug:
             DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         if not DellPanel.init:
@@ -1269,15 +1258,15 @@ def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='
     else:
         print("Dell: Can't find the ct!")
         # return False
-    subjects_dir = su.get_subjects_dir()
-    brain_mask_fname = op.join(subjects_dir, mu.get_user(), 'mri', brain_mask_name)
+    # subjects_dir = su.get_subjects_dir()
+    brain_mask_fname = op.join(mu.get_user_fol(), 'mri', brain_mask_name)
     if op.isfile(brain_mask_fname):
         DellPanel.brain = nib.load(brain_mask_fname)
         DellPanel.brain_mask = DellPanel.brain.get_data()
     else:
         print("Dell: Can't find brain.mgz!")
         # return False
-    aseg_fname = op.join(subjects_dir, mu.get_user(), 'mri', aseg_name)
+    aseg_fname = op.join(mu.get_user_fol(), 'mri', aseg_name)
     DellPanel.aseg = nib.load(aseg_fname).get_data() if op.isfile(aseg_fname) else None
     return True
 
@@ -1299,22 +1288,8 @@ def init_dural():
         return False
 
 
-# def init_electrodes():
-    # elcs_files = glob.glob(op.join(mu.get_user_fol(), 'electrodes', '*electrodes_positions.npz'))
-    # if len(elcs_files) == 1:
-        # elcs_dict = mu.Bag(np.load(elcs_files[0]))
-        # bipolar = '-' in elcs_dict.names[0]
-        # groups = set([mu.elec_group(elc_name, bipolar) for elc_name in elcs_dict.names])
-        # bpy.context.scene.dell_ct_n_components = len(elcs_dict.names)
-        # bpy.context.scene.dell_ct_n_groups = len(groups)
-
-
 @mu.tryit()
 def init_groups():
-    # groups_fname = op.join(DellPanel.output_fol, '{}_groups.pkl'.format(
-    #     int(bpy.context.scene.dell_ct_threshold)))
-    # DellPanel.groups, DellPanel.noise = mu.load(groups_fname) if op.isfile(groups_fname) else ([], set())
-    # DellPanel.groups = [list(l) for l in DellPanel.groups]
     parent = bpy.data.objects.get('Deep_electrodes', None)
     if parent is None or len(parent.children) == 0:
         return
@@ -1343,6 +1318,7 @@ def register():
         bpy.utils.register_class(ChooseCTFile)
         bpy.utils.register_class(CalcThresholdPercentile)
         bpy.utils.register_class(GetElectrodesAboveThrshold)
+        bpy.utils.register_class(FindHowManyElectrodesAboveThrshold)
         bpy.utils.register_class(OpenInteractiveCTViewer)
         bpy.utils.register_class(FindElectrodeLead)
         bpy.utils.register_class(FindRandomLead)
@@ -1377,6 +1353,7 @@ def unregister():
         bpy.utils.unregister_class(ChooseCTFile)
         bpy.utils.unregister_class(CalcThresholdPercentile)
         bpy.utils.unregister_class(GetElectrodesAboveThrshold)
+        bpy.utils.unregister_class(FindHowManyElectrodesAboveThrshold)
         bpy.utils.unregister_class(OpenInteractiveCTViewer)
         bpy.utils.unregister_class(FindElectrodeLead)
         bpy.utils.unregister_class(FindRandomLead)

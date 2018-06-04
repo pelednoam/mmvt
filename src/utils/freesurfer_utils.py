@@ -742,6 +742,17 @@ def is_fs_atlas(atlas):
     return atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
 
 
+def read_surface(subject, subjects_dir, surf_type='pial'):
+    verts, faces = {}, {}
+    for hemi in utils.HEMIS:
+        surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
+        if not op.isfile(surf_fname):
+            print('{} does not exist!'.format(surf_fname))
+            return None
+        verts[hemi], faces[hemi] = nib.freesurfer.read_geometry(surf_fname)
+    return verts, faces
+
+
 if __name__ == '__main__':
     import argparse
     from src.utils.utils import Bag
