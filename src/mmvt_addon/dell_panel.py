@@ -1237,10 +1237,10 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
             bpy.context.scene.dell_ct_threshold = np.percentile(
                 DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
             init_groups()
-        bpy.context.scene.dell_ct_error_radius = 2
+        bpy.context.scene.dell_ct_error_radius = 2.5
         bpy.context.scene.dell_ct_min_elcs_for_lead = 6
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
-        bpy.context.scene.dell_ct_min_distance = 2.5
+        bpy.context.scene.dell_ct_min_distance = 1.5
         bpy.context.scene.dell_brain_mask_sigma = 1
         bpy.context.scene.dell_delete_electrodes = False
         bpy.context.scene.dell_find_all_group_using_timer = False
