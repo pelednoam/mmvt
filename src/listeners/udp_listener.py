@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 from src.utils import utils
 from src.utils import args_utils as au
 
-SERVER = '172.17.146.219' # socket.gethostbyname(socket.gethostname())
-PORT = 45454
-MULTICAST_GROUP = '239.255.43.21'
+SERVER = '127.0.0.1'  # '172.17.146.219' # socket.gethostbyname(socket.gethostname())
+PORT = 59124
+MULTICAST_GROUP = '127.0.0.1' # '239.255.43.21'
 
 def stdout_print(str):
     sys.stdout.write(str)
@@ -184,5 +184,5 @@ if __name__ == '__main__':
     # import time
     # sys.stdin.write('stop')
     # time.sleep(3)
-    start_udp_listener_timeout(args.buffer_size)
+    start_udp_listener_timeout(args.buffer_size, multicast=False)
     # listen_raw()
