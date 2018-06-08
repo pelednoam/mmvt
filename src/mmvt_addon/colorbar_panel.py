@@ -342,7 +342,7 @@ def colorbar_draw(self, context):
     layout.prop(context.scene, 'lock_min_max', text='Lock values')
     if bpy.data.screens.get('Neuro_vertical_colorbar') is not None:
         layout.prop(context.scene, 'show_vertical_cb', text='Show vertical colorbar')
-    layout.prop(context.scene, 'show_cb_in_render', text='Show in rendering')
+    # layout.prop(context.scene, 'show_cb_in_render', text='Show in rendering')
     layout.prop(context.scene, 'update_cb_location', text='Update location')
     if bpy.context.scene.update_cb_location:
         layout.prop(context.scene, "colorbar_y", text="y axis")
