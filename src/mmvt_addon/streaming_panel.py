@@ -406,7 +406,7 @@ def streaming_draw(self, context):
 bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=10)
 bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=45454)
 bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group', default='1.1.1.')
-bpy.types.Scene.multicast = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.multicast = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
 bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
@@ -470,7 +470,7 @@ def init(addon):
         bpy.context.scene.streaming_server_port = int(stream_con.get('port', 222))
         bpy.context.scene.timeout = float(stream_con.get('timeout', 0.1))
 
-    streaming_items = [('udp', 'udp multicast', '', 1)]
+    streaming_items = [('udp', 'udp', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
     streaming_files = glob.glob(op.join(input_fol, '**', 'streaming_data_*.npy'), recursive=True)
     logs_dirs = [logs_dir.split(op.sep)[-1] for logs_dir in glob.glob(op.join(input_fol, '*.*')) if op.isdir(logs_dir) and \
@@ -483,6 +483,7 @@ def init(addon):
     bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=streaming_items,
         description='Type of stream listener')
     bpy.context.scene.stream_type = 'udp'
+    bpy.context.scene.multicast = False
     register()
     StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()

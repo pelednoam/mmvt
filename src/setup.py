@@ -194,7 +194,7 @@ def create_real_folder(real_fol):
         print(traceback.format_exc())
 
 
-def install_reqs(only_verbose=False):
+def install_reqs(do_upgrade=False, only_verbose=False):
     # import pip
     try:
         from pip import main as pipmain
@@ -210,7 +210,10 @@ def install_reqs(only_verbose=False):
             if only_verbose:
                 print('Trying to install {}'.format(line.strip()))
             else:
-                pipcode = pipmain(['install', '--upgrade', line.strip()])
+                if do_upgrade:
+                    pipcode = pipmain(['install', '--upgrade', line.strip()])
+                else:
+                    pipcode = pipmain(['install', line.strip()])
                 retcode = retcode or pipcode
     return retcode
 
@@ -358,7 +361,7 @@ def main(args):
 
     # 1) Install dependencies from requirements.txt (created using pipreqs)
     if utils.should_run(args, 'install_reqs'):
-        install_reqs(args.only_verbose)
+        install_reqs(args.upgrade_reqs_libs, args.only_verbose)
 
     # 2) Create links
     if utils.should_run(args, 'create_links'):
@@ -436,5 +439,6 @@ if __name__ == '__main__':
     parser.add_argument('--blender_fol', help='', required=False, default='')
     parser.add_argument('--links_file_name', help='', required=False, default='links.csv')
     parser.add_argument('--overwrite_links', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--upgrade_reqs_libs', help='', required=False, default=0, type=au.is_true)
     args = utils.Bag(au.parse_parser(parser))
     main(args)
