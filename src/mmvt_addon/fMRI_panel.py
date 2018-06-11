@@ -5,6 +5,7 @@ from queue import Empty
 
 try:
     import bpy
+    import bpy_extras
     import mmvt_utils as mu
     BLENDER_EMBEDDED = True
 except:
@@ -491,6 +492,28 @@ def filter_clusters(constrast_name, val_threshold=None, size_threshold=None, clu
             c['name'].startswith(clusters_name) and c['hemi'] in hemis]
 
 
+def load_fmri_volume(nii_fname):
+    import importlib
+    mu.add_mmvt_code_root_to_path()
+    from src.preproc import fMRI
+    importlib.reload(fMRI)
+    fmri_file_template = mu.namebase(nii_fname)
+    subject = mu.get_user()
+    flag, fmri_contrast_file_template = fMRI.project_volume_to_surface(
+        subject, fmri_file_template, remote_fmri_dir=mu.get_parent_fol(nii_fname))
+    if not flag:
+        print('load_fmri_volume: Error in fMRI.project_volume_to_surface!')
+        return False
+    flag = fMRI.calc_fmri_min_max(subject, fmri_contrast_file_template)
+    if not flag:
+        print('load_fmri_volume: Error in fMRI.calc_fmri_min_max!')
+        return False
+    # _addon().coloring.init(_addon(), register=False)
+    fMRI_file_name = fmri_contrast_file_template.replace('fmri_', '')
+    _addon().coloring.plot_fmri_file(fMRI_file_name)
+    return True
+
+
 def fMRI_draw(self, context):
     layout = self.layout
     user_fol = mu.get_user_fol()
@@ -556,6 +579,8 @@ def fMRI_draw(self, context):
     #     layout.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
     #     layout.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
     # layout.operator(FindfMRIFilesMinMax.bl_idname, text="Calc minmax for all files", icon='IPO')
+    layout.operator(LoadVolumefMRIFile.bl_idname, text="Load volume fMRI file", icon='LOAD_FACTORY').filepath = \
+        op.join(mu.get_user_fol(), 'fmri', '*.*')
     layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -564,6 +589,18 @@ def clear():
     _addon().clear_subcortical_fmri_activity()
     fMRIPanel.blobs_plotted = False
     fMRIPanel.dont_show_clusters_info = True
+
+
+class LoadVolumefMRIFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.load_fmri_volume"
+    bl_label = "load_fmri_volume"
+
+    filename_ext = '.*'
+    filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        load_fmri_volume(self.filepath)
+        return {'FINISHED'}
 
 
 class FindfMRIFilesMinMax(bpy.types.Operator):
@@ -750,15 +787,11 @@ def init(addon):
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         # Check if the constrast files exist
         if all([get_contrast_fname(file_name, hemi) != '' for hemi in mu.HEMIS]):
-        # if mu.hemi_files_exists(op.join(user_fol, 'fmri', 'fmri_{}_{}.npy'.format(file_name, '{hemi}'))):
-        #     perc = mu.namebase(clusters_labels_file).split('_')[-1]
-        #     key = '{}_{}'.format(file_name, perc)
             key = file_name
             fMRIPanel.clusters_labels[key] = c = mu.Bag(mu.load(clusters_labels_file))
             for ind in range(len(c.values)):
                 c.values[ind] = mu.Bag(c.values[ind])
 
-            # fMRIPanel.clusters_labels[key] = support_old_verions(fMRIPanel.clusters_labels[file_name])
             fMRIPanel.lookup[key] = create_lookup_table(fMRIPanel.clusters_labels[key])
 
     # bpy.context.scene.fmri_cluster_val_threshold = 2
@@ -801,6 +834,7 @@ def register():
         bpy.utils.register_class(LoadMEGData)
         bpy.utils.register_class(FindfMRIFilesMinMax)
         bpy.utils.register_class(fmriClearColors)
+        bpy.utils.register_class(LoadVolumefMRIFile)
         # print('fMRI Panel was registered!')
     except:
         print("Can't register fMRI Panel!")
@@ -819,6 +853,7 @@ def unregister():
         bpy.utils.unregister_class(LoadMEGData)
         bpy.utils.unregister_class(FindfMRIFilesMinMax)
         bpy.utils.unregister_class(fmriClearColors)
+        bpy.utils.unregister_class(LoadVolumefMRIFile)
     except:
         pass
         # print("Can't unregister fMRI Panel!")

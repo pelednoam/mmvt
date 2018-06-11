@@ -198,8 +198,7 @@ def main(subject, remote_subject_dir, args, flags):
             args.ask_before)
 
     if 'isotropization' in args.function:
-        flags['isotropization'] = isotropization(
-            subject, args.ct_org_name, args.ct_fol)
+        flags['isotropization'] = isotropization(subject, args.ct_org_name, args.ct_fol)
 
     if utils.should_run(args, 'register_to_mr'):
         flags['register_to_mr'] = register_to_mr(

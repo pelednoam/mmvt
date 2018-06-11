@@ -2508,12 +2508,13 @@ def set_no_plotting(val):
 
 
 # @mu.profileit('cumtime', op.join(mu.get_user_fol()))
-def init(addon):
+def init(addon, do_register=True):
     ColoringMakerPanel.addon = addon
     ColoringMakerPanel.faces_verts = None
     ColoringMakerPanel.subs_faces_verts, ColoringMakerPanel.subs_verts = None, None
 
-    register()
+    if do_register:
+        register()
     init_meg_activity_map()
     init_fmri_activity_map()
     init_meg_labels_coloring_type()
