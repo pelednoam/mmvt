@@ -1564,7 +1564,7 @@ def calc_max(x, x_max=None, norm_percs=None):
 def calc_min_max(x, x_min=None, x_max=None, norm_percs=None):
     x_no_nan = x[np.where(~np.isnan(x))]
     x_min = calc_min(x_no_nan, x_min, norm_percs)
-    x_max = calc_min(x_no_nan, x_max, norm_percs)
+    x_max = calc_max(x_no_nan, x_max, norm_percs)
     if x_min == 0 and x_max == 0 and norm_percs is not None:
         x_min, x_max = calc_min_max(x)
     if x_min == 0 and x_max == 0:

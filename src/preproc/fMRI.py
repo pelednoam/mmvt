@@ -120,8 +120,11 @@ def calc_fmri_min_max(subject, fmri_contrast_file_template, task='', norm_percs=
         data = x_ravel if data is None else np.hstack((x_ravel, data))
     data_min, data_max = utils.calc_min_max(data, norm_percs=norm_percs)
     if data_min == 0 and data_max == 0:
-        print('Both min and max values are 0!!!')
-        return False
+        print('Both min and max values are 0!!! Trying with norm_percs = 0,0')
+        data_min, data_max = utils.calc_min_max(data)
+        if data_min == 0 and data_max == 0:
+            print('Both min and max values are 0!!!')
+            return False
     print('calc_fmri_min_max: min: {}, max: {}'.format(data_min, data_max))
     data_minmax = utils.get_max_abs(data_max, data_min)
     if symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0:
