@@ -48,6 +48,7 @@ def get_subcorticals(mmvt, vertices_data):
         obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
         if obj is None:
             print('plot_vertices: Can\'t find the object {}!'.format(subcortical))
+            continue
         subcortical_faces_verts_fname = op.join(
             mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(subcortical))
         if not op.isfile(subcortical_faces_verts_fname):
