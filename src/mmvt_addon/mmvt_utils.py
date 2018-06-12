@@ -186,6 +186,10 @@ def get_fname_folder(fname):
     return op.sep.join(fname.split(op.sep)[:-1])
 
 
+def get_current_fol():
+    return op.dirname(op.realpath(__file__))
+
+
 def file_type(fname):
     if fname.endswith('nii.gz'):
         return 'nii.gz'
@@ -1004,6 +1008,11 @@ def add_mmvt_code_root_to_path():
     code_root_fol = get_mmvt_code_root()
     if code_root_fol not in sys.path:
         sys.path.append(code_root_fol)
+
+
+def add_fol_to_path(fol):
+    if fol not in sys.path:
+        sys.path.append(fol)
 
 
 def get_mmvt_root():

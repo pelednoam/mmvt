@@ -1,45 +1,53 @@
 import os.path as op
 import numpy as np
+import bpy
 
 
-def run(mmvt, input_name='vertices_data.npz', default_cm='jet'):
+def run(mmvt):
+    input_name, default_cm = 'vertices_data.npz', 'jet'
     mu = mmvt.utils
-    input_fname = op.join(mu.get_user_fol(), input_name)
+    fol = mu.make_dir(op.join(mu.get_user_fol(), 'vertices_data'))
+    input_fname = op.join(fol, input_name)
     if not op.isfile(input_fname):
         print("plot_vertices: Can't find {}!".format(input_fname))
         return
-    vertices_data = np.load(input_fname)
+    vertices_data = mu.Bag(np.load(input_fname))
     min_data, max_data = calc_data_min_max(mmvt, vertices_data)
-    cb_title = vertices_data.get('cb_title', 'Vertices values')
-    colormap_name = vertices_data.get('colormap_name', default_cm)
+    cb_title = str(vertices_data.get('cb_title', 'Vertices values'))
+    colormap_name = str(vertices_data.get('colormap_name', default_cm))
     min_data = vertices_data.get('min_data', min_data)
     max_data = vertices_data.get('max_data', max_data)
 
     colors_ratio = set_colorbar(mmvt, min_data, max_data, cb_title, colormap_name)
     faces_verts = mmvt.coloring.get_faces_verts()
     hemi_verts_num = {hemi: faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
-    data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
+    data = {hemi: np.zeros((hemi_verts_num[hemi])) for hemi in mu.HEMIS}
     for hemi in mu.HEMIS:
         if hemi not in vertices_data:
             print('plot_vertices: {} not in vertices_data!'.format(hemi))
             continue
-        hemi_vertices = vertices_data[hemi][:, 0]
-        hemi_values = vertices_data[hemi][:, 1]
-        data[hemi][hemi_vertices] = hemi_values
-        mmvt.coloring.color_hemi_data('inflated_{}'.format(hemi), data[hemi], min_data, colors_ratio, threshold=0.5)
+        data[hemi][vertices_data[hemi][:, 0]] = vertices_data[hemi][:, 1]
+        mmvt.coloring.color_hemi_data('inflated_{}'.format(hemi), data[hemi], min_data, colors_ratio, threshold=0.001)
 
     subcorticals = [x for x in list(vertices_data.keys()) if x not in
                     ['rh', 'lh', 'cb_title', 'colormap_name', 'min_data', 'max_data']]
     for subcortical in subcorticals:
-        lookup_file = op.join(mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(subcortical))
-        verts_file = op.join(mu.get_user_fol(), 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
-        if op.isfile(lookup_file) and op.isfile(verts_file):
-            lookup = np.load(lookup_file)
-            verts_values = np.zeros()
-            activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat,
-                                      use_abs=use_abs)
+        cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
+        if cur_obj is None:
+            print('plot_vertices: Can\'t find the object {}!'.format(subcortical))
+        subcortical_faces_verts_fname = op.join(
+            mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(subcortical))
+        if not op.isfile(subcortical_faces_verts_fname):
+            print('plot_vertices: Can\'t find {}!'.format(subcortical_faces_verts_fname))
+            continue
+        subcortical_faces_verts = np.load(subcortical_faces_verts_fname)
+        verts_values = np.zeros((subcortical_faces_verts.shape[0]))
+        verts_values[vertices_data[subcortical][:, 0]] = vertices_data[subcortical][:, 1]
+        mmvt.coloring.activity_map_obj_coloring(
+            cur_obj, verts_values, subcortical_faces_verts, threshold=0.001, data_min=min_data,
+            colors_ratio=colors_ratio)
 
-    mmvt.coloring.show_activity()
+    mmvt.appearance.show_activity()
 
 
 def calc_data_min_max(mmvt, vertices_data):
