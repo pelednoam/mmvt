@@ -12,7 +12,8 @@ def run(mmvt):
         print("plot_vertices: Can't find {}!".format(input_fname))
         return
     vertices_data = mu.Bag(np.load(input_fname))
-    min_data, max_data = calc_data_min_max(mmvt, vertices_data)
+    subcorticals = get_subcorticals(mmvt, vertices_data)
+    min_data, max_data = calc_data_min_max(mmvt, vertices_data, subcorticals)
     cb_title = str(vertices_data.get('cb_title', 'Vertices values'))
     colormap_name = str(vertices_data.get('colormap_name', default_cm))
     min_data = vertices_data.get('min_data', min_data)
@@ -29,11 +30,23 @@ def run(mmvt):
         data[hemi][vertices_data[hemi][:, 0]] = vertices_data[hemi][:, 1]
         mmvt.coloring.color_hemi_data('inflated_{}'.format(hemi), data[hemi], min_data, colors_ratio, threshold=0.001)
 
-    subcorticals = [x for x in list(vertices_data.keys()) if x not in
-                    ['rh', 'lh', 'cb_title', 'colormap_name', 'min_data', 'max_data']]
-    for subcortical in subcorticals:
-        cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
-        if cur_obj is None:
+    for subcortical, faces_verts, obj in subcorticals:
+        verts_values = np.zeros((faces_verts.shape[0]))
+        verts_values[vertices_data[subcortical][:, 0]] = vertices_data[subcortical][:, 1]
+        mmvt.coloring.activity_map_obj_coloring(
+            obj, verts_values, faces_verts, threshold=0.001, data_min=min_data, colors_ratio=colors_ratio)
+
+    mmvt.appearance.show_activity()
+
+
+def get_subcorticals(mmvt, vertices_data):
+    mu = mmvt.utils
+    subcorticals = []
+    keys = [x for x in list(vertices_data.keys()) if x not in
+            ['rh', 'lh', 'cb_title', 'colormap_name', 'min_data', 'max_data']]
+    for subcortical in keys:
+        obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
+        if obj is None:
             print('plot_vertices: Can\'t find the object {}!'.format(subcortical))
         subcortical_faces_verts_fname = op.join(
             mu.get_user_fol(), 'subcortical', '{}_faces_verts.npy'.format(subcortical))
@@ -41,19 +54,16 @@ def run(mmvt):
             print('plot_vertices: Can\'t find {}!'.format(subcortical_faces_verts_fname))
             continue
         subcortical_faces_verts = np.load(subcortical_faces_verts_fname)
-        verts_values = np.zeros((subcortical_faces_verts.shape[0]))
-        verts_values[vertices_data[subcortical][:, 0]] = vertices_data[subcortical][:, 1]
-        mmvt.coloring.activity_map_obj_coloring(
-            cur_obj, verts_values, subcortical_faces_verts, threshold=0.001, data_min=min_data,
-            colors_ratio=colors_ratio)
-
-    mmvt.appearance.show_activity()
+        subcorticals.append((subcortical, subcortical_faces_verts, obj))
+    return subcorticals
 
 
-def calc_data_min_max(mmvt, vertices_data):
+def calc_data_min_max(mmvt, vertices_data, subcorticals):
     max_data = 0
     min_data = np.inf
-    for region in mmvt.utils.HEMIS + ['cerebellum']:
+    subcorticals_objects_names = [k for k, _, _ in subcorticals]
+    print('plot_vertices: subcorticals_objects_names: {}'.format(','.join(subcorticals_objects_names)))
+    for region in mmvt.utils.HEMIS + subcorticals_objects_names:
         if region in vertices_data:
             max_data = max(max_data, np.nanmax(vertices_data[region][:, 1]))
             min_data = min(min_data, np.nanmin(vertices_data[region][:, 1]))
