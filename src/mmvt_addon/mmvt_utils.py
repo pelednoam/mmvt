@@ -1020,6 +1020,10 @@ def get_mmvt_root():
     # return get_parent_fol(get_user_fol())
 
 
+def get_real_fname(field):
+    return op.abspath(bpy.path.abspath(bpy.context.scene[field]))
+
+
 def change_fol_to_mmvt_root():
     os.chdir(get_mmvt_code_root())
 

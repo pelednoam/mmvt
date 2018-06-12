@@ -121,14 +121,9 @@ def dipole_fit():
     dipoles_times = [(bpy.context.scene.meg_dipole_fit_tmin, bpy.context.scene.meg_dipole_fit_tmax)]
     dipoloes_title = mask_roi = MEGPanel.current_cluster['intersects'][0]['name']
     meg.dipoles_fit(
-        dipoles_times, dipoloes_title, None, get_fname('meg_noise_cov_fname'), get_fname('meg_evoked_fname'),
-        get_fname('head_to_mri_trans_mat_fname'), 5., bpy.context.scene.meg_dipole_fit_use_meg,
+        dipoles_times, dipoloes_title, None, mu.get_real_fname('meg_noise_cov_fname'), mu.get_real_fname('meg_evoked_fname'),
+        mu.get_real_fname('head_to_mri_trans_mat_fname'), 5., bpy.context.scene.meg_dipole_fit_use_meg,
         bpy.context.scene.meg_dipole_fit_use_eeg, mask_roi=mask_roi, do_plot=False, n_jobs=4)
-
-
-def get_fname(field):
-    fname = op.abspath(bpy.path.abspath(bpy.context.scene[field]))
-    return fname
 
 
 def set_cluster_time_series(cluster):

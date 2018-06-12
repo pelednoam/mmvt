@@ -4,18 +4,19 @@ import bpy
 
 
 def run(mmvt):
-    input_name, default_cm = 'vertices_data.npz', 'jet'
     mu = mmvt.utils
-    fol = mu.make_dir(op.join(mu.get_user_fol(), 'vertices_data'))
-    input_fname = op.join(fol, input_name)
+    input_fname = mu.get_real_fname('plot_vertices_vertices_data_fname')
     if not op.isfile(input_fname):
         print("plot_vertices: Can't find {}!".format(input_fname))
         return
-    vertices_data = mu.Bag(np.load(input_fname))
+    try:
+        vertices_data = mu.Bag(np.load(input_fname))
+    except:
+        print("plot_vertices: Can't load {}!".format(input_fname))
     subcorticals = get_subcorticals(mmvt, vertices_data)
     min_data, max_data = calc_data_min_max(mmvt, vertices_data, subcorticals)
     cb_title = str(vertices_data.get('cb_title', 'Vertices values'))
-    colormap_name = str(vertices_data.get('colormap_name', default_cm))
+    colormap_name = str(vertices_data.get('colormap_name', bpy.context.scene.plot_vertices_colormap_name))
     min_data = vertices_data.get('min_data', min_data)
     max_data = vertices_data.get('max_data', max_data)
 
@@ -76,11 +77,35 @@ def set_colorbar(mmvt, data_min, data_max, cb_title='Vertices values', colormap_
     if cb.colorbar_values_are_locked():
         data_max, data_min = cb.get_colorbar_max_min()
     else:
-        cb.set_colorbar_max_min(data_max, data_min)
+        cb.set_colorbar_max_min(data_max, data_min, update_colorbar=False)
         cb.set_colorbar_title(cb_title)
         if colormap_name != '':
             cb.set_colormap(colormap_name)
 
     colors_ratio = 256 / (data_max - data_min)
-    cb.set_colorbar_max_min(data_max, data_min)
     return colors_ratio
+
+
+
+bpy.types.Scene.plot_vertices_colormap_name = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.plot_vertices_vertices_data_fname = bpy.props.StringProperty(subtype='FILE_PATH')
+
+
+def draw(self, context):
+    layout = self.layout
+    layout.prop(context.scene, 'plot_vertices_vertices_data_fname', text='Data file')
+    layout.prop(context.scene, 'plot_vertices_colormap_name', text='Colormap')
+
+
+def init(mmvt):
+    colormaps_names = mmvt.colorbar.get_colormaps_names()
+    cm_items = [(c, c, '', ind) for ind, c in enumerate(colormaps_names)]
+    bpy.types.Scene.plot_vertices_colormap_name = bpy.props.EnumProperty(
+        items=cm_items, description="colormaps names")
+    bpy.context.scene.plot_vertices_colormap_name = colormaps_names[0]
+    mu = mmvt.utils
+    fol = mu.make_dir(op.join(mu.get_user_fol(), 'vertices_data'))
+    if op.isfile(op.join(fol, 'vertices_data.npz')):
+        bpy.context.scene.plot_vertices_vertices_data_fname = op.join(fol, 'vertices_data.npz')
+
+

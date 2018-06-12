@@ -10,7 +10,7 @@ def run(mmvt):
     import plot_vertices
     importlib.reload(plot_vertices)
 
-    data = {'rh':[], 'lh':[], 'cb_title':'Vertices data example', 'colormap_name':'jet'}
+    data = {'rh':[], 'lh':[], 'cb_title':'Vertices data example'}
     N = 500
     for hemi in mu.HEMIS:
         verts = np.load(op.join(mu.get_user_fol(), 'surf', '{}.pial.npz'.format(hemi)))['verts']

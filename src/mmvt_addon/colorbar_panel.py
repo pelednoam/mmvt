@@ -145,7 +145,7 @@ def set_colorbar_min_max(min_val, max_val, force_update=False):
     set_colorbar_max_min(max_val, min_val, force_update)
 
 
-def set_colorbar_max_min(max_val, min_val, force_update=False):
+def set_colorbar_max_min(max_val, min_val, force_update=False, update_colorbar=True):
     if max_val >= min_val:
         init = ColorbarPanel.init
         if force_update:
@@ -154,7 +154,8 @@ def set_colorbar_max_min(max_val, min_val, force_update=False):
         bpy.context.scene.colorbar_max = max_val
         bpy.context.scene.colorbar_min = min_val
         ColorbarPanel.should_not_lock_values = False
-        set_colorbar_default_cm()
+        if update_colorbar:
+            set_colorbar_default_cm()
         # mu.set_graph_att('colorbar_max', max_val)
         # mu.set_graph_att('colorbar_min', min_val)
         # _addon().s.colorbar_max = max_val
@@ -233,9 +234,15 @@ def get_colorbar_ticks(ticks_num=2, prec=None, cb_min=None, cb_max=None):
     # return [PERC_FORMATS[prec].format(x) for x in ticks]
 
 
+def get_colormaps_names():
+    return ColorbarPanel.maps_names
+
+
 def set_colormap(colormap_name):
     if colormap_name in ColorbarPanel.maps_names:
         ColorbarPanel.should_not_lock_values = True
+        # print('set_colormap: {}'.format(colormap_name))
+        # print(mu.print_traceback())
         bpy.context.scene.colorbar_files = colormap_name
         ColorbarPanel.should_not_lock_values = False
     elif colormap_name is not None:
