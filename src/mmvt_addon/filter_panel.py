@@ -85,6 +85,7 @@ def find_obj_with_val():
 
 def filter_draw(self, context):
     layout = self.layout
+    layout.prop(context.scene, "selection_type", text="")
     layout.prop(context.scene, "filter_topK", text="Top K")
     row = layout.row(align=0)
     row.prop(context.scene, "filter_from", text="From")
@@ -134,6 +135,7 @@ def clear_filtering():
                 de_select_electrode_and_sensor(obj, calc_best_curves_sep=False)
 
     Filtering.filter_objects, Filtering.objects_indices = [], []
+    bpy.context.scene.filter_fcurves = ''
 
 
 def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_best_curves_sep=False):
