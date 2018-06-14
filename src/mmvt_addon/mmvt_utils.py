@@ -2410,7 +2410,7 @@ def get_distinct_colors_hs(colors_num=0):
     return np.linspace(0, 360, colors_num + 1)[:-1] / 360
 
 
-def get_distinct_colors(colors_num=0):
+def get_distinct_colors(colors_num=1):
     hs = get_distinct_colors_hs(colors_num)
     return [colorsys.hls_to_rgb(hs[ind], 0.5, 1) for ind in range(colors_num)]
 

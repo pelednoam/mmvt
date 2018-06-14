@@ -476,8 +476,8 @@ meg = meg_panel
 select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-dell = dell_panel
-dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
+# dell = dell_panel
+# dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ load_results panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 results = load_results_panel
 load_surf_files = load_results_panel.load_surf_files
