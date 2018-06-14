@@ -100,7 +100,7 @@ def grow_a_label():
 
 
 def color_contours(specific_labels=[], specific_hemi='both', labels_contours=None, cumulate=False, change_colorbar=False,
-                   specific_colors=None, atlas='', move_cursor=True):
+                   specific_colors=None, atlas='', move_cursor=True, use_cm=False):
     if _addon() is None:
         return
     if isinstance(specific_labels, str):
@@ -119,12 +119,16 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
         _addon().set_colorbar_prec(0)
     _addon().show_activity()
     specific_label_ind = 0
-    if specific_colors is not None:
+    if not use_cm:
+        from itertools import cycle
+        specific_colors = cycle(mu.get_distinct_colors(6))
+        # specific_colors = mu.get_distinct_colors(len(specific_labels))
+    elif specific_colors is not None:
         specific_colors = np.tile(specific_colors, (len(specific_labels), 1))
     for hemi in mu.HEMIS:
         contours = labels_contours[hemi]['contours']
         if specific_hemi != 'both' and hemi != specific_hemi:
-            selected_contours = np.zeros(contours.shape)
+            selected_contours = np.zeros(contours.shape) if specific_colors is None else np.zeros((contours.shape[0], 4))
         elif len(specific_labels) > 0:
             selected_contours = np.zeros(contours.shape) if specific_colors is None else np.zeros((contours.shape[0], 4))
             for specific_label in specific_labels:
