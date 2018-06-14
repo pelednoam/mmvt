@@ -1605,25 +1605,7 @@ def read_cmd_args(argv=None):
 
 
 if __name__ == '__main__':
-    # ******************************************************************
-    # Be sure that you have matlab installed on your machine,
-    # and you can run it from the terminal by just calling 'matlab'
-    # Some of the functions are using freesurfer, so if you want to
-    # run main, you need to source freesurfer.
-    # ******************************************************************
     args = read_cmd_args()
-    # if not args.no_fs and os.environ.get('FREESURFER_HOME', '') == '' and args.freesurfer:
-    #     print('Source freesurfer and rerun')
-    # else:
-    # read_flat_brain_patch('sample')
     pu.run_on_subjects(args, main)
-    # save_images_data_and_header(args.subject[0])
     print('finish!')
-
-    # fs_labels_fol = '/space/lilli/1/users/DARPA-Recons/fscopy/label/arc_april2016'
-    # remote_subjects_dir = '/space/huygens/1/users/mia/subjects/{}_SurferOutput/'.format(subject.upper())
-    # remote_subjects_dir = CACH_SUBJECT_DIR.format(subject=subject.upper())
-    # remote_subjects_dir = op.join('/cluster/neuromind/tools/freesurfer', subject)
-    # remote_subjects_dir = op.join('/autofs/space/lilli_001/users/DARPA-MEG/freesurfs')
-    # subjects = ['mg78', 'mg82'] #set(utils.get_all_subjects(SUBJECTS_DIR, 'mg', '_')) - set(['mg96'])
 

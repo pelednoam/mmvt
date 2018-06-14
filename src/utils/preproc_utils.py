@@ -15,11 +15,15 @@ SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 
-def decode_subjects(subjects):
+def decode_subjects(subjects, remote_subject_dir=''):
     for sub in subjects:
         if '*' in sub:
             subjects.remove(sub)
             subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
+            if remote_subject_dir != '':
+                subjects.extend([utils.namebase(fol) for fol in
+                                 glob.glob(op.join(remote_subject_dir.format(subject=sub)))])
+                subjects = list(set(subjects))
         elif 'file:' in sub:
             subjects.remove(sub)
             subjects.extend(utils.read_list_from_file(sub[len('file:'):]))
@@ -30,7 +34,7 @@ def init_args(args):
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.necessary_files == '':
         args.necessary_files = dict()
-    args.subject = decode_subjects(args.subject)
+    args.subject = decode_subjects(args.subject, args.remote_subject_dir)
     if 'sftp_password' not in args or args.sftp_password == '':
         args.sftp_password = utils.get_sftp_password(
             args.subject, SUBJECTS_DIR, args.necessary_files, args.sftp_username, args.overwrite_fs_files) \
@@ -46,6 +50,7 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
         subjects_itr = args.subject
     subjects_flags, subjects_errors = {}, {}
     args = init_args(args)
+    subject = ''
     for tup in subjects_itr:
         subject = get_subject(tup, subject_func)
         utils.make_dir(op.join(MMVT_DIR, subject, 'mmvt'))
@@ -78,6 +83,9 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
             print('Error in subject {}'.format(subject))
             print(traceback.format_exc())
 
+    if subject == '':
+        print('No subjects were found!')
+        return False
     errors = defaultdict(list)
     ret = True
     good_subjects, bad_subjects = [], []
