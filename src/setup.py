@@ -11,7 +11,7 @@ TITLE = 'MMVT Installation'
 BLENDER_WIN_DIR = 'C:\Program Files\Blender Foundation\Blender'
 
 
-def copy_resources_files(mmvt_root_dir, only_verbose=False):
+def copy_resources_files(mmvt_root_dir, overwrite=True, only_verbose=False):
     resource_dir = utils.get_resources_fol()
     utils.make_dir(op.join(op.join(mmvt_root_dir, 'color_maps')))
     files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt', 'FreeSurferColorLUT.txt',
@@ -20,7 +20,7 @@ def copy_resources_files(mmvt_root_dir, only_verbose=False):
     all_files_exist = utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])
     all_cm_files_exist = utils.all([op.isfile(
         op.join(mmvt_root_dir, 'color_maps', '{}.npy'.format(utils.namebase(fname)))) for fname in cm_files])
-    if all_files_exist and all_cm_files_exist:
+    if all_files_exist and all_cm_files_exist and not overwrite:
         if only_verbose:
             print('All files exist!')
         return True
@@ -378,7 +378,7 @@ def main(args):
     if utils.should_run(args, 'copy_resources_files'):
         links_dir = utils.get_links_dir(args.links)
         mmvt_root_dir = utils.get_link_dir(links_dir, 'mmvt')
-        resource_file_exist = copy_resources_files(mmvt_root_dir, args.only_verbose)
+        resource_file_exist = copy_resources_files(mmvt_root_dir, args.overwrite, args.only_verbose)
         if not resource_file_exist:
             input('Not all the resources files were copied to the MMVT folder ({}).\n'.format(mmvt_root_dir) +
                   'Please copy them manually from the mmvt_code/resources folder.\n' +
@@ -415,6 +415,7 @@ def print_help():
         -g: Use GUI (True) or the command line (False) (default: True)
         -v: If True, just check the setup without doing anything (default: False)
         -d: If True, the script will create the default mmvt folders (default: True)
+        -o: If True, the scirpt will overwrite the resources files (default: True)
         -f: Set which function (or functions) you want to run (use commas witout spacing) (deafult: all):
             install_reqs, create_links, copy_resources_files, install_addon, install_blender_reqs, create_links_csv
             and create_csv
@@ -436,6 +437,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--only_verbose', help='only verbose', required=False, default='0', type=au.is_true)
     parser.add_argument('-d', '--default_folders', help='default options', required=False, default='1', type=au.is_true)
     parser.add_argument('-f', '--function', help='functions to run', required=False, default='all', type=au.str_arr_type)
+    parser.add_argument('-o', '--overwrite', help='Overwrite resources', required=False, default='1', type=au.is_true)
     parser.add_argument('--blender_fol', help='', required=False, default='')
     parser.add_argument('--links_file_name', help='', required=False, default='links.csv')
     parser.add_argument('--overwrite_links', help='', required=False, default=0, type=au.is_true)
