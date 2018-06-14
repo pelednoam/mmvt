@@ -24,14 +24,14 @@ def copy_resources_files(mmvt_root_dir, overwrite=True, only_verbose=False):
         if only_verbose:
             print('All files exist!')
         return True
-    if not all_cm_files_exist:
+    if not all_cm_files_exist or overwrite:
         for color_map_file in glob.glob(op.join(resource_dir, 'color_maps', '*.npy')):
             new_file_name = op.join(mmvt_root_dir, 'color_maps', color_map_file.split(op.sep)[-1])
             # print('Copy {} to {}'.format(color_map_file, new_file_name))
             print('Coping {} to {}'.format(color_map_file, new_file_name))
             if not only_verbose:
                 shutil.copy(color_map_file, new_file_name)
-    if not all_files_exist:
+    if not all_files_exist or overwrite:
         for file_name in files:
             print('Copying {} to {}'.format(op.join(resource_dir, file_name), op.join(mmvt_root_dir, file_name)))
             if not only_verbose:
