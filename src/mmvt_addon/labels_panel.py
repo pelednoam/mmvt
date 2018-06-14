@@ -61,14 +61,14 @@ def clear_contours():
 def plot_labels_data():
     # Support more than one file type (npz and mat)
     labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
-        bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
+        bpy.context.scene.cortical_labels_data_files.replace(' ', '_'))))[0]
     load_labels_data(labels_data_fname)
 
 
 def labels_data_files_update(self, context):
     if LabelsPanel.init:
         labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
-            bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
+            bpy.context.scene.cortical_labels_data_files.replace(' ', '_'))))[0]
         d, labels, data, atlas, cb_title, labels_max, labels_min, cmap = _load_labels_data(labels_data_fname)
         _addon().init_labels_colorbar(data, cb_title, labels_max, labels_min, cmap)
 
@@ -363,7 +363,7 @@ class NextLabelConture(bpy.types.Operator):
         return {"FINISHED"}
 
 
-bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(
+bpy.types.Scene.cortical_labels_data_files = bpy.props.EnumProperty(
     items=[], description="label files", update=labels_data_files_update)
 bpy.types.Scene.new_label_name = bpy.props.StringProperty()
 bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
@@ -418,12 +418,15 @@ def init_labels_data_files():
     LabelsPanel.labels_data_files = labels_data_files = \
         glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.npz')) + \
         glob.glob(op.join(user_fol, 'labels', 'labels_data', '*.mat'))
-    if len(labels_data_files) > 0:
-        files_names = [mu.namebase(fname).replace('_', ' ') for fname in labels_data_files]
-        labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(
-            items=labels_items, description="label files",update=labels_data_files_update)
-        bpy.context.scene.labels_data_files = files_names[0]
+    try:
+        if len(labels_data_files) > 0:
+            files_names = [mu.namebase(fname).replace('_', ' ') for fname in labels_data_files]
+            labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
+            bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(
+                items=labels_items, description="label files",update=labels_data_files_update)
+            bpy.context.scene.cortical_labels_data_files = files_names[0]
+    except:
+        print('init_labels_data_files: Error!')
 
 
 def register():

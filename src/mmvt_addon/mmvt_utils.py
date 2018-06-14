@@ -2574,6 +2574,10 @@ def get_annot_files():
     return [namebase(fname)[3:] for fname in glob.glob(op.join(subjects_dir, get_user(), 'label', 'rh.*.annot'))]
 
 
+def is_freesurfer_exist():
+    return os.environ.get('FREESURFER_HOME', '') != ''
+
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:
