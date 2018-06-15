@@ -1190,11 +1190,24 @@ def set_args(args):
     return args
 
 
+def get_ras_file(subject, args):
+    local_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', '{}_RAS.{xlsx}'.format(subject))
+    if args.remote_ras_fol != '' and not op.isfile(local_fname):
+        remote_ras_fol = utils.build_remote_subject_dir(args.remote_ras_fol)
+        remote_fname = op.join(remote_ras_fol, '{}_RAS.xlsx'.format(subject))
+        shutil.copyfile(remote_fname, local_fname)
+    return op.isfile(local_fname)
+
+
 def main(subject, remote_subject_dir, args, flags):
+    utils.make_dir(op.join(ELECTRODES_DIR, subject))
     utils.make_dir(op.join(MMVT_DIR, subject))
     utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
     utils.make_dir(op.join(MMVT_DIR, subject, 'coloring'))
     args = set_args(args)
+
+    if utils.should_run(args, 'get_ras_file'):
+        flags['get_ras_file'] = get_ras_file(subject, args)
 
     if utils.should_run(args, 'convert_electrodes_pos'):
         flags['convert_electrodes_pos'], _, _ = convert_electrodes_pos(
@@ -1252,6 +1265,7 @@ def read_cmd_args(argv=None):
     parser = argparse.ArgumentParser(description='MMVT electrodes preprocessing')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, default=0, type=au.is_true)
     parser.add_argument('-t', '--task', help='task', required=False)
+    parser.add_argument('--remote_ras_fol', help='remote_ras_fol', required=False, default='')
     parser.add_argument('--good_channels', help='good channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--bad_channels', help='bad channels', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--from_t', help='from_t', required=False, default='0', type=au.float_arr_type)# float) # was -500
