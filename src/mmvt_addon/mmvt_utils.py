@@ -2419,7 +2419,7 @@ def get_distinct_colors_hs(colors_num=0):
     return np.linspace(0, 360, colors_num + 1)[:-1] / 360
 
 
-def get_distinct_colors(colors_num=0):
+def get_distinct_colors(colors_num=1):
     hs = get_distinct_colors_hs(colors_num)
     return [colorsys.hls_to_rgb(hs[ind], 0.5, 1) for ind in range(colors_num)]
 
@@ -2581,6 +2581,10 @@ def get_remote_subject_info_args():
 def get_annot_files():
     subjects_dir = get_link_dir(get_links_dir(), 'subjects')
     return [namebase(fname)[3:] for fname in glob.glob(op.join(subjects_dir, get_user(), 'label', 'rh.*.annot'))]
+
+
+def is_freesurfer_exist():
+    return os.environ.get('FREESURFER_HOME', '') != ''
 
 
 # def mouse_coo_to_3d_loc(event, context):

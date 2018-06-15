@@ -19,6 +19,11 @@ def _addon():
     return FilteringMakerPanel.addon
 
 
+def filter_from_to_update(self=None, context=None):
+    mu.select_time_range(t_start=bpy.context.scene.filter_from)
+    mu.select_time_range(t_end=bpy.context.scene.filter_to)
+
+
 def color_object_uniformly(obj, color, name='selected'):
     mesh = obj.data
     vcol_layer = mesh.vertex_colors.new(name=name)
@@ -80,14 +85,15 @@ def find_obj_with_val():
 
 def filter_draw(self, context):
     layout = self.layout
+    layout.prop(context.scene, "selection_type", text="")
     layout.prop(context.scene, "filter_topK", text="Top K")
     row = layout.row(align=0)
     row.prop(context.scene, "filter_from", text="From")
     row.operator(GrabFromFiltering.bl_idname, text="", icon='BORDERMOVE')
     row.prop(context.scene, "filter_to", text="To")
     row.operator(GrabToFiltering.bl_idname, text="", icon='BORDERMOVE')
-    layout.prop(context.scene, "filter_curves_type", text="")
-    layout.prop(context.scene, "filter_curves_func", text="")
+    layout.prop(context.scene, "filter_curves_type", text='Selection type')
+    layout.prop(context.scene, "filter_curves_func", text='Filter function')
     layout.prop(context.scene, 'mark_filter_items', text="Mark selected items")
     layout.operator(Filtering.bl_idname, text="Filter " + bpy.context.scene.filter_curves_type, icon='BORDERMOVE')
     # if bpy.types.Scene.filter_is_on:
@@ -129,6 +135,7 @@ def clear_filtering():
                 de_select_electrode_and_sensor(obj, calc_best_curves_sep=False)
 
     Filtering.filter_objects, Filtering.objects_indices = [], []
+    bpy.context.scene.filter_fcurves = ''
 
 
 def de_select_electrode_and_sensor(obj, call_create_and_set_material=True, calc_best_curves_sep=False):
@@ -486,11 +493,12 @@ class Filtering(bpy.types.Operator):
         self.type_of_filter = bpy.context.scene.filter_curves_type
         self.type_of_func = bpy.context.scene.filter_curves_func
         atlas = bpy.context.scene.atlas
-        labels_extract_method = bpy.context.scene.labels_data_files
-        files_names = {'MEG': op.join('meg', 'labels_data_{}_{}_{}.npz'.format(atlas, labels_extract_method, '{hemi}')),
-                       'MEG_sensors': op.join('meg', 'meg_sensors_evoked_data.npy'),
-                       'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz'),
-                       'EEG': op.join('eeg', 'eeg_data.npz')}
+        files_names = {
+            'MEG': op.join('meg', 'labels_data_{}_{}.npz'.format(
+                bpy.context.scene.meg_labels_data_files, '{hemi}')),
+            'MEG_sensors': op.join('meg', 'meg_sensors_evoked_data.npy'),
+            'Electrodes': op.join('electrodes', 'electrodes_data_{stat}.npz'),
+            'EEG': op.join('eeg', 'eeg_data.npz')}
         current_file_to_upload = files_names[self.type_of_filter]
 
         if self.type_of_filter == 'Electrodes':
@@ -548,9 +556,10 @@ bpy.types.Scene.filter_is_on = False
 
 bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor")
 bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
-bpy.types.Scene.filter_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
-bpy.types.Scene.filter_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
-                                                  description="When to filter to")
+bpy.types.Scene.filter_from = bpy.props.IntProperty(
+    default=0, min=0, description="When to filter from", update=filter_from_to_update)
+bpy.types.Scene.filter_to = bpy.props.IntProperty(
+    default=bpy.context.scene.frame_end, min=0, description="When to filter to", update=filter_from_to_update)
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
     items=[("MEG", "MEG time course", "", 1), ('MEG_sensors', 'MEG sensors', '', 2),
            ("Electrodes", " Electrodes time course", "", 3), ("EEG", "EEG sensors", "", 4),
@@ -586,6 +595,7 @@ def init(addon):
     get_filter_functions()
     bpy.context.scene.mark_filter_items = True
     FilteringMakerPanel.init = True
+    filter_from_to_update()
     register()
 
 
