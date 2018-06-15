@@ -1191,7 +1191,7 @@ def set_args(args):
 
 
 def get_ras_file(subject, args):
-    local_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', '{}_RAS.{xlsx}'.format(subject))
+    local_fname = op.join(SUBJECTS_DIR, subject, 'electrodes', '{}_RAS.xlsx'.format(subject))
     if args.remote_ras_fol != '' and not op.isfile(local_fname):
         remote_ras_fol = utils.build_remote_subject_dir(args.remote_ras_fol)
         remote_fname = op.join(remote_ras_fol, '{}_RAS.xlsx'.format(subject))
