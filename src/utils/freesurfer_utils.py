@@ -748,7 +748,7 @@ def read_surface(subject, subjects_dir, surf_type='pial'):
         surf_fname = op.join(subjects_dir, subject, 'surf', '{}.{}'.format(hemi, surf_type))
         if not op.isfile(surf_fname):
             print('{} does not exist!'.format(surf_fname))
-            return None
+            return None, None
         verts[hemi], faces[hemi] = nib.freesurfer.read_geometry(surf_fname)
     return verts, faces
 
