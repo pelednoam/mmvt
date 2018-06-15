@@ -1953,17 +1953,35 @@ def remove_hemi_template(template):
 
 def get_hemi_from_full_fname(fname):
     folder = namebase(fname)
-    full_fname = fname
+    other_hemi_fname = full_fname = fname
     hemi = get_hemi_from_fname(folder)
-    while hemi == '' and folder != '':
+    if hemi != '':
+        other_hemi_fname = other_hemi_fname.replace(folder, get_other_hemi_label_name(folder))
+        org_hemi = hemi
+        print('get_hemi_from_full_fname: org_hemi: {}'.format(org_hemi))
+    print('get_hemi_from_full_fname: folder, hemi: {}, {}'.format(folder, hemi))
+    while folder != '': # and hemi == '':
         fname = get_parent_fol(fname)
         folder = fname.split(op.sep)[-1]
         hemi = get_hemi_from_fname(folder)
-    if hemi != '':
-        other_hemi_fname = full_fname.replace(folder, get_other_hemi_label_name(folder))
-        hemis_fnames = {hemi: full_fname, other_hemi(hemi): other_hemi_fname}
-    else:
-        hemis_fnames = {'rh':'', 'lh':''}
+        print('get_hemi_from_full_fname: fname, folder, hemi: {}, {} ,{}'.format(fname, folder, hemi))
+        if hemi != '':
+            print('get_hemi_from_full_fname: get_other_hemi_label_name({}): {}'.format(folder, get_other_hemi_label_name(folder)))
+            other_hemi_fname = other_hemi_fname.replace(folder, get_other_hemi_label_name(folder))
+            org_hemi = hemi
+            print('get_hemi_from_full_fname: org_hemi: {}'.format(org_hemi))
+        # print('get_hemi_from_full_fname: other_hemi_fname {}'.format(other_hemi_fname))
+        # file_name_hemi = get_hemi_from_fname(namebase(other_hemi_fname))
+        # print('get_hemi_from_full_fname: file_name_hemi {}'.format(file_name_hemi))
+        # if file_name_hemi != '':
+        #     file_name_other_hemi = get_other_hemi_label_name(namebase_with_ext(other_hemi_fname))
+        #     print('get_hemi_from_full_fname: file_name_other_hemi {}'.format(file_name_other_hemi))
+        #     other_hemi_fname = op.join(get_parent_fol(other_hemi_fname), file_name_other_hemi)
+        #     print('get_hemi_from_full_fname: other_hemi_fname {}'.format(other_hemi_fname))
+        # print('get_hemi_from_full_fname: hemi, other_hemi_fname: {}, {}'.format(hemi, other_hemi_fname))
+    hemis_fnames = {org_hemi: full_fname, other_hemi(org_hemi): other_hemi_fname}
+    # else:
+    #     hemis_fnames = {'rh':'', 'lh':''}
     return hemi, hemis_fnames
 
 
