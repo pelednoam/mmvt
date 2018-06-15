@@ -1812,6 +1812,15 @@ def rotate_view3d(rotation_in_quaternions):
     get_view3d_region().view_rotation = rotation_in_quaternions
 
 
+def rotate_view_to_vertice():
+    if _addon is None:
+        return
+    vert_ind, mesh = _addon.appearance.get_closest_vertex_and_mesh_to_cursor()
+    vert = bpy.data.objects[mesh].data.vertices[vert_ind]
+    vert_normal = vert.normal
+    rotate_view3d(vert_normal.to_track_quat('Z', 'Y'))
+
+
 # def set_zoom_for_flatmap(relative=False):
 #     if relative is False:
 #         get_view3d_region().view_distance = 23.0

@@ -81,6 +81,7 @@ def _clusters_update():
 
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
+    mu.rotate_view_to_vertice()
 
 
 def fmri_blobs_percentile_min_update(self, context):
