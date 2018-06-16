@@ -2039,16 +2039,19 @@ def get_other_hemi_label_name(label_name):
         return other_hemi_fname
 
 
-def get_template_hemi_label_name(label_name, wild_char=False):
-    add_file_type = False
-    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
+def get_template_hemi_label_name(label_name, wild_char=False, wanted_pos=None):
+    # add_file_type = False
+    ft = file_type(label_name)
+    delim, pos, label, hemi = get_hemi_delim_and_pos(label_name[:-len(ft) - 1])
     if hemi == '':
         delim, pos, label, hemi = get_hemi_delim_and_pos(namebase(label_name))
-        add_file_type = True
+        # add_file_type = True
     hemi_temp = '?h' if wild_char else '{hemi}'
-    res_label_name = build_label_name(delim, pos, label, hemi_temp)
-    if add_file_type:
-        res_label_name = '{}.{}'.format(res_label_name, file_type(label_name))
+    if wanted_pos == '':
+        wanted_pos = pos
+    res_label_name = build_label_name(delim, wanted_pos, label, hemi_temp)
+    # if add_file_type:
+    res_label_name = '{}.{}'.format(res_label_name, file_type(label_name))
     return res_label_name
 
 
