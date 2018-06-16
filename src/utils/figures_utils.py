@@ -30,10 +30,11 @@ def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True
         fig.canvas.draw()
         ax = plt.gca() #plt.subplot(199)
         ax.tick_params(axis='y', colors='white' if background_color in ['black', [0, 0, 0]] else 'black')
-    cb_ticks = [utils.round_n_digits(x, cb_ticks_perc) for x in cb_ticks]
-    if len(cb_ticks) >= 2 and set_cb_max_min_using_ticks:
-        vmin = utils.round_n_digits(min(data_min, cb_ticks[0]), cb_ticks_perc)
-        vmax = utils.round_n_digits(max(data_max, cb_ticks[-1]), cb_ticks_perc)
+    if cb_ticks is not None:
+        cb_ticks = [utils.round_n_digits(x, cb_ticks_perc) for x in cb_ticks]
+        if len(cb_ticks) >= 2 and set_cb_max_min_using_ticks:
+            vmin = utils.round_n_digits(min(data_min, cb_ticks[0]), cb_ticks_perc)
+            vmax = utils.round_n_digits(max(data_max, cb_ticks[-1]), cb_ticks_perc)
     else:
         vmin, vmax = data_min, data_max
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)

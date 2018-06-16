@@ -12,6 +12,13 @@ def get_dural_surface(subject_fol, do_calc_normals=False):
             if do_calc_normals:
                 norms[hemi] = calc_normals(verts[hemi], faces[hemi])
         else:
+            # try:
+            #     from src.misc.dural import create_dural
+            #     create_dural.create_dural_surface(subject, SUBJECTS_DIR)
+            #     verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
+            # except:
+            #     verts, faces = None, None
+
             print("Couldn't find the dural surface! {}".format(surf_fname))
             print('You can create it using the following command:')
             subject = op.splitext(op.basename(subject_fol))[0]

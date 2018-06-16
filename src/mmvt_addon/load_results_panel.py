@@ -177,25 +177,33 @@ def build_local_fname(nii_fname, user_fol):
     return op.join(user_fol, 'fmri', local_fname)
 
 
-def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol=''):
+def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
     fmri_file_template = ''
     if user_fol == '':
         user_fol = mu.get_user_fol()
     nii_fol = mu.get_fname_folder(nii_fname)
-    # hemi = mu.get_hemi_from_fname(mu.namebase(nii_fname))
-    # if hemi == '':
+    if debug:
+        print('load_surf_files: nii_fol: {}'.format(nii_fol))
     hemi, fmri_hemis = mu.get_hemi_from_full_fname(nii_fname)
+    if debug:
+        print('load_surf_files: hemi, fmri_hemis: {}, {}'.format(hemi, fmri_hemis))
     if hemi == '':
         hemi = mu.find_hemi_using_vertices_num(nii_fname)
         if hemi == '':
             return '', ''
     # fmri_hemis = mu.get_both_hemis_files(nii_fname)
     local_fname = build_local_fname(nii_fname, user_fol)
+    if debug:
+        print('load_surf_files: local_fname: {}'.format(local_fname))
     mu.make_dir(op.join(user_fol, 'fmri'))
     if nii_fol != op.join(user_fol, 'fmri'):
         mu.make_link(nii_fname, local_fname, True)
     other_hemi = mu.other_hemi(hemi)
+    if debug:
+        print('load_surf_files: other_hemi: {}'.format(other_hemi))
     other_hemi_fname = fmri_hemis[other_hemi]
+    if debug:
+        print('load_surf_files: other_hemi_fname: {}'.format(other_hemi_fname))
     # todo: if the other hemi file doens't exist, just create an empty one
     if op.isfile(other_hemi_fname):
         local_other_hemi_fname = build_local_fname(other_hemi_fname, user_fol)

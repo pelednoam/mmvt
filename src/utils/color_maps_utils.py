@@ -25,34 +25,40 @@ def create_PuBu_RdOrYl_cm(n=128):
     colors_map = mcolors.LinearSegmentedColormap.from_list('PuBu_RdOrYl', colors)
     return colors_map
 
+#
+# def create_jet_cm(n=256):
+#     colors = plt.cm.jet(np.linspace(0, 1, n))
+#     colors_map = mcolors.LinearSegmentedColormap.from_list('jet', colors)
+#     return colors_map
+#
+#
+# def create_gray_cm(n=256):
+#     colors = plt.cm.gray(np.linspace(0, 1, n))
+#     colors_map = mcolors.LinearSegmentedColormap.from_list('gray', colors)
+#     return colors_map
+#
+#
+# def create_YlOrRd_cm(n=256):
+#     colors = plt.cm.YlOrRd(np.linspace(0, 1, n))
+#     colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
+#     return colors_map
+#
+#
+# def create_RdOrYl_cm(n=256):
+#     colors = plt.cm.YlOrRd(np.linspace(1, 0, n))
+#     colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
+#     return colors_map
+#
+#
+# def create_hot_cm(n=256):
+#     colors = plt.cm.hot(np.linspace(0, 1, n))
+#     colors_map = mcolors.LinearSegmentedColormap.from_list('hot', colors)
+#     return colors_map
 
-def create_jet_cm(n=256):
-    colors = plt.cm.jet(np.linspace(0, 1, n))
-    colors_map = mcolors.LinearSegmentedColormap.from_list('jet', colors)
-    return colors_map
 
-
-def create_gray_cm(n=256):
-    colors = plt.cm.gray(np.linspace(0, 1, n))
-    colors_map = mcolors.LinearSegmentedColormap.from_list('gray', colors)
-    return colors_map
-
-
-def create_YlOrRd_cm(n=256):
-    colors = plt.cm.YlOrRd(np.linspace(0, 1, n))
-    colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
-    return colors_map
-
-
-def create_RdOrYl_cm(n=256):
-    colors = plt.cm.YlOrRd(np.linspace(1, 0, n))
-    colors_map = mcolors.LinearSegmentedColormap.from_list('YlOrRd', colors)
-    return colors_map
-
-
-def create_hot_cm(n=256):
-    colors = plt.cm.hot(np.linspace(0, 1, n))
-    colors_map = mcolors.LinearSegmentedColormap.from_list('hot', colors)
+def create_linear_segmented_colormap(cm_name, n=256):
+    colors = plt.cm.__dict__[cm_name](np.linspace(0, 1, n))
+    colors_map = mcolors.LinearSegmentedColormap.from_list(cm_name, colors)
     return colors_map
 
 
@@ -78,30 +84,32 @@ def check_cm_mat(cm_mat):
     plt.show()
 
 
-def get_cm_obj(cm_name):
-    cm_func = cms.get(cm_name, None)
-    if cm_func is None:
-        print('{} is not in the cms dic!'.format(cm_name))
-        return None
-    else:
-        return cm_func()
+# def get_cm_obj(cm_name):
+#     cm_func = cms.get(cm_name, None)
+#     if cm_func is None:
+#         print('{} is not in the cms dic!'.format(cm_name))
+#         return None
+#     else:
+#         return cm_func()
 
 
 def create_cm(cm_name):
-    cm = get_cm_obj(cm_name)
+    # cm = get_cm_obj(cm_name)
+    cm = create_linear_segmented_colormap(cm_name)
     cm_mat = color_map_to_np_mat(cm)
     # check_cm_mat(cm_mat)
     save_colors_map(cm_mat, cm_name)
     figu.plot_color_bar(1, -1, cm, do_save=True, fol=op.join(MMVT_DIR, 'color_maps'))
 
-
-cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'PuBu_RdOrYl':create_PuBu_RdOrYl_cm,
-       'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm, 'gray':create_gray_cm,
-       'jet':create_jet_cm, 'hot':create_hot_cm}
+#
+# cms = {'BuPu_YlOrRd':create_BuPu_YlOrRd_cm, 'PuBu_RdOrYl':create_PuBu_RdOrYl_cm,
+#        'YlOrRd':create_YlOrRd_cm, 'RdOrYl': create_RdOrYl_cm, 'gray':create_gray_cm,
+#        'jet':create_jet_cm, 'hot':create_hot_cm}
 
 if __name__ == '__main__':
     # create_cm('YlOrRd')
     # create_cm('RdOrYl')
-    create_cm('gray')
+    # create_cm('gray')
     # create_cm('jet')
     # create_cm('hot')
+    create_cm('tab10')

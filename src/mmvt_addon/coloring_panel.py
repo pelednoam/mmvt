@@ -2723,7 +2723,7 @@ def init_meg_labels_coloring_type():
             op.join(user_fol, 'meg', 'labels_data_{}_{}_minmax.npz'.format(atlas, em)))
         if len(conditions) > 0 and ColoringMakerPanel.meg_labels_data_exist and \
                 ColoringMakerPanel.meg_labels_data_minmax_exist:
-            items = [('diff', 'Conditions differece', '', 0)]
+            items = [('diff', 'Conditions difference', '', 0)]
             items.extend([(cond, cond, '', ind + 1) for ind, cond in enumerate(conditions)])
             bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(
                 items=items, description="meg_labels_coloring_type")
