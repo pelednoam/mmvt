@@ -203,7 +203,10 @@ def load_raw(raw_fname='', bad_channels=[], l_freq=None, h_freq=None, raw_templa
     # read the data
     raw_fname, raw_exist = locating_meg_file(raw_fname, glob_pattern=raw_template)
     if not raw_exist:
-        raise Exception("Coulnd't find the raw file! {}".format(raw_fname))
+        print('Can\'t find the raw data using the template {}, trying \'*raw*.fif\''.format(raw_template))
+        raw_fname, raw_exist = locating_meg_file(raw_fname, glob_pattern='*raw*.fif')
+        if not raw_exist:
+            raise Exception("Coulnd't find the raw file! {}".format(raw_fname))
     raw = mne.io.read_raw_fif(raw_fname, preload=True)
     if not op.isfile(INFO):
         utils.save(raw.info, INFO)
@@ -1286,6 +1289,10 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                         # evoked.apply_ref
                     except:
                         print('Cannot create EEG average reference projector (no EEG data found)')
+                    if isinstance(evoked, list):
+                        for evk in evoked:
+                            stcs[cond_name] = apply_inverse(
+                                evk, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                     stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 if save_stc and not op.isfile(stc_fname):
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
@@ -1551,7 +1558,11 @@ def get_evoked_cond(cond_name, evo_fname='', epo_fname='', baseline=(None, 0), a
             evoked = mne.read_evokeds(evo_fname, condition=cond_name, baseline=baseline)
         except:
             print('No evoked data with the condition {}'.format(cond_name))
-            evoked = None
+            try:
+                evoked = mne.read_evokeds(evo_fname)
+            except:
+                print(traceback.format_exc())
+                evoked = None
     else:
         evo_cond = get_cond_fname(evo_fname, cond_name)
         if op.isfile(evo_cond):

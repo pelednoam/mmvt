@@ -1761,6 +1761,7 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
     else:
         exist = op.isfile(fname)
     if not exist:
+        glob_pattern = [op.join(parent_fol, g) if get_parent_fol(g) == '' else g for g in glob_pattern]
         lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_pattern]
         files = list(itertools.chain.from_iterable(lists))
         exist = len(files) > 0
