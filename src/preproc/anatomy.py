@@ -436,8 +436,10 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
         hemi, atlas))) for hemi in HEMIS])
     if remote_annotations_exist:
         for hemi in HEMIS:
-            shutil.copy(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas)),
-                        op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas)))
+            remote_fname = op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas))
+            local_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
+            if remote_fname != local_fname:
+                shutil.copy(remote_fname, local_fname)
         return True
 
     if fu.is_fs_atlas(atlas):

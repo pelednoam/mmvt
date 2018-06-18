@@ -105,6 +105,7 @@ class SearchExport(bpy.types.Operator):
         with open(op.join(mu.get_user_fol(), 'search_panel.txt'), 'w') as text_file:
             for obj_name in SearchPanel.marked_objects:
                 print(obj_name, file=text_file)
+        print('List was saved to {}'.format(op.join(mu.get_user_fol(), 'search_panel.txt')))
         return {"FINISHED"}
 
 
@@ -123,22 +124,23 @@ class SearchPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "labels_regex", text="regex")
-        row = layout.row(align=0)
-        row.operator(SearchFilter.bl_idname, text="Search", icon = 'BORDERMOVE')
-        row.operator(SearchMark.bl_idname, text="Mark", icon = 'GREASEPENCIL')
-        layout.operator(SearchClear.bl_idname, text="Clear", icon = 'PANEL_CLOSE')
+        layout.prop(context.scene, "labels_regex", text="Keyword")
+        # row = layout.row(align=0)
+        layout.operator(SearchFilter.bl_idname, text="Search", icon = 'BORDERMOVE')
+        # row.operator(SearchMark.bl_idname, text="Mark", icon = 'GREASEPENCIL')
         if len(SearchPanel.marked_objects) > 0:
             box = layout.box()
             col = box.column()
             for obj_name in SearchPanel.marked_objects:
                 mu.add_box_line(col, obj_name, percentage=1)
-            row = layout.row(align=0)
-            row.operator(SearchExport.bl_idname, text="Export list", icon = 'FORCE_LENNARDJONES')
+        layout.operator(SearchClear.bl_idname, text="Clear", icon='PANEL_CLOSE')
+            # row = layout.row(align=0)
+            # row.operator(SearchExport.bl_idname, text="Export list", icon = 'FORCE_LENNARDJONES')
 
 
 def init(addon):
     SearchPanel.addon = addon
+    bpy.context.scene.labels_regex = ''
     SearchPanel.init = True
     register()
 

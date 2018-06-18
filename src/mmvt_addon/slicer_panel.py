@@ -501,39 +501,41 @@ bpy.types.Scene.slices_show_dural_color = bpy.props.FloatVectorProperty(
 
 def slicer_draw(self, context):
     layout = self.layout
-    layout.prop(context.scene, "slicer_cut_type", text="")
-    layout.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='FACESEL_HLT')
-    layout.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
-    layout.prop(context.scene, 'show_full_slice', text='Show full slice')
+    col = layout.box().column()
+    col.prop(context.scene, "slicer_cut_type", text="")
+    col.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='FACESEL_HLT')
+    col.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
+    col.prop(context.scene, 'show_full_slice', text='Show full slice')
+    col = layout.box().column()
     if SlicerPanel.ct_exist or SlicerPanel.t2_exist:
-        layout.prop(context.scene, 'slices_modality', expand=True)
+        col.prop(context.scene, 'slices_modality', expand=True)
         if bpy.context.scene.slices_modality == 'mri':
-            layout.label(text='T1 value: {:.2f}'.format(bpy.context.scene.t1_value))
+            col.label(text='T1 value: {:.2f}'.format(bpy.context.scene.t1_value))
         elif bpy.context.scene.slices_modality == 't2':
-            layout.label(text='T2 value: {:.2f}'.format(bpy.context.scene.t2_value))
+            col.label(text='T2 value: {:.2f}'.format(bpy.context.scene.t2_value))
         elif bpy.context.scene.slices_modality == 'ct':
-            layout.label(text='CT intensity: {:.2f}'.format(bpy.context.scene.ct_intensity))
+            col.label(text='CT intensity: {:.2f}'.format(bpy.context.scene.ct_intensity))
         # layout.prop(context.scene, 'slices_modality_mix')
-    row = layout.row(align=0)
+    row = col.row(align=0)
     row.prop(context.scene, 'slices_x_min', text='xmin')
     row.prop(context.scene, 'slices_x_max', text='xmax')
-    row = layout.row(align=0)
+    row = col.row(align=0)
     row.prop(context.scene, 'slices_zoom', text='Slices zoom')
     row.prop(context.scene, 'slices_zoom_around_voxel', text='zoom around voxel')
     if mu.SCIPY_EXIST and bpy.context.scene.slices_zoom_around_voxel:
-        row = layout.row(align=0)
+        row = col.row(align=0)
         row.prop(context.scene, 'slices_zoom_voxels_num', text='#voxels')
         row.prop(context.scene, 'slices_zoom_interpolate', text='smooth')
-    row = layout.row(align=0)
+    row = col.row(align=0)
     row.prop(context.scene, 'slices_plot_cross', text='Plot cross')
     row.prop(context.scene, 'slices_mark_voxel', text='Mark voxel')
     if bpy.context.scene.pial_vol_mask_exist:
-        row = layout.row(align=0)
+        row = col.row(align=0)
         row.prop(context.scene, 'slices_show_pial', text='Plot pial')
         if context.scene.slices_show_pial:
             row.prop(context.scene, 'slices_show_pial_color', text='')
     if bpy.context.scene.dural_vol_mask_exist:
-        row = layout.row(align=0)
+        row = col.row(align=0)
         row.prop(context.scene, 'slices_show_dural', text='Plot dural')
         if context.scene.slices_show_dural:
             row.prop(context.scene, 'slices_show_dural_color', text='')

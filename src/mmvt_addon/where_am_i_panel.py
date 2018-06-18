@@ -110,9 +110,10 @@ def where_i_am_draw(self, context):
         row = layout.row(align=0)
         row.label(text='{}: {}'.format(atlas, name))
         # row.operator(ChooseVoxelID.bl_idname, text="Select", icon='SNAP_SURFACE')
-    layout.operator(WhereAmI.bl_idname, text="Find closest object", icon='SNAP_SURFACE')
+    row = layout.row(align=0)
+    row.operator(WhereAmI.bl_idname, text="Find closest object", icon='SNAP_SURFACE')
     if bpy.context.scene.where_am_i_str != '':
-        layout.label(text=bpy.context.scene.where_am_i_str)
+        row.label(text=bpy.context.scene.where_am_i_str)
     if len(WhereAmIPanel.annot_files) > 0:
         col = layout.box().column()
         col.prop(context.scene, 'subject_annot_files', text='')
@@ -768,9 +769,9 @@ class WhereAmI(bpy.types.Operator):
     where_am_I_selected_obj = None
     where_am_I_selected_obj_org_hide = True
 
-    @staticmethod
-    def setup_environment(self):
-        WhereAmIPanel.addon.show_rois()
+    # @staticmethod
+    # def setup_environment(self):
+    #     WhereAmIPanel.addon.show_rois()
 
     @staticmethod
     def main_func(self):
@@ -780,19 +781,19 @@ class WhereAmI(bpy.types.Operator):
         WhereAmI.where_am_I_selected_obj = bpy.data.objects[closest_area]
         WhereAmI.where_am_I_selected_obj_org_hide = bpy.data.objects[closest_area].hide
         bpy.context.scene.objects.active = bpy.data.objects[closest_area]
-        closest_area_type = mu.check_obj_type(closest_area)
-        if closest_area_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_ELECTRODE,
-                                 mu.OBJ_TYPE_EEG]:
-
-            _addon().select_roi(closest_area)
-        else:
-            bpy.data.objects[closest_area].select = True
+        # closest_area_type = mu.check_obj_type(closest_area)
+        # if closest_area_type in [mu.OBJ_TYPE_CORTEX_LH, mu.OBJ_TYPE_CORTEX_RH, mu.OBJ_TYPE_ELECTRODE,
+        #                          mu.OBJ_TYPE_EEG]:
+        #
+        #     _addon().select_roi(closest_area)
+        # else:
+        #     bpy.data.objects[closest_area].select = True
         bpy.data.objects[closest_area].hide = False
         # todo: don't change the material! Do something else!
         # bpy.data.objects[closest_area].active_material = bpy.data.materials['selected_label_Mat']
 
     def invoke(self, context, event=None):
-        self.setup_environment(self)
+        # self.setup_environment(self)
         self.main_func(self)
         return {"FINISHED"}
 

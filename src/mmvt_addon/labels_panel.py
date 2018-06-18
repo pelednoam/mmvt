@@ -60,9 +60,13 @@ def clear_contours():
 
 def plot_labels_data():
     # Support more than one file type (npz and mat)
-    labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
-        bpy.context.scene.cortical_labels_data_files.replace(' ', '_'))))[0]
-    load_labels_data(labels_data_fname)
+    labels_data_template = op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
+        bpy.context.scene.cortical_labels_data_files.replace(' ', '_')))
+    labels_data_fnames = glob.glob(labels_data_template)
+    if len(labels_data_fnames) == 1:
+        load_labels_data(labels_data_fnames[0])
+    else:
+        print('No files found! {}'.format(labels_data_template))
 
 
 def labels_data_files_update(self, context):

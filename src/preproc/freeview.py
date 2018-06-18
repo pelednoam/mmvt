@@ -159,7 +159,7 @@ def copy_T1(subject):
         blender_brain_file = op.join(MMVT_DIR, subject, 'freeview', brain_file)
         subject_brain_file = op.join(SUBJECTS_DIR, subject, 'mri', brain_file)
         if not op.isfile(blender_brain_file):
-            shutil.copy_file(subject_brain_file, blender_brain_file)
+            shutil.copyfile(subject_brain_file, blender_brain_file)
         files_exist = files_exist and op.isfile(blender_brain_file)
     return files_exist
 

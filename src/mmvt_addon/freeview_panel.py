@@ -198,10 +198,9 @@ class CreateFreeviewFiles(bpy.types.Operator):
     def invoke(self, context, event=None):
         electrodes_pos_fname = op.join(mu.get_user_fol(), 'electrodes', 'electrodes{}_positions.npz'.format(
             '_bipolar' if bpy.context.scene.bipolar else ''))
-        cmd = '{} -m src.preproc.freeview -s {} -a {} -b {} --electrodes_pos_fname {} --ignore_missing 1'.format(
-            bpy.context.scene.python_cmd, mu.get_user(), bpy.context.scene.atlas,
-            bpy.context.scene.bipolar, electrodes_pos_fname)
-        mu.run_command_in_new_thread(cmd, False)
+        flags = '-a {} -b {} --electrodes_pos_fname {} --ignore_missing 1'.format(
+            bpy.context.scene.atlas, bpy.context.scene.bipolar, electrodes_pos_fname)
+        mu.run_mmvt_func('src.preproc.freeview', flags=flags)
         bpy.context.scene.freeview_messages = 'Preparing...'
         return {"FINISHED"}
 

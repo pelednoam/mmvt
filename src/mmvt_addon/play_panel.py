@@ -569,9 +569,9 @@ def play_panel_draw(context, layout):
     row.operator(GrabFromPlay.bl_idname, text="", icon='BORDERMOVE')
     row.prop(context.scene, "play_to", text="To")
     row.operator(GrabToPlay.bl_idname, text="", icon='BORDERMOVE')
-    row = layout.row(align=0)
-    row.prop(context.scene, "play_dt", text="dt")
-    row.prop(context.scene, "play_time_step", text="time step")
+    # row = layout.row(align=0)
+    layout.prop(context.scene, "play_dt", text="dt")
+    # row.prop(context.scene, "play_time_step", text="time step")
     layout.prop(context.scene, "play_type", text="")
     row = layout.row(align=True)
     # row.operator(Play.bl_idname, text="", icon='PLAY' if not PlayPanel.is_playing else 'PAUSE')
@@ -583,10 +583,16 @@ def play_panel_draw(context, layout):
     layout.prop(context.scene, 'render_movie', text="Render to a movie")
     layout.prop(context.scene, 'save_images', text="Save images")
     layout.prop(context.scene, 'rotate_brain_while_playing', text='Rotate the brain while playing')
-    row = layout.row(align=0)
-    row.prop(context.scene, 'play_miscs', text='')
-    row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
-    layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
+    if bpy.context.scene.rotate_brain_while_playing:
+        row = layout.row(align=True)
+        row.prop(context.scene, 'rotate_dx')
+        row.prop(context.scene, 'rotate_dy')
+        row.prop(context.scene, 'rotate_dz')
+
+    # row = layout.row(align=0)
+    # row.prop(context.scene, 'play_miscs', text='')
+    # row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
+    # layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
     files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
                               glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(

@@ -107,6 +107,7 @@ def _leads_update():
     ElecsPanel.current_lead = bpy.context.scene.leads
     init_electrodes_list()
     _show_only_current_lead_update()
+    _addon().show_electrodes()
 
 
 def set_current_electrode(electrode, lead=''):
@@ -147,6 +148,7 @@ def _electrodes_update():
     # select_electrode(current_electrode)
     bpy.data.objects[current_electrode].select = True
     mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
+    _addon().show_electrodes()
 
 
 def electrodes_selection_coloring():
@@ -475,7 +477,7 @@ def run_ela_alg():
 
 def elecs_draw(self, context):
     layout = self.layout
-    if ElecsPanel.electrodes_labeling_file_exist:
+    if ElecsPanel.electrodes_labeling_file_exist and len(ElecsPanel.labling_files) > 1:
         layout.prop(context.scene, "electrodes_labeling_files", text="")
     row = layout.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
@@ -485,21 +487,42 @@ def elecs_draw(self, context):
     row.operator(PrevElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "electrodes", text="")
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
+
+    if len(ElecsPanel.subcortical_rois) > 0 or len(ElecsPanel.cortical_rois) > 0:
+        box = layout.box()
+        col = box.column()
+        for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
+            mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
+        for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
+            mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+
     layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
-    row = layout.row(align=True)
+    # row = layout.row(align=True)
     if ElecsPanel.electrodes_labeling_file_exist:
-        row.prop(context.scene, 'color_lables', text="Color lables")
-        row.prop(context.scene, 'electrodes_label_contours', text="Color contours")
+        layout.prop(context.scene, 'color_lables', text="Color probabilities")
+        # row.prop(context.scene, 'electrodes_label_contours', text="Color contours")
     # layout.label(text='What to color: ')
     # if bpy.context.scene.color_lables:
     #     layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
     row = layout.row(align=True)
     row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
     row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
-    row = layout.row(align=True)
-    row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
-    row.prop(context.scene, 'electrodes_color', text='')
 
+    # layout.prop(context.scene, "elc_size", text="")
+    # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
+    # row = layout.row(align=True)
+    layout.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
+    # row.prop(context.scene, "electrodes_leads_color", text='')
+
+    if ElecsPanel.ela_code_exist and ElecsPanel.atlases_exist:
+        layout.prop(context.scene, "show_ela", text="Show ELA options")
+        if bpy.context.scene.show_ela:
+            col = layout.box().column()
+            col.prop(context.scene, "ela_bipolar", text="Bipolar")
+            col.prop(context.scene, "ela_atlas", text='')
+            col.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
+
+    row = layout.row(align=True)
     if not bpy.context.scene.listen_to_keyboard:
         layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
     else:
@@ -510,28 +533,9 @@ def elecs_draw(self, context):
         mu.add_box_line(col, 'Right', 'Next electrodes')
         mu.add_box_line(col, 'Down', 'Previous lead')
         mu.add_box_line(col, 'Up', 'Next lead')
-    if len(ElecsPanel.subcortical_rois) > 0 or len(ElecsPanel.cortical_rois) > 0:
-        box = layout.box()
-        col = box.column()
-        for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
-            mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
-        for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
-            mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
-    layout.prop(context.scene, "elc_size", text="")
+    row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
+    row.prop(context.scene, 'electrodes_color', text='')
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
-    layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
-    row = layout.row(align=True)
-    row.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
-    row.prop(context.scene, "electrodes_leads_color")
-
-    if ElecsPanel.ela_code_exist and ElecsPanel.atlases_exist:
-        layout.prop(context.scene, "show_ela", text="Show ELA options")
-        if bpy.context.scene.show_ela:
-            col = layout.box().column()
-            col.prop(context.scene, "ela_bipolar", text="Bipolar")
-            col.prop(context.scene, "ela_atlas", text='')
-            col.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
-
 
     # Color picker:
     # row = layout.row(align=True)
@@ -748,6 +752,7 @@ class ElecsPanel(bpy.types.Panel):
     ela_code_exist = False
     bpy.context.scene.elc_size = 1
     atlases_exist = False
+    labling_files = []
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -862,7 +867,7 @@ def init_electrodes_list():
 def init_electrodes_labeling(addon):
     ela_code_fol = op.join(mu.get_parent_fol(mu.get_mmvt_code_root()), 'electrodes_rois')
     ElecsPanel.ela_code_exist = op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py'))
-    labling_files = find_elecrode_labeling_files()
+    ElecsPanel.labling_files = labling_files = find_elecrode_labeling_files()
     if len(labling_files) > 0:
         files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
         labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]

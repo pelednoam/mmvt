@@ -358,11 +358,15 @@ def import_rois(base_path):
 
 
 def create_eeg_mesh():
+    eeg_mesh_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply')
+    if not op.isfile(eeg_mesh_fname):
+        print('You need to create a mesh first ({})'.format(eeg_mesh_fname))
+        return None
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     create_empty_if_doesnt_exists('Helmets', _addon().BRAIN_EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
     mu.change_layer(_addon().EEG_LAYER)
     current_mat = bpy.data.materials['unselected_label_Mat_cortex']
-    bpy.ops.import_mesh.ply(filepath=op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply'))
+    bpy.ops.import_mesh.ply(filepath=eeg_mesh_fname)
     mesh_obj = bpy.context.selected_objects[0]
     mesh_obj.name = 'eeg_helmet'
     mesh_obj.select = True
@@ -1113,9 +1117,13 @@ def data_draw(self, context):
         col.operator(ImportElectrodes.bl_idname, text="Import Electrodes", icon='COLOR_GREEN')
         if DataMakerPanel.electrodes_data_exist:
             col.operator(AddDataToElectrodes.bl_idname, text="Add data to Electrodes", icon='FCURVE')
-    layout.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions",
-                    icon='GROUP_VERTEX').filepath = op.join(
-        mu.get_user_fol(), 'electrodes', '*.npz')
+        col.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions",
+            icon='GROUP_VERTEX').filepath = op.join(mu.get_user_fol(), 'electrodes', '*.npz')
+    else:
+        col = layout.box().column()
+        col.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions",
+            icon='GROUP_VERTEX').filepath = op.join(mu.get_user_fol(), 'electrodes', '*.npz')
+
     if DataMakerPanel.meg_labels_data_exist:
         col = layout.box().column()
         col.prop(context.scene, 'meg_labels_data_files', text="")
@@ -1168,7 +1176,9 @@ def data_draw(self, context):
     if op.isfile(eeg_sensors_positions_file):
         col = layout.box().column()
         col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
-        col.operator(CreateEEGMesh.bl_idname, text="Creating EEG mesh", icon='COLOR_GREEN')
+        eeg_mesh_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply')
+        if op.isfile(eeg_mesh_fname):
+            col.operator(CreateEEGMesh.bl_idname, text="Import EEG mesh", icon='COLOR_GREEN')
         if eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
             col.prop(context.scene, 'eeg_data_files', text="")
             col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
