@@ -551,20 +551,30 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
             print('No hemi files were found from the template {}'.format(surf_full_output_fname))
             return False, ''
     surf_full_output_fname = surf_full_output_fnames[0]
+    delim, _, label, _ = lu.get_hemi_delim_and_pos(utils.namebase(surf_full_output_fname).format(hemi='rh'))
+    surf_full_output_name = lu.build_label_name(delim, 'end', label, '{hemi}')
+    new_surf_full_output_fname = op.join(utils.get_parent_fol(surf_full_output_fname), '{}.{}'.format(
+        surf_full_output_name, utils.file_type(surf_full_output_fname)))
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(
-        surf_full_output_fname)))
+        new_surf_full_output_fname)))
     npy_output_fname_template = '{}.npy'.format(op.splitext(output_fname_template)[0])
     if utils.both_hemi_files_exist(npy_output_fname_template) and not overwrite_surf_data:
         return True, npy_output_fname_template
     for hemi in utils.HEMIS:
         fmri_fname = surf_full_output_fname.format(hemi=hemi)
         x = np.squeeze(nib.load(fmri_fname).get_data())
+        if x.ndim == 2:
+            print('The nii file has another dimension ({})! Taking the first.'.format(x.shape[1]))
+            x = x[:, 0]
         morph_from_subject = check_vertices_num(subject, hemi, x)
         if subject != morph_from_subject:
             morphed_fmri_fname = '{0}_morphed_to_{2}{1}'.format(*op.splitext(fmri_fname), subject)
             if not op.isfile(morphed_fmri_fname):
                 fu.surf2surf(morph_from_subject, subject, hemi, fmri_fname, morphed_fmri_fname)
             x = np.squeeze(nib.load(morphed_fmri_fname).get_data())
+            if x.ndim == 2:
+                print('The nii file has another dimension ({})! Taking the first.'.format(x.shape[1]))
+                x = x[:, 0]
         npy_output_fname = npy_output_fname_template.format(hemi=hemi)
         if not op.isfile(npy_output_fname) or overwrite_surf_data:
             print('Saving surf data in {}'.format(npy_output_fname))
@@ -1119,7 +1129,9 @@ def find_hemi_files(files):
         print(files)
         return []
     file_types = set([utils.file_type(f) for f in files])
-    if len(set(['nii', 'nii.gz', 'mgz', 'mgh']) & file_types) > 0:
+    if 'npy' in file_types:
+        files = get_unique_files_into_npy(files)
+    elif len(set(['nii', 'nii.gz', 'mgz', 'mgh']) & file_types) > 0:
         files = get_unique_files_into_mgz(files)
     hemis_files = []
     rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
@@ -1526,6 +1538,15 @@ def get_unique_files_into_mgz(files):
     return files
 
 
+def get_unique_files_into_npy(files):
+    contrast_files_dic = defaultdict(list)
+    for contrast_file in files:
+        ft = utils.file_type(contrast_file)
+        contrast_files_dic[contrast_file[:-len(ft) - 1]].append(ft)
+    files = ['{}.npy'.format(contrast_file) for contrast_file, fts in contrast_files_dic.items() if 'npy' in fts]
+    print('get_unique_files_into_npy: {}'.format(files))
+    return files
+
 def load_fmri_data(fmri_surf_fname):
     if not op.isfile(fmri_surf_fname):
         raise Exception("load_fmri_data: Can't find {}".format(fmri_surf_fname))
@@ -1692,7 +1713,8 @@ def main(subject, remote_subject_dir, args, flags):
         fmri_contrast_file_template, args = calc_also_minmax(flags['load_surf_files'], output_fname_template, args)
 
     if 'calc_files_diff' in args.function:
-        flags['calc_files_diff'], output_fname_template = calc_files_diff(subject, args.fmri_file_template, args.overwrite_surf_data)
+        flags['calc_files_diff'], output_fname_template = calc_files_diff(
+            subject, args.fmri_file_template, args.overwrite_surf_data)
         fmri_contrast_file_template, args = calc_also_minmax(flags['calc_files_diff'], output_fname_template, args)
 
     if utils.should_run(args, 'calc_fmri_min_max'):

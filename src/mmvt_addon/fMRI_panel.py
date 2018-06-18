@@ -324,9 +324,9 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
     if key not in fMRIPanel.clusters_labels:
         return
     if isinstance(fMRIPanel.clusters_labels[key], dict):
-        bpy.context.scene.fmri_clustering_threshold = fMRIPanel.clusters_labels[key]['threshold']
+        bpy.context.scene.fmri_clustering_threshold = val_threshold = fMRIPanel.clusters_labels[key]['threshold']
     else:
-        bpy.context.scene.fmri_clustering_threshold = 2
+        bpy.context.scene.fmri_clustering_threshold = val_threshold = 2
     # bpy.context.scene.fmri_cluster_val_threshold = bpy.context.scene.fmri_clustering_threshold
     fMRIPanel.clusters_labels_filtered = filter_clusters(clusters_labels_file, val_threshold, size_threshold, clusters_name)
     sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'

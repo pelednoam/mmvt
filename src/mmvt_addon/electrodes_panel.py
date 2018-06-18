@@ -141,6 +141,7 @@ def _electrodes_update():
             print_electrode_loc(loc)
             if bpy.context.scene.color_lables:
                 plot_labels_probs(loc)
+            rotate_brain_via_lookup(loc)
     else:
         pass
         # print('lookup table is None!')
@@ -399,6 +400,22 @@ def set_show_only_lead(val):
 #         show_hide_hemi_electrodes('lh', bpy.context.scene.show_lh_electrodes)
 #         show_hide_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
 #         updade_lead_hemis()
+
+def rotate_brain_via_lookup(loc):
+    cortical_probs_max, subcortical_probs_max = 0, 0
+    cortical_probs_rois = \
+        [(p, r) for p, r in zip(loc['cortical_probs'], loc['cortical_rois']) if 'white' not in r.lower()]
+    subcortical_probs_rois = \
+        [(p, r) for p, r in zip(loc['subcortical_probs'], loc['subcortical_rois']) if 'white' not in r.lower()]
+    if len(cortical_probs_rois) > 0:
+        cortical_probs_ind = np.argmax(cortical_probs_rois, 0)[0]
+        cortical_probs_max = cortical_probs_rois[cortical_probs_ind][0]
+    if len(subcortical_probs_rois) > 0:
+        subcortical_probs_ind = np.argmax(subcortical_probs_rois, 0)[0]
+        subcortical_probs_max = subcortical_probs_rois[subcortical_probs_ind][0]
+    max_roi = cortical_probs_rois[cortical_probs_ind][1] if cortical_probs_max > subcortical_probs_max else \
+        subcortical_probs_rois[subcortical_probs_ind][1]
+    print('max_roi = {}'.format(max_roi))
 
 
 def plot_labels_probs(elc):

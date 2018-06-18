@@ -423,6 +423,22 @@ def get_hemi_delim_and_pos(label_name):
             label_hemi = hemi
             delim, pos, label = '.', 'end', label_name[:-3]
             break
+        if '_{}'.format(hemi) in label_name:
+            label_hemi = hemi
+            delim, pos, label = '_', 'middle_start', label_name.replace('_{}'.format(hemi), '')
+            break
+        if '{}_'.format(hemi) in label_name:
+            label_hemi = hemi
+            delim, pos, label = '_', 'middle_end', label_name.replace('{}_'.format(hemi), '')
+            break
+        if '.{}'.format(hemi) in label_name:
+            label_hemi = hemi
+            delim, pos, label = '.', 'middle_start', label_name.replace('.{}'.format(hemi), '')
+            break
+        if '{}.'.format(hemi) in label_name:
+            label_hemi = hemi
+            delim, pos, label = '.', 'middle_end', label_name.replace('{}.'.format(hemi), '')
+            break
     return delim, pos, label, label_hemi
 
 
@@ -455,7 +471,12 @@ def get_other_hemi(hemi):
 def get_other_hemi_label_name(label_name):
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name)
     other_hemi = get_other_hemi(hemi)
-    res_label_name = build_label_name(delim, pos, label, other_hemi)
+    if pos == 'middle_start':
+        res_label_name = label_name.replace('{}{}'.format(delim, hemi), '{}{}'.format(delim, other_hemi))
+    elif pos == 'middle_end':
+        res_label_name = label_name.replace('{}{}'.format(hemi, delim), '{}{}'.format(other_hemi, delim))
+    else:
+        res_label_name = build_label_name(delim, pos, label, other_hemi)
     return res_label_name
 
 
@@ -469,7 +490,7 @@ def get_template_hemi_label_name(label_name, wild_char=False):
 def build_label_name(delim, pos, label, hemi):
     if pos == 'end':
         return '{}{}{}'.format(label, delim, hemi)
-    else:
+    elif pos == 'start':
         return '{}{}{}'.format(hemi, delim, label)
 
 
