@@ -47,13 +47,28 @@ The tool itself can run on windows, mac and linux.
 In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only on linux/mac). Beside of that, you can use the tool also on windows.
 
 ## Update the code
-You can now update the program without using the "git pull" function.
+**Linux**: The program can be updated without using the "git pull" function.
 * Lunch MMVT.
 * Open the "Import objects and data" panel.
 * Press the "Update MMVT" button at the top of the panel.
 
+**Windows**:
+* In the Git CMD terminal type the letters: cd hit space and write the path to the mmvt_code folder. 
+  Example: cd c:\Users\Jhon\Desktop\mmvt_root\mmvt_code
+* Type: git pull
+
 ## Template brain and data
-We've imported [colin27](http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27Highres) into MMVT, and included data we morphed from a patient. The data includes recording from EEG, MEG, fMRI, and sEEG for the [MSIT](https://www.nature.com/articles/nprot.2006.48) task. The data can be downloaded from [here](https://www.dropbox.com/s/hpt5t9gt8migna8/colin27.zip?dl=0) (1GB). Extract the zip file in the mmvt_blend folder which was created in your mmvt_root folder. Then, open Blender, close the splash screen and open (File->open) colin's blend file (colin27_laus125.blend). After that, you'll need to press space anywhere on the screen, write "run mmvt" and press enter. We've also written several self-explanatory tasks for this data, that can be found [here](https://tinyurl.com/yd2axzsg) (feel free the add comments).
+We've imported [colin27](http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27Highres) into MMVT, and included data we morphed from a patient. The data includes recording from EEG, MEG, fMRI, and sEEG for the [MSIT](https://www.nature.com/articles/nprot.2006.48) task. The data can be downloaded from [here](https://www.dropbox.com/s/hpt5t9gt8migna8/colin27.zip?dl=0) (1GB). Extract the zip file in the mmvt_blend folder which was created in your mmvt_root folder. Then, open Blender, close the splash screen and open (File->open) colin's blend file (colin27_laus125.blend).
+
+* To learn more about the tool you can find several self-explanatory tasks for Colin27 data [here](https://tinyurl.com/yd2axzsg) (feel free the add comments).
+   - Step by step answers for the tasks can be found [here](https://docs.google.com/document/d/1FD2vA_eSbGMsZIxZs_8wAstyNN5QMYIxkV35jaj2qyM/edit?usp=sharing)
+
+Few Blender shortcuts you should know:
+* Rotate the brain using the middle mouse button.
+* Select objects (electrodes / sensors / cortical lables) using the right mouse button. To select cortical labels you need to change first the view to "ROIs" in the Appearence panel.
+* Zoom in/out using the mouse scrolling.
+
+The features can be seen [here](https://www.youtube.com/watch?v=vPD4DorhMgA&t=9s)
 Few Blender shortcuts you should know:
 * Rotate the brain using the middle mouse button.
 * Select objects (electrodes / sensors / cortical lables) using the right mouse button. To select cortical labels you need to change first the view to "ROIs" in the Appearence panel.
