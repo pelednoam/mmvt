@@ -47,9 +47,7 @@ The tool itself can run on windows, mac and linux.
 In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only on linux/mac). Beside of that, you can use the tool also on windows.
 
 ## Update the code
-**Linux**:
-
-The program can be updated without using the "git pull" function.
+**Linux**: The program can be updated without using the "git pull" function.
 * Lunch MMVT.
 * Open the "Import objects and data" panel.
 * Press the "Update MMVT" button at the top of the panel.
