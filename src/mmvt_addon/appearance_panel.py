@@ -531,6 +531,9 @@ class SelectionListener(bpy.types.Operator):
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
                 _addon().set_tkreg_ras(bpy.context.scene.cursor_location * 10, False)
+                if bpy.context.scene.cursor_is_snapped:  # and is_view_3d():
+                    snap_cursor(True)
+                    mu.rotate_view_to_vertice()
                 # if bpy.context.scene.slices_zoom > 1:
                 #     ohad(pos/bpy.context.scene.slices_zoom)
                 return {'PASS_THROUGH'}

@@ -553,7 +553,7 @@ def elecs_draw(self, context):
     row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
     row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
     if ElecsPanel.electrodes_labeling_file_exist:
-        layout.prop(context.scene, "electrode_rotate", text="Rotate for a better view")
+        layout.prop(context.scene, "electrode_rotate", text="Rotate view on click")
 
     # layout.prop(context.scene, "elc_size", text="")
     # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
