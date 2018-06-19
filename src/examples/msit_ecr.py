@@ -14,11 +14,22 @@ MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
-def anatomy_preproc(args):
+def prepare_files(args):
+    for subject in args.subject:
+        for task in args.tasks:
+            fol = utils.make_dir(op.join(MEG_DIR, task, subject))
+            local_fname = op.join(fol, '{}_{}_Onset-epo.fif'.format(subject, task))
+            if not op.isfile(local_fname):
+                remote_fname = op.join(args.meg_dir, subject, '{}_{}_Onset-epo.fif'.format(subject, task))
+                utils.make_link(remote_fname, local_fname)
+
+
+def anatomy_preproc(args, subject=''):
     args = anat.read_cmd_args(dict(
-        subject=args.subject,
+        subject=args.subject if subject == '' else subject,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
-        high_level_atlas_name='darpa_atlas'
+        high_level_atlas_name='darpa_atlas',
+        function='create_high_level_atlas'
     ))
     anat.call_main(args)
 
@@ -37,7 +48,7 @@ def get_empty_fnames(subject, tasks, args):
     if not op.isfile(csv_fname):
         print('No cfg file!')
         return {task:'' for task in tasks}
-    days, empty_fnames = {}, {}
+    days, empty_fnames, cors = {}, {}, {}
     for line in utils.csv_file_reader(csv_fname, ' '):
         for task in tasks:
             if line[4].lower() == task.lower():
@@ -55,14 +66,19 @@ def get_empty_fnames(subject, tasks, args):
                     if not op.isfile(empty_fname):
                         raise Exception('empty file does not exist! {}'.format(empty_fname[task]))
                     utils.make_link(empty_fname, empty_fnames[task])
-    return empty_fnames
+    cor_dir = op.join(args.remote_subject_dir.format(subject=subject), 'mri', 'T1-neuromag', 'sets')
+    for task in tasks:
+        if op.isfile(op.join(cor_dir, 'COR-{}-{}.fif'.format(subject, task.lower()))):
+            cors[task] = op.join(cor_dir, 'COR-{}-{}.fif'.format('{subject}', task.lower()))
+        elif op.isfile(op.join(cor_dir, 'COR-{}-day{}.fif'.format(subject, days[task]))):
+            cors[task] = op.join(cor_dir, 'COR-{}-day{}.fif'.format('{subject}', days[task]))
+    return empty_fnames, cors, days
 
 
 def calc_meg_epochs(args):
-    tasks = ['MSIT', 'ECR']
-    empty_fnames = get_empty_fnames(args.subject[0], tasks, args)
+    empty_fnames, cors, days = get_empty_fnames(args.subject[0], args.tasks, args)
     times = (-2, 4)
-    for task in tasks:
+    for task in args.tasks:
         args = meg.read_cmd_args(dict(
             subject=args.subject, mri_subject=args.subject,
             task=task,
@@ -83,27 +99,33 @@ def calc_meg_epochs(args):
 
 
 def meg_preproc(args):
-    atlas, inv_method, em = 'aparc.DKTatlas40', 'dSPM', 'mean_flip'
+    atlas, inv_method, em = 'aparc.DKTatlas40', 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-    tasks = ['MSIT', 'ECR']
-    empty_fnames = get_empty_fnames(args.subject[0], tasks, args)
+    empty_fnames, cors, days = get_empty_fnames(args.subject[0], args.tasks, args)
+    prepare_files(args)
     times = (-2, 4)
 
-    for task in tasks:
+    for subject in args.subject:
+        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
+            anatomy_preproc(args, subject)
+
+    for task in args.tasks:
         args = meg.read_cmd_args(dict(
             subject=args.subject, mri_subject=args.subject,
             task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
-            meg_dir=args.meg_dir,
+            # meg_dir=args.meg_dir,
             remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
             get_task_defaults=False,
-            fname_format='{}_{}_maxwell-raw'.format('{subject}', task),
+            fname_format='{}_{}_Onset'.format('{subject}', task),
             empty_fname=empty_fnames[task],
-            # function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
-            function='calc_epochs',
+            function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+            # function='calc_epochs',
             # function='calc_labels_connectivity',
             conditions=task.lower(),
-            # data_per_task=True,
+            cor_fname=cors[task].format(subject=subject),
+            average_per_event=False,
+            data_per_task=True,
             ica_overwrite_raw=False,
             normalize_data=False,
             t_min=times[0], t_max=times[1],
@@ -161,8 +183,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
+    parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--meg_dir', required=False,
-                        default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
+                        default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs')
+                        # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
     parser.add_argument('--remote_subject_dir', required=False,
                         default='/autofs/space/lilli_001/users/DARPA-Recons/{subject}')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)

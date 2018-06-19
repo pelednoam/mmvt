@@ -591,25 +591,31 @@ def get_inv_src(inv_fname, src=None, cond_name=''):
 
 def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='', norm_by_percentile=False,
                 norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
-                overwrite_evoked=False, task='', set_eeg_reference=True):
+                overwrite_evoked=False, task='', set_eeg_reference=True, average_per_event=True):
     try:
         evoked_fname = get_evo_fname(evoked_fname)
         fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
         task_str = '{}_'.format(task) if task != '' else ''
-        mmvt_files = [op.join(fol, '{}sensors_evoked_data.npy'.format(task_str)),
-                      op.join(fol, '{}sensors_evoked_data_meta.npz'.format(task_str)),
-                      op.join(fol, '{}sensors_evoked_minmax.npy'.format(task_str))]
+        mmvt_files = [op.join(fol, '{}_{}sensors_evoked_data.npy'.format(modality, task_str)),
+                      op.join(fol, '{}_{}sensors_evoked_data_meta.npz'.format(modality, task_str)),
+                      op.join(fol, '{}_{}sensors_evoked_minmax.npy'.format(modality, task_str))]
         if op.isfile(evoked_fname) and all([op.isfile(f) for f in mmvt_files]) and not overwrite_evoked:
             evoked = mne.read_evokeds(evoked_fname)
             return True, evoked
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
-        if any([event not in epochs.event_id for event in events_keys]):
-            print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
-            events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
-            # return False, None
-        evokes = [epochs[event].average() for event in events_keys] # if event in list(epochs.event_id.keys())]
+        if average_per_event:
+            if any([event not in epochs.event_id for event in events_keys]):
+                print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
+                events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
+                # return False, None
+            evokes = [epochs[event].average() for event in events_keys] # if event in list(epochs.event_id.keys())]
+        else:
+            evokes = [epochs.average()]
+            keys = list(events.keys())
+            key = utils.select_one_file(keys)
+            evokes[0].comment = key
         if set_eeg_reference:
             try:
                 for evoked in evokes:
@@ -725,11 +731,11 @@ def check_src_ply_vertices_num(src):
 def make_smoothed_forward_solution(events, n_jobs=4, usingEEG=True, usingMEG=True):
     src = create_smooth_src(MRI_SUBJECT)
     if '{cond}' not in EPO:
-        fwd = _make_forward_solution(src, EPO, usingMEG, usingEEG, n_jobs)
+        fwd = _make_forward_solution(src, EPO, COR, usingMEG, usingEEG, n_jobs)
         mne.write_forward_solution(FWD_SMOOTH, fwd, overwrite=True)
     else:
         for cond in events.keys():
-            fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingMEG, usingEEG, n_jobs)
+            fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), COR, usingMEG, usingEEG, n_jobs)
             mne.write_forward_solution(get_cond_fname(FWD_SMOOTH, cond), fwd, overwrite=True)
     return fwd
 
@@ -825,13 +831,14 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir):
     return [op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject)) for watershed_fname in watershed_files]
 
 
-def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', sub_corticals_codes_file='',
-                          usingMEG=True, usingEEG=True, calc_corticals=True,
+def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', cor_fname='',
+                          sub_corticals_codes_file='', usingMEG=True, usingEEG=True, calc_corticals=True,
                           calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
                           recreate_src_surface='white', overwrite_fwd=False, remote_subject_dir='', n_jobs=4, args={}):
     fwd, fwd_with_subcortical = None, None
     evo_fname = get_evo_fname(evo_fname)
     fwd_fname = get_fwd_fname(fwd_fname, usingMEG, usingEEG)
+    cor_fname = get_cor_fname(cor_fname)
     events_keys = events.keys() if events is not None else ['all']
     try:
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing, recreate_src_surface,
@@ -842,21 +849,22 @@ def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', 
         if '{cond}' not in evo_fname:
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
-                    fwd = _make_forward_solution(src, evo_fname, usingMEG, usingEEG, n_jobs)
+                    fwd = _make_forward_solution(src, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
                 if overwrite_fwd or not op.isfile(FWD_SUB):
                     src_with_subcortical = add_subcortical_volumes(src, sub_corticals)
                     fwd_with_subcortical = _make_forward_solution(
-                        src_with_subcortical, evo_fname, usingMEG, usingEEG, n_jobs)
+                        src_with_subcortical, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs)
                     mne.write_forward_solution(FWD_SUB, fwd_with_subcortical, overwrite=True)
         else:
             for cond in events_keys:
                 if calc_corticals:
                     fwd_cond_fname = get_cond_fname(fwd_fname, cond)
                     if overwrite_fwd or not op.isfile(fwd_cond_fname):
-                        fwd = _make_forward_solution(src, get_cond_fname(evo_fname, cond), usingMEG, usingEEG, n_jobs)
+                        fwd = _make_forward_solution(
+                            src, get_cond_fname(evo_fname, cond), cor_fname, usingMEG, usingEEG, n_jobs)
                         mne.write_forward_solution(fwd_cond_fname, fwd, overwrite=True)
                 if calc_subcorticals and len(sub_corticals) > 0:
                     # add a subcortical volumes
@@ -864,7 +872,8 @@ def make_forward_solution(mri_subject, events=None, evo_fname='', fwd_fname='', 
                     if overwrite_fwd or not op.isfile(fwd_cond_fname):
                         src_with_subcortical = add_subcortical_volumes(src, sub_corticals)
                         fwd_with_subcortical = _make_forward_solution(
-                            src_with_subcortical, get_cond_fname(evo_fname, cond), usingMEG, usingEEG, n_jobs)
+                            src_with_subcortical, get_cond_fname(evo_fname, cond), cor_fname, usingMEG, usingEEG,
+                            n_jobs)
                         mne.write_forward_solution(fwd_cond_fname, fwd_with_subcortical, overwrite=True)
         flag = True
     except:
@@ -882,7 +891,7 @@ def make_forward_solution_to_specific_subcortrical(events, region, n_jobs=4, usi
     aseg_hdr = aseg.get_header()
     for cond in events.keys():
         src = add_subcortical_volumes(None, [region])
-        fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), usingMEG, usingEEG, n_jobs)
+        fwd = _make_forward_solution(src, get_cond_fname(EPO, cond), COR, usingMEG, usingEEG, n_jobs)
         mne.write_forward_solution(get_cond_fname(FWD_X, cond, region=region), fwd, overwrite=True)
     return fwd
 
@@ -910,12 +919,12 @@ def make_forward_solution_to_specific_points(events, pts, region_name, epo_fname
 
     src = mne.SourceSpaces([sp])
     for cond in events.keys():
-        fwd = _make_forward_solution(src, get_cond_fname(epo_fname, cond), usingMEG, usingEEG, n_jobs)
+        fwd = _make_forward_solution(src, get_cond_fname(epo_fname, cond), COR, usingMEG, usingEEG, n_jobs)
         mne.write_forward_solution(get_cond_fname(fwd_fname, cond, region=region_name), fwd, overwrite=True)
     return fwd
 
 
-def _make_forward_solution(src, epo_fname, usingMEG=True, usingEEG=True, n_jobs=6):
+def _make_forward_solution(src, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6):
     bem = BEM
     if not op.isfile(BEM):
         bem = utils.select_one_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
@@ -932,7 +941,7 @@ def _make_forward_solution(src, epo_fname, usingMEG=True, usingEEG=True, n_jobs=
         else:
             raise Exception("Can't find info object for make_forward_solution!")
 
-    fwd = mne.make_forward_solution(info=info, trans=COR, src=src, bem=bem, # mri=MRI
+    fwd = mne.make_forward_solution(info=info, trans=cor_fname, src=src, bem=bem, # mri=MRI
                                     meg=usingMEG, eeg=usingEEG, mindist=5.0,
                                     n_jobs=n_jobs, overwrite=True)
     return fwd
@@ -1103,6 +1112,10 @@ def get_evo_fname(evo_fname=''):
         evo_fname = EVO
     evo_fname, epo_exist = locating_meg_file(evo_fname, '*ave.fif')
     return evo_fname
+
+
+def get_cor_fname(cor_fname=''):
+    return COR if cor_fname == '' else cor_fname
 
 
 def get_empty_fname(empty_fname=''):
@@ -2682,6 +2695,7 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
     fwd_fname = get_fwd_fname(args.fwd_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     epo_fname = get_epo_fname(args.epo_fname)
     evo_fname = get_evo_fname(args.evo_fname)
+    cor_fname = get_cor_fname(args.cor_fname)
     noise_cov_fname = NOISE_COV if args.noise_cov_fname == '' else args.noise_cov_fname
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
@@ -2689,18 +2703,20 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
             #     {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
-            trans_file = find_trans_file(COR, args.remote_subject_dir)
+            trans_file = find_trans_file(cor_fname, args.remote_subject_dir)
             if trans_file is None:
                 flags['make_forward_solution'] = False
                 flags['calc_inverse_operator'] = False
                 return flags
             if op.isfile(trans_file):
-                trans_fol = utils.make_dir(op.join('mri', 'T1-neuromag', 'sets'))
-                if utils.get_parent_fol(trans_file) != trans_fol:
-                    if trans_file != trans_fol:
-                        shutil.copy(trans_file, trans_fol)
+                trans_fol = utils.make_dir(op.join(SUBJECTS_MRI_DIR, subject, 'mri', 'T1-neuromag', 'sets'))
+                local_cor_fname = op.join(trans_fol, utils.namebase_with_ext(trans_file))
+                if not op.isfile(local_cor_fname) and utils.get_parent_fol(trans_file) != trans_fol:
+                    # if trans_file != trans_fol:
+                    #     shutil.copy(trans_file, trans_fol)
                     if trans_file != COR:
-                        shutil.copy(trans_file, COR)
+                        shutil.copy(trans_file, local_cor_fname)
+                args.cor_fname = local_cor_fname
             src_dic = dict(bem=['*-oct-6*-src.fif'])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])
@@ -2713,7 +2729,7 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
             get_meg_files(subject, [evo_fname], args, conditions)
             sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
-                mri_subject, conditions, evo_fname, fwd_fname, sub_corticals_codes_file, args.fwd_usingMEG,
+                mri_subject, conditions, evo_fname, fwd_fname, args.cor_fname, sub_corticals_codes_file, args.fwd_usingMEG,
                 args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
                 args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.remote_subject_dir,
                 args.n_jobs, args)
@@ -2744,7 +2760,8 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
         flags['calc_evokes'], evoked = calc_evokes(
             epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
             args.norm_by_percentile, args.norm_percs, args.modality, args.calc_max_min_diff,
-            args.calc_evoked_for_all_epoches, args.overwrite_evoked, args.task)
+            args.calc_evoked_for_all_epoches, args.overwrite_evoked, args.task,
+            args.set_eeg_reference, args.average_per_event)
 
     return flags, evoked, epochs
 
@@ -3822,9 +3839,12 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fwd_fname', help='', required=False, default='')
     parser.add_argument('--epo_fname', help='', required=False, default='')
     parser.add_argument('--evo_fname', help='', required=False, default='')
+    parser.add_argument('--cor_fname', help='', required=False, default='')
     parser.add_argument('--noise_cov_fname', help='', required=False, default='')
     parser.add_argument('--empty_fname', help='', required=False, default='')
     parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--average_per_event', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--set_eeg_reference', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_sensors', help='overwrite_sensors', required=False, default=0, type=au.is_true)

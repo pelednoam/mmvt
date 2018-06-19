@@ -2380,6 +2380,7 @@ def make_link(source, target, overwrite=False):
             os.symlink(source, target)
             return True
         else:
+            print('make_link: source {} doesn\'t exist!'.format(source))
             return False
     except FileExistsError as e:
         if not overwrite:
