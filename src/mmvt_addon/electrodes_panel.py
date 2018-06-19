@@ -141,7 +141,7 @@ def _electrodes_update():
             print_electrode_loc(loc)
             if bpy.context.scene.color_lables:
                 plot_labels_probs(loc)
-            # rotate_brain_via_lookup(current_electrode, loc)
+            rotate_brain_via_lookup(current_electrode, loc)
     else:
         pass
         # print('lookup table is None!')
@@ -401,6 +401,7 @@ def set_show_only_lead(val):
 #         show_hide_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
 #         updade_lead_hemis()
 
+@mu.timeit
 def rotate_brain_via_lookup(elc_name, loc):
     cortical_probs_max, subcortical_probs_max = 0, 0
     cortical_probs_rois = \
@@ -419,13 +420,11 @@ def rotate_brain_via_lookup(elc_name, loc):
     else:
         max_roi = subcortical_probs_rois[subcortical_probs_ind][1]
         max_roi_is_cortical = False
-    print('max_roi = {}'.format(max_roi))
     if max_roi_is_cortical:
         atlas = bpy.context.scene.electrodes_labeling_files.split('_')[1]
         hemi = mu.get_obj_hemi(max_roi)
         annot_fname = mu.get_annot_fname(hemi, atlas)
         max_roi_vertices_indices = mu.read_label_vertices_from_annot(annot_fname, max_roi)
-        print('{} vertices num: {}'.format(max_roi, len(max_roi_vertices_indices)))
         if max_roi_vertices_indices is None:
             print('Can\'t find {} vertices in {}!'.format(max_roi, annot_fname))
             return
@@ -435,6 +434,16 @@ def rotate_brain_via_lookup(elc_name, loc):
             elc_pos, max_roi_vertices_indices, mesh, False)
         vert_pos *= 0.1
         mu.rotate_view_to_vertice(vert_ind, mesh)
+
+        # _addon().colorbar.set_colorbar_max_min(10, 0, update_colorbar=True)
+        # _addon().colorbar.set_colormap('jet')
+        # faces_verts = _addon().coloring.get_faces_verts()
+        # hemi_verts_num = {hemi: faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
+        # data = {hemi: np.zeros((hemi_verts_num[hemi])) for hemi in mu.HEMIS}
+        # data[hemi][max_roi_vertices_indices] = 10
+        # data[hemi][vert_ind] = 3
+        # print('vert_ind in max_roi_vertices_indices: {}'.format(vert_ind in max_roi_vertices_indices))
+        # _addon().coloring.color_hemi_data('inflated_{}'.format(hemi), data[hemi], 0, 25.6, threshold=1, color_even_if_hide=True)
 
 
 def plot_labels_probs(elc):
@@ -543,6 +552,7 @@ def elecs_draw(self, context):
     row = layout.row(align=True)
     row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
     row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
+    layout.prop(context.scene, "electrode_rotate", text="Rotate for a better view")
 
     # layout.prop(context.scene, "elc_size", text="")
     # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
@@ -766,6 +776,7 @@ bpy.types.Scene.electrodes_leads_color = bpy.props.FloatVectorProperty(
 bpy.types.Scene.show_ela = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_bipolar = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False)
 
 
 class ElecsPanel(bpy.types.Panel):
@@ -829,6 +840,7 @@ def init(addon, do_register=True):
     bpy.context.scene.show_lh_electrodes = True
     bpy.context.scene.show_rh_electrodes = True
     bpy.context.scene.show_ela = False
+    bpy.context.scene.electrode_rotate = False
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")

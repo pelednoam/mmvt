@@ -756,7 +756,8 @@ def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_col
 
 
 def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, override_current_mat=True,
-                    save_prev_colors=False, coloring_layer='Col', use_abs=None, check_valid_verts=True):
+                    save_prev_colors=False, coloring_layer='Col', use_abs=None, check_valid_verts=True,
+                    color_even_if_hide=False):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     if hemi in mu.HEMIS:
@@ -764,7 +765,7 @@ def color_hemi_data(hemi, data, data_min=None, colors_ratio=None, threshold=0, o
         hemi = 'inflated_{}'.format(hemi)
     elif hemi.startswith('inflated'):
         pial_hemi = hemi[len('inflated_'):]
-    if bpy.data.objects[hemi].hide:
+    if bpy.data.objects[hemi].hide and not color_even_if_hide:
         return
     faces_verts = ColoringMakerPanel.faces_verts[pial_hemi]
     cur_obj = bpy.data.objects[hemi]
@@ -1034,6 +1035,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     if coloring_layer == 'Col':
         set_activity_values(cur_obj, values)
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
+    print('activity_map_obj_coloring: Num of valid_verts: {}'.format(len(valid_verts)))
     if len(valid_verts) == 0 and check_valid_verts:
         # print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
         return
