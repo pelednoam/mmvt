@@ -413,9 +413,15 @@ def rotate_brain_via_lookup(loc):
     if len(subcortical_probs_rois) > 0:
         subcortical_probs_ind = np.argmax(subcortical_probs_rois, 0)[0]
         subcortical_probs_max = subcortical_probs_rois[subcortical_probs_ind][0]
-    max_roi = cortical_probs_rois[cortical_probs_ind][1] if cortical_probs_max > subcortical_probs_max else \
-        subcortical_probs_rois[subcortical_probs_ind][1]
+    if cortical_probs_max > subcortical_probs_max:
+        max_roi = cortical_probs_rois[cortical_probs_ind][1]
+        max_roi_is_cortical = True
+    else:
+        max_roi = subcortical_probs_rois[subcortical_probs_ind][1]
+        max_roi_is_cortical = False
     print('max_roi = {}'.format(max_roi))
+    if max_roi_is_cortical:
+        pass
 
 
 def plot_labels_probs(elc):
