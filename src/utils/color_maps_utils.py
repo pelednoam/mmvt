@@ -84,7 +84,13 @@ def check_cm_mat(cm_mat):
     plt.show()
 
 
-# def get_cm_obj(cm_name):
+def get_cm_obj(cm_name):
+    if cm_name == 'BuPu_YlOrRd':
+        return create_BuPu_YlOrRd_cm()
+    elif cm_name == 'PuBu_RdOrYl':
+        return create_PuBu_RdOrYl_cm()
+    else:
+        return create_linear_segmented_colormap(cm_name)
 #     cm_func = cms.get(cm_name, None)
 #     if cm_func is None:
 #         print('{} is not in the cms dic!'.format(cm_name))
@@ -94,8 +100,7 @@ def check_cm_mat(cm_mat):
 
 
 def create_cm(cm_name):
-    # cm = get_cm_obj(cm_name)
-    cm = create_linear_segmented_colormap(cm_name)
+    cm = get_cm_obj(cm_name)
     cm_mat = color_map_to_np_mat(cm)
     # check_cm_mat(cm_mat)
     save_colors_map(cm_mat, cm_name)

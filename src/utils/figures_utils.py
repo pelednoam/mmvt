@@ -10,6 +10,7 @@ from src.utils import utils
 from src.utils import color_maps_utils as cmu
 
 PICS_COMB_HORZ, PICS_COMB_VERT = range(2)
+MMVT_DIR = utils.get_link_dir(utils.get_links_dir(), 'mmvt')
 
 
 # @utils.tryit()
@@ -55,11 +56,16 @@ def plot_color_bar(data_max, data_min, colors_map, ax=None, fol='', do_save=True
     return cb
 
 
+def get_colormaps_names():
+    colorbar_files = glob.glob(op.join(MMVT_DIR, 'color_maps', '*.npy'))
+    return [utils.namebase(fname) for fname in colorbar_files]
+
+
 def find_color_map(color_map):
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
     if color_map_name not in plt.cm.cmap_d:
         color_map_name = color_map_name.replace('-', '_')
-        if color_map_name in cmu.cms:
+        if color_map_name in get_colormaps_names():
             color_map = cmu.get_cm_obj(color_map_name)
         else:
             raise Exception("Can't find colormap {}!".format(color_map_name))
