@@ -989,6 +989,7 @@ def init(addon):
     bpy.context.scene.save_selected_view = False
     bpy.context.scene.view_distance = 17.36
     bpy.context.scene.render.resolution_percentage = 100
+    bpy.context.scene.render.image_settings.file_format = 'JPEG'
     # bpy.context.scene.lighting = 1.0
     RenderingMakerPanel.queue = PriorityQueue()
     mu.make_dir(op.join(mu.get_user_fol(), 'logs'))
