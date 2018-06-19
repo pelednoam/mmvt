@@ -1293,7 +1293,8 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                         for evk in evoked:
                             stcs[cond_name] = apply_inverse(
                                 evk, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-                    stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
+                    else:
+                        stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 if save_stc and not op.isfile(stc_fname):
                     print('Saving the source estimate to {}.stc'.format(stc_fname))
                     stcs[cond_name].save(stc_fname)
@@ -2754,7 +2755,7 @@ def get_stc_hemi_template(stc_template):
 
 def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags={}, raw=None, epochs=None):
     stcs_conds, stcs_num = None, {}
-    if utils.should_run(args, 'calc_stc_per_condition'):
+    if utils.should_run(args, 'calc_stc'):
         stc_hemi_template = get_stc_hemi_template(args.stc_template)
         if conditions is None:
             conditions = ['all']
@@ -2767,7 +2768,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
         inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
         evo_fname = get_evo_fname(args.evo_fname)
         get_meg_files(subject, [inv_fname, evo_fname], args, conditions)
-        flags['calc_stc_per_condition'], stcs_conds, stcs_num = calc_stc_per_condition(
+        flags['calc_stc'], stcs_conds, stcs_num = calc_stc_per_condition(
             conditions, args.task, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc,
             args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
@@ -2986,6 +2987,7 @@ def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', o
     for em in extract_modes:
         min_max_output_fname = get_minmax_fname(min_max_output_template, task, atlas, em)
         min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase_with_ext(min_max_output_fname))
+        print('Saving {} labels minmax to {}'.format(em, min_max_mmvt_output_fname))
         if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
         template = get_labels_data_fname(labels_data_template, task, atlas, em, '{hemi}')

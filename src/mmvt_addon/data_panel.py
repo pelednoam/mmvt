@@ -810,7 +810,9 @@ class AddDataToBrain(bpy.types.Operator):
             subcorticals_obj = bpy.data.objects['Subcortical_structures']
             add_data_to_parent_obj(subcorticals_obj, subcorticals_sources, STAT_DIFF)
 
-        bpy.context.scene.meg_labels_extract_method = '-'.join(bpy.context.scene.meg_labels_data_files.split('_')[-2:])
+        #todo: why?
+        # bpy.context.scene.meg_labels_extract_method = '-'.join(bpy.context.scene.meg_labels_data_files.split('_')[-2:])
+        bpy.context.scene.meg_labels_extract_method = '_'.join(bpy.context.scene.meg_labels_data_files.split('_')[-2:])
         _addon().select_all_rois()
         _addon().init_meg_labels_coloring_type()
         mu.view_all_in_graph_editor()

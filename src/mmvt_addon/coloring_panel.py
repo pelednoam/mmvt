@@ -470,7 +470,11 @@ def meg_labels_coloring(override_current_mat=True):
     hemispheres = [hemi for hemi in HEMIS if not mu.get_hemi_obj(hemi).hide]
     user_fol = mu.get_user_fol()
     atlas, em = bpy.context.scene.atlas, bpy.context.scene.meg_labels_extract_method
-    labels_data_minimax = np.load(op.join(user_fol, 'meg', 'labels_data_{}_{}_minmax.npz'.format(atlas, em)))
+    labels_data_minimax_fname = op.join(user_fol, 'meg', 'labels_data_{}_{}_minmax.npz'.format(atlas, em))
+    if not op.isfile(labels_data_minimax_fname):
+        print('Can\'t find labels_data_minimax_fname! ({})'.format(labels_data_minimax_fname))
+        return
+    labels_data_minimax = np.load(labels_data_minimax_fname)
     meg_labels_min, meg_labels_max = labels_data_minimax['labels_diff_minmax'] \
         if bpy.context.scene.meg_labels_coloring_type == 'diff' else labels_data_minimax['labels_minmax']
     data_minmax = max(map(abs, [meg_labels_max, meg_labels_min]))

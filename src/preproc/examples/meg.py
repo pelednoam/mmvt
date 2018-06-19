@@ -15,7 +15,7 @@ MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 def read_epoches_and_calc_activity(subject, mri_subject):
     args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
-    args.function = ['calc_stc_per_condition', 'calc_labels_avg_per_condition', 'smooth_stc', 'save_activity_map']
+    args.function = ['calc_stc', 'calc_labels_avg_per_condition', 'smooth_stc', 'save_activity_map']
     args.pick_ori = 'normal'
     args.colors_map = 'jet'
     meg.run_on_subjects(args)
