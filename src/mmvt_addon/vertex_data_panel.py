@@ -55,6 +55,34 @@ def snap_ray():
                 print('snap ray hit {}'.format(obj.name))
     return None, None, None
 
+@mu.timeit
+def find_closest_vertices(pos, vertices_indices, obj_name, use_shape_keys=True):
+    obj = bpy.data.objects[obj_name]
+    co_find = pos * obj.matrix_world.inverted()
+    print('co_find: {}'.format(co_find))
+    mesh = obj.data
+    size = len(mesh.vertices)
+    kd = mathutils.kdtree.KDTree(size)
+
+    if use_shape_keys:
+        me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+        for i in vertices_indices:
+            try:
+                kd.insert(me.vertices[i].co, i)
+            except:
+                print('find_closest_vertices: exception in the use_shape_keys loop')
+                break
+        bpy.data.meshes.remove(me)
+    else:
+        for i, v in enumerate(mesh.vertices):
+            kd.insert(v.co, i)
+
+    kd.balance()
+    co, index, dist = kd.find_n(co_find, 1)[0]
+    print('closest vert {} {}'.format(index, co))
+    print('dist from {} to closest vert: {}'.format(co_find, dist))
+    return index, co
+
 
 # @mu.timeit
 def find_vertex_index_and_mesh_closest_to_cursor(cursor=None, hemis=None, use_shape_keys=False, objects_names=None):

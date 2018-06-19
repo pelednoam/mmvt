@@ -1812,10 +1812,11 @@ def rotate_view3d(rotation_in_quaternions):
     get_view3d_region().view_rotation = rotation_in_quaternions
 
 
-def rotate_view_to_vertice():
+def rotate_view_to_vertice(vert_ind=None, mesh=None):
     if _addon is None:
         return
-    vert_ind, mesh = _addon.appearance.get_closest_vertex_and_mesh_to_cursor()
+    if vert_ind is None or mesh is None:
+        vert_ind, mesh = _addon.appearance.get_closest_vertex_and_mesh_to_cursor()
     vert = bpy.data.objects[mesh].data.vertices[vert_ind]
     vert_normal = vert.normal
     rotate_view3d(vert_normal.to_track_quat('Z', 'Y'))
@@ -2176,6 +2177,16 @@ def read_labels_from_annots(atlas, hemi='both', labels_fol=''):
     return sorted(labels, key=lambda l: l.name)
 
 
+def read_label_from_annot(atlas, hemi='both', labels_fol=''):
+    if labels_fol == '':
+        labels_fol = get_atlas_labels_fol(atlas)
+    if labels_fol == '':
+        return []
+    for hemi in check_hemi(hemi):
+        hemi_annot_fname = op.join(labels_fol, '{}.{}.annot'.format(hemi, atlas))
+        if op.isfile(hemi_annot_fname):
+            labels = read_labels_from_annot(hemi_annot_fname)
+
 def get_atlas_labels_fol(atlas):
     subjects_labels_fol = op.join(get_subjects_dir(), get_user(), 'label')
     mmvt_labels_fol = op.join(get_user_fol(), 'labels')
@@ -2217,6 +2228,18 @@ def check_atlas_by_labels_names(labels_names):
         if set(labels_names).issubset(atlas_labels_names):
             return atlas
     return ''
+
+
+def read_label_vertices_from_annot(annot_fname, label_name):
+    annot, ctab, label_names = _read_annot(annot_fname)
+    label_ids = ctab[:, -1]
+    inv_label_name = get_label_hemi_invariant_name(label_name)
+    vertices = None
+    for label_id, label_name in zip(label_ids, label_names):
+        if inv_label_name == label_name.decode():
+            vertices = np.where(annot == label_id)[0]
+            break
+    return vertices
 
 
 @functools.lru_cache(maxsize=None)
@@ -2602,6 +2625,14 @@ def get_remote_subject_info_args():
 def get_annot_files():
     subjects_dir = get_link_dir(get_links_dir(), 'subjects')
     return [namebase(fname)[3:] for fname in glob.glob(op.join(subjects_dir, get_user(), 'label', 'rh.*.annot'))]
+
+
+def get_annot_fname(hemi, atlas):
+    subjects_dir = get_link_dir(get_links_dir(), 'subjects')
+    annot_fname = op.join(subjects_dir, get_user(), 'label', '{}.{}.annot'.format(hemi, atlas))
+    if not op.isfile(annot_fname):
+        annot_fname = op.join(get_user_fol(), 'labels', '{}.{}.annot'.format(hemi, atlas))
+    return annot_fname
 
 
 def is_freesurfer_exist():

@@ -141,7 +141,7 @@ def _electrodes_update():
             print_electrode_loc(loc)
             if bpy.context.scene.color_lables:
                 plot_labels_probs(loc)
-            rotate_brain_via_lookup(loc)
+            # rotate_brain_via_lookup(current_electrode, loc)
     else:
         pass
         # print('lookup table is None!')
@@ -401,7 +401,7 @@ def set_show_only_lead(val):
 #         show_hide_hemi_electrodes('rh', bpy.context.scene.show_rh_electrodes)
 #         updade_lead_hemis()
 
-def rotate_brain_via_lookup(loc):
+def rotate_brain_via_lookup(elc_name, loc):
     cortical_probs_max, subcortical_probs_max = 0, 0
     cortical_probs_rois = \
         [(p, r) for p, r in zip(loc['cortical_probs'], loc['cortical_rois']) if 'white' not in r.lower()]
@@ -421,7 +421,20 @@ def rotate_brain_via_lookup(loc):
         max_roi_is_cortical = False
     print('max_roi = {}'.format(max_roi))
     if max_roi_is_cortical:
-        pass
+        atlas = bpy.context.scene.electrodes_labeling_files.split('_')[1]
+        hemi = mu.get_obj_hemi(max_roi)
+        annot_fname = mu.get_annot_fname(hemi, atlas)
+        max_roi_vertices_indices = mu.read_label_vertices_from_annot(annot_fname, max_roi)
+        print('{} vertices num: {}'.format(max_roi, len(max_roi_vertices_indices)))
+        if max_roi_vertices_indices is None:
+            print('Can\'t find {} vertices in {}!'.format(max_roi, annot_fname))
+            return
+        elc_pos = bpy.data.objects[elc_name].location
+        mesh = 'inflated_{}'.format(hemi)
+        vert_ind, vert_pos = _addon().vertex_data.find_closest_vertices(
+            elc_pos, max_roi_vertices_indices, mesh, False)
+        vert_pos *= 0.1
+        mu.rotate_view_to_vertice(vert_ind, mesh)
 
 
 def plot_labels_probs(elc):
