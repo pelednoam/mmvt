@@ -596,7 +596,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             bl_idname = ShowHideLH.bl_idname if hemi == 'Left' else ShowHideRH.bl_idname
             row.operator(bl_idname, text=show_text, icon=show_icon)
 
-        if bpy.data.objects.get('seghead', None) is not None:
+        if bpy.data.objects.get('seghead', None) is not None and bpy.context.scene.show_hide_settings:
             action = 'show' if bpy.context.scene.objects_show_hide_head else 'hide'
             show_text = '{} outer skin'.format('Hide' if bpy.context.scene.objects_show_hide_head else 'Show')
             show_icon = show_hide_icon[action]
@@ -618,10 +618,12 @@ class ShowHideObjectsPanel(bpy.types.Panel):
                     show_icon = show_hide_icon[action]
                     bl_idname = ShowHideLHSubs.bl_idname if hemi == 'Left' else ShowHideRHSubs.bl_idname
                     row.operator(bl_idname, text=show_text, icon=show_icon)
-            layout.prop(context.scene, 'hide_half_subcorticals', text='{} only one side'.format(
-                'Hide' if sub_vis else 'Show'))
-        action = 'Show' if context.scene.show_hide_cerebellum else 'Hide'
-        layout.prop(context.scene, 'show_hide_cerebellum', text='{} Cerebellum'.format(action))
+            if context.scene.show_hide_settings:
+                layout.prop(context.scene, 'hide_half_subcorticals', text='{} only one side'.format(
+                    'Hide' if sub_vis else 'Show'))
+        if context.scene.show_hide_settings:
+            action = 'Show' if context.scene.show_hide_cerebellum else 'Hide'
+            layout.prop(context.scene, 'show_hide_cerebellum', text='{} Cerebellum'.format(action))
 
         # if bpy.data.objects.get('Cerebellum'):
         #     sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
@@ -638,13 +640,14 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         # layout.operator(MaxMinBrain.bl_idname,
         #                 text="{} Brain".format('Maximize' if bpy.context.scene.brain_max_min else 'Minimize'),
         #                 icon='TRIA_UP' if bpy.context.scene.brain_max_min else 'TRIA_DOWN')
-        row = layout.row(align=True)
-        row.prop(context.scene, 'rotate_brain')
-        row.prop(context.scene, 'rotate_and_render')
-        row = layout.row(align=True)
-        row.prop(context.scene, 'rotate_dx')
-        row.prop(context.scene, 'rotate_dy')
-        row.prop(context.scene, 'rotate_dz')
+        if context.scene.show_hide_settings:
+            row = layout.row(align=True)
+            row.prop(context.scene, 'rotate_brain')
+            row.prop(context.scene, 'rotate_and_render')
+            row = layout.row(align=True)
+            row.prop(context.scene, 'rotate_dx')
+            row.prop(context.scene, 'rotate_dy')
+            row.prop(context.scene, 'rotate_dz')
         # views_options = ['Camera', 'Ortho']
         # next_view = views_options[int(bpy.context.scene.in_camera_view)]
         # icons = ['SCENE', 'MANIPUL']
@@ -652,7 +655,9 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         # row = layout.row(align=True)
         # layout.operator(FlipCameraView.bl_idname, text='Change to {} view'.format(next_view), icon=next_icon)
         layout.operator(CenterView.bl_idname, text='Center View', icon='FREEZE')
-        layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
+        if context.scene.show_hide_settings:
+            layout.prop(context.scene, 'show_only_render', text="Show only rendered objects")
+        layout.prop(context.scene, 'show_hide_settings', text='More settings')
         # layout.label(text=','.join(['{:.3f}'.format(x) for x in mu.get_view3d_region().view_rotation]))
 
 
@@ -678,6 +683,7 @@ bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='
 bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.render_split = bpy.props.BoolProperty()
 bpy.types.Scene.hide_half_subcorticals = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_hide_settings = bpy.props.BoolProperty(default=False)
 
 bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0, step=1, name='x')#, min=-0.1, max=0.1, )
 bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0, step=1, name='y')#, min=-0.1, max=0.1, )
@@ -715,6 +721,7 @@ def init(addon):
     bpy.context.scene.rotate_dz = 0
     bpy.context.scene.rotate_dx = 0
     bpy.context.scene.rotate_dy = 0
+    bpy.context.scene.show_hide_settings = False
     # show_hide_hemi(False, 'rh')
     # show_hide_hemi(False, 'lh')
     # hide_obj(bpy.data.objects[obj_func_name], val)

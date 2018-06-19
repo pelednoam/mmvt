@@ -761,6 +761,10 @@ class fMRIPanel(bpy.types.Panel):
     clusters_labels_file_names = []
     clusters_labels_files = []
 
+    @classmethod
+    def poll(cls, context):
+        return True # Hide when False
+
     def draw(self, context):
         if fMRIPanel.init:
             fMRI_draw(self, context)

@@ -94,11 +94,10 @@ import scripts_panel
 importlib.reload(scripts_panel)
 # import three_d_view_panel
 # importlib.reload(three_d_view_panel)
-import moshes_panel
-importlib.reload(moshes_panel)
+# import moshes_panel
+# importlib.reload(moshes_panel)
 # import logo_panel
 # importlib.reload(logo_panel)
-
 
 
 print("mmvt addon started!")

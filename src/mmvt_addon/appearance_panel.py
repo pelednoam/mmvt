@@ -456,41 +456,45 @@ def set_layers_depth_trans(material_name='Activity_map_mat', depth=None):
 
 def appearance_draw(self, context):
     layout = self.layout
-    layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
+    if bpy.context.scene.show_appearance_settings:
+        layout.prop(context.scene, 'appearance_show_rois_activity', expand=True)
+        layout.prop(context.scene, "filter_view_type", expand=True)
     layout.prop(context.scene, "surface_type", expand=True)
     # if 'Key' in bpy.data.shape_keys and is_inflated() and is_activity():
     #     layout.prop(context.scene, 'inflating')
+    row = layout.split(percentage=0.5, align=True)
+    c = row.split(percentage=0.95, align=True)
     if 'Key' in bpy.data.shape_keys and is_activity():
-        layout.prop(context.scene, 'inflating')
+        c.prop(context.scene, 'inflating')
     # if bpy.context.scene.surface_type == 'pial':
-    layout.prop(context.scene, 'hemis_distance', text='hemis dist')
+    row.prop(context.scene, 'hemis_distance', text='hemis dist')
     # else:
     #     if bpy.data.objects.get('Cortex-inflated-rh') and bpy.data.objects.get('Cortex-inflated-lh'):
     #         layout.prop(context.scene, 'hemis_inf_distance', text='hemis dist')
     # layout.operator(SelectionListener.bl_idname, text="", icon='PREV_KEYFRAME')
+    row = layout.row(align=True)
     if bpy.data.objects.get(_addon().electrodes_panel_parent) and is_pial():
-        show_hide_icon(layout, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
+        show_hide_icon(row, ShowHideElectrodes.bl_idname, bpy.context.scene.show_hide_electrodes, 'Electrodes')
     if bpy.data.objects.get('MEG_sensors') and is_pial():
-        show_hide_icon(layout, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
+        show_hide_icon(row, ShowHideMEGSensors.bl_idname, bpy.context.scene.show_hide_meg_sensors, 'MEG sensors')
     if bpy.data.objects.get('EEG_sensors') and is_pial():
-        show_hide_icon(layout, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
+        show_hide_icon(row, ShowHideEEG.bl_idname, bpy.context.scene.show_hide_eeg, 'EEG sensors')
     if bpy.data.objects.get(_addon().get_connections_parent_name()):
-        show_hide_icon(layout, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
+        show_hide_icon(row, ShowHideConnections.bl_idname, bpy.context.scene.show_hide_connections, 'Connections')
     # if is_inflated():
-    if bpy.context.scene.hemis_distance == 0 and bpy.data.objects['inflated_lh'].location[0] == 0:
-        layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
     # if bpy.context.scene.cursor_is_snapped:
     #     layout.operator(
     #         SnapCursor.bl_idname, text='Release Cursor from Brain', icon='UNPINNED')
-    layout.prop(context.scene, 'show_appearance_settings', text='Show settings')
     if bpy.context.scene.show_appearance_settings:
+        if bpy.context.scene.hemis_distance == 0 and bpy.data.objects['inflated_lh'].location[0] == 0:
+            layout.prop(context.scene, 'cursor_is_snapped', text='Snap cursor to cortex')
         layout.prop(context.scene, 'panels_background_color', text='Background')
-        layout.prop(context.scene, "filter_view_type", expand=True)
+    layout.prop(context.scene, 'show_appearance_settings', text='More settings')
 
 
 def show_hide_icon(layout, bl_idname, show_hide_var, var_name):
     vis = not show_hide_var
-    show_text = '{} {}'.format('Show' if vis else 'Hide', var_name)
+    show_text = '{} {}'.format('' if vis else '', var_name)
     icon = mu.show_hide_icon['show' if vis else 'hide']
     layout.operator(bl_idname, text=show_text, icon=icon)
 
