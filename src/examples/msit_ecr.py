@@ -112,7 +112,7 @@ def meg_preproc(args):
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         args.subject = subject
         for task in args.tasks:
-            args = meg.read_cmd_args(dict(
+            meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
                 # meg_dir=args.meg_dir,
@@ -147,7 +147,7 @@ def meg_preproc(args):
                 overwrite_labels_data=True,
                 n_jobs=args.n_jobs
             ))
-            meg.call_main(args)
+            meg.call_main(meg_args)
 
             task = task.lower()
             meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
