@@ -9,7 +9,7 @@ from src.utils import utils
 from src.utils import args_utils as au
 
 SERVER = '127.0.0.1'  # '172.17.146.219' # socket.gethostbyname(socket.gethostname())
-PORT = 59124
+PORT = 59154
 MULTICAST_GROUP = '127.0.0.1' # '239.255.43.21'
 
 def stdout_print(str):
