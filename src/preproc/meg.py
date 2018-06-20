@@ -3998,7 +3998,7 @@ def read_cmd_args(argv=None):
     if args.n_jobs == -1:
         args.n_jobs = utils.get_n_jobs(args.n_jobs)
     if args.function == 'rest_functions':
-        args.function = 'calc_epochs,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,' + \
+        args.function = 'calc_epochs,make_forward_solution,calc_inverse_operator,calc_stc,' + \
                         'calc_labels_avg_per_condition'
     # print(args)
     return args

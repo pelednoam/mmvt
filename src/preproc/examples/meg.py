@@ -25,7 +25,7 @@ def calc_single_trial_labels_msit(subject, mri_subject):
     args = meg.read_cmd_args(['-s', subject, '-m', mri_subject])
     args.task = 'MSIT'
     args.atlas = 'laus250'
-    args.function = 'calc_stc_per_condition,calc_single_trial_labels_per_condition'
+    args.function = 'calc_stc,calc_single_trial_labels_per_condition'
     args.t_tmin = -0.5
     args.t_tmax = 2
     args.single_trial_stc = True
@@ -77,7 +77,7 @@ def calc_msit(args):
         mri_subject=args.mri_subject,
         task='MSIT',
         # function=args.real_function,
-        function='calc_epochs,calc_evokes,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+        function='calc_epochs,calc_evokes,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
         data_per_task=True,
         atlas=args.atlas,
         contrast='interference',
@@ -180,7 +180,7 @@ def calc_subcorticals(subject, mri_subject):
 
 def calc_rest(args):
     # '-s hc029 -a laus125 -t rest -f calc_evoked,make_forward_solution,calc_inverse_operator --reject 0 --remove_power_line_noise 0 --windows_length 1000 --windows_shift 500 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"''
-    # '-s hc029 -a laus125 -t rest -f calc_stc_per_condition,calc_labels_avg_per_condition --single_trial_stc 1 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"'
+    # '-s hc029 -a laus125 -t rest -f calc_stc,calc_labels_avg_per_condition --single_trial_stc 1 --remote_subject_dir "/autofs/space/lilli_001/users/DARPA-Recons/hc029"'
     # '-s subject-name -a atlas-name -t rest -f rest_functions' --l_freq 8 --h_freq 13 --windows_length 500 --windows_shift 100
     args = meg.read_cmd_args(dict(
         subject=args.subject,

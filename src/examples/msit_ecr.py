@@ -119,7 +119,7 @@ def meg_preproc(args):
             get_task_defaults=False,
             fname_format='{}_{}_Onset'.format('{subject}', task),
             empty_fname=empty_fnames[task],
-            function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc_per_condition,calc_labels_avg_per_condition,calc_labels_min_max',
+            function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
             # function='calc_epochs',
             # function='calc_labels_connectivity',
             conditions=task.lower(),
