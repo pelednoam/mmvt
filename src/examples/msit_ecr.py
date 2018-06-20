@@ -102,57 +102,56 @@ def meg_preproc(args):
     atlas, inv_method, em = 'aparc.DKTatlas40', 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-    empty_fnames, cors, days = get_empty_fnames(args.subject[0], args.tasks, args)
     prepare_files(args)
     times = (-2, 4)
 
-    for subject in args.subject:
-        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
-            anatomy_preproc(args, subject)
+    subjects = args.subject
+    for subject in subjects:
+        # if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
+        anatomy_preproc(args, subject)
+        empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+        args.subject = subject
+        for task in args.tasks:
+            args = meg.read_cmd_args(dict(
+                subject=args.subject, mri_subject=args.subject,
+                task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
+                # meg_dir=args.meg_dir,
+                remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
+                get_task_defaults=False,
+                fname_format='{}_{}_Onset'.format('{subject}', task),
+                empty_fname=empty_fnames[task],
+                function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
+                # function='calc_epochs',
+                # function='calc_labels_connectivity',
+                conditions=task.lower(),
+                cor_fname=cors[task].format(subject=subject),
+                average_per_event=False,
+                data_per_task=True,
+                ica_overwrite_raw=False,
+                normalize_data=False,
+                t_min=times[0], t_max=times[1],
+                read_events_from_file=False, stim_channels='STI001',
+                use_empty_room_for_noise_cov=True,
+                calc_source_band_induced_power=False,
+                calc_inducde_power_per_label=False,
+                bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
+                con_method='coh',
+                con_mode='cwt_morlet',
+                overwrite_connectivity=False,
+                read_only_from_annot=False,
+                # pick_ori='normal',
+                # overwrite_epochs=True,
+                # overwrite_evoked=True,
+                # overwrite_inv=True,
+                overwrite_stc=True,
+                overwrite_labels_data=True,
+                n_jobs=args.n_jobs
+            ))
+            meg.call_main(args)
 
-    for task in args.tasks:
-        args = meg.read_cmd_args(dict(
-            subject=args.subject, mri_subject=args.subject,
-            task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
-            # meg_dir=args.meg_dir,
-            remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
-            get_task_defaults=False,
-            fname_format='{}_{}_Onset'.format('{subject}', task),
-            empty_fname=empty_fnames[task],
-            function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
-            # function='calc_epochs',
-            # function='calc_labels_connectivity',
-            conditions=task.lower(),
-            cor_fname=cors[task].format(subject=subject),
-            average_per_event=False,
-            data_per_task=True,
-            ica_overwrite_raw=False,
-            normalize_data=False,
-            t_min=times[0], t_max=times[1],
-            read_events_from_file=False, stim_channels='STI001',
-            use_empty_room_for_noise_cov=True,
-            calc_source_band_induced_power=False,
-            calc_inducde_power_per_label=False,
-            bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
-            con_method='coh',
-            con_mode='cwt_morlet',
-            overwrite_connectivity=False,
-            read_only_from_annot=False,
-            # pick_ori='normal',
-            # overwrite_epochs=True,
-            # overwrite_evoked=True,
-            # overwrite_inv=True,
-            overwrite_stc=True,
-            overwrite_labels_data=True,
-            n_jobs=args.n_jobs
-        ))
-        meg.call_main(args)
-    #
-    for subject in args.subject:
-        for task in tasks:
             task = task.lower()
-            # meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            # meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
+            meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
+            meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
 
 
 def post_analysis(args):
