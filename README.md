@@ -1,4 +1,4 @@
-<img src=https://user-images.githubusercontent.com/1643819/36446044-0ba7e0b4-164e-11e8-8ff8-f2963bcf78be.png align="right"/>
+<img src=https://user-images.githubusercontent.com/35853195/41723319-c8514bb2-7538-11e8-8e1b-44e3ebca04d6.png align="right"/>
 
 
 ## Multi-Modality Visualization ToolD
