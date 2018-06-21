@@ -1035,9 +1035,9 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     if coloring_layer == 'Col':
         set_activity_values(cur_obj, values)
     valid_verts = find_valid_verts(values, threshold, use_abs, bigger_or_equall)
-    print('activity_map_obj_coloring: Num of valid_verts: {}'.format(len(valid_verts)))
+    # print('activity_map_obj_coloring: Num of valid_verts above {}: {}'.format(threshold, len(valid_verts)))
     if len(valid_verts) == 0 and check_valid_verts:
-        # print('No vertices values are above the threhold ({} to {})'.format(np.min(values), np.max(values)))
+        print('No vertices values are above the threhold {} ({} to {})'.format(threshold, np.min(values), np.max(values)))
         return
     colors_picked_from_cm = False
     # cm = _addon().get_cm()
