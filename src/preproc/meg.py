@@ -1315,11 +1315,11 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                     tmin=stcs[cond_name].tmin, tstep=stcs[cond_name].tstep, subject=stcs[cond_name].subject,
                     verbose=stcs[cond_name].verbose)
             if save_stc and (not op.isfile(stc_fname) or overwrite_stc):
+                mmvt_fol = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, modality))
                 print('Saving the source estimate to {}.stc and {}.src'.format(
                     stc_fname, op.join(mmvt_fol, utils.namebase(stc_fname))))
                 print('max: {}, min: {}'.format(np.max(stcs[cond_name].data), np.min(stcs[cond_name].data)))
                 stcs[cond_name].save(stc_fname)
-                mmvt_fol = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, modality))
                 stcs[cond_name].save(op.join(mmvt_fol, utils.namebase(stc_fname)))
             flag = True
         except:
