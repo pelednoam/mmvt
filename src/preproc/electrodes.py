@@ -522,19 +522,19 @@ def find_groups_hemi(electrodes, transformed_positions, bipolar):
     return groups_hemi
 
 
-def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
-    sorted_groups = {}
-    for hemi in ['rh', 'lh']:
-        # groups_pos = sorted([(pos[0], group) for (group, elc), pos in zip(
-        #     first_electrodes.items(), transformed_first_pos) if groups_hemi[utils.elec_group(elc, bipolar)] == hemi])
-        groups_pos = []
-        for (group, elc), pos in zip(first_electrodes.items(), transformed_first_pos):
-            group_hemi = groups_hemi[utils.elec_group(elc, bipolar)]
-            if group_hemi == hemi:
-                groups_pos.append((pos[0], group))
-        groups_pos = sorted(groups_pos)
-        sorted_groups[hemi] = [group_pos[1] for group_pos in groups_pos]
-    return sorted_groups
+# def sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar):
+#     sorted_groups = {}
+#     for hemi in ['rh', 'lh']:
+#         # groups_pos = sorted([(pos[0], group) for (group, elc), pos in zip(
+#         #     first_electrodes.items(), transformed_first_pos) if groups_hemi[utils.elec_group(elc, bipolar)] == hemi])
+#         groups_pos = []
+#         for (group, elc), pos in zip(first_electrodes.items(), transformed_first_pos):
+#             group_hemi = groups_hemi[utils.elec_group(elc, bipolar)]
+#             if group_hemi == hemi:
+#                 groups_pos.append((pos[0], group))
+#         groups_pos = sorted(groups_pos)
+#         sorted_groups[hemi] = [group_pos[1] for group_pos in groups_pos]
+#     return sorted_groups
 
 
 @pu.tryit_ret_bool
@@ -558,6 +558,8 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
         return True
 
     in_dural = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
+    if in_dural is None:
+        return False
     hemis = {elc_name:'rh' if in_dural['rh'][ind] else 'lh' if in_dural['lh'][ind] else 'un' for ind, elc_name in
              enumerate(electrodes)}
     for elc_name in electrodes:
@@ -580,8 +582,12 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
 
 
 def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
-    from scipy.spatial.distance import cdist
 
+    if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.dural')):
+        print('check_if_electrodes_inside_the_dura: No dura surface!')
+        return None
+
+    from scipy.spatial.distance import cdist
     in_dural = {}
     dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
     if dural_verts is None:
@@ -609,6 +615,8 @@ def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
         os.remove(output_fname)
     electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
     in_dural_hemis = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
+    if in_dural_hemis is None:
+        return False
     num_inside_dura = defaultdict(int)
     electrodes_num = defaultdict(int)
     groups_inside = defaultdict(dict)
@@ -634,43 +642,43 @@ def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
     return op.isfile(output_fname)
 
 
-@pu.tryit_ret_bool
-def sort_electrodes_groups(subject, bipolar, all_in_hemi='', ask_for_hemis=False, do_plot=True):
-    from sklearn.decomposition import PCA
-    electrodes, pos = read_electrodes_file(subject, bipolar)
-    first_electrodes, first_pos, elc_pos_groups = find_first_electrode_per_group(electrodes, pos, bipolar)
-    if all_in_hemi in ['rh', 'lh']:
-        sorted_groups = {}
-        sorted_groups[all_in_hemi] = list(elc_pos_groups.keys())
-        sorted_groups[utils.other_hemi(all_in_hemi)] = []
-    else:
-        pca = PCA(n_components=2)
-        pca.fit(first_pos)
-        if pca.explained_variance_.shape[0] == 1 or ask_for_hemis:
-            # Can't find hemis via PAC, just ask the user
-            sorted_groups = dict(rh=[], lh=[])
-            print("Please set the hemi (r/l) for the following electrodes' groups:")
-            for group in elc_pos_groups.keys():
-                inp = input('{}: '.format(group))
-                while inp not in ['r', 'l']:
-                    print('Wrong hemi value!')
-                    inp = input('{}: '.format(group))
-                hemi = '{}h'.format(inp)
-                sorted_groups[hemi].append(group)
-        else:
-            transformed_pos = pca.transform(pos)
-            # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
-            transformed_first_pos = pca.transform(first_pos)
-            groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
-            sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
-    print(sorted_groups)
-    utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
-    if do_plot:
-        # utils.plot_3d_scatter(pos, names=electrodes.tolist(), labels=first_electrodes.values())
-        # electrodes_3d_scatter_plot(pos, first_pos)
-        first_electrodes_names = list(first_electrodes.values())
-        utils.plot_2d_scatter(transformed_first_pos, names=first_electrodes_names)
-        # utils.plot_2d_scatter(transformed_pos, names=electrodes.tolist(), labels=first_electrodes_names)
+# @pu.tryit_ret_bool
+# def sort_electrodes_groups(subject, bipolar, all_in_hemi='', ask_for_hemis=False, do_plot=True):
+#     from sklearn.decomposition import PCA
+#     electrodes, pos = read_electrodes_file(subject, bipolar)
+#     first_electrodes, first_pos, elc_pos_groups = find_first_electrode_per_group(electrodes, pos, bipolar)
+#     if all_in_hemi in ['rh', 'lh']:
+#         sorted_groups = {}
+#         sorted_groups[all_in_hemi] = list(elc_pos_groups.keys())
+#         sorted_groups[utils.other_hemi(all_in_hemi)] = []
+#     else:
+#         pca = PCA(n_components=2)
+#         pca.fit(first_pos)
+#         if pca.explained_variance_.shape[0] == 1 or ask_for_hemis:
+#             # Can't find hemis via PAC, just ask the user
+#             sorted_groups = dict(rh=[], lh=[])
+#             print("Please set the hemi (r/l) for the following electrodes' groups:")
+#             for group in elc_pos_groups.keys():
+#                 inp = input('{}: '.format(group))
+#                 while inp not in ['r', 'l']:
+#                     print('Wrong hemi value!')
+#                     inp = input('{}: '.format(group))
+#                 hemi = '{}h'.format(inp)
+#                 sorted_groups[hemi].append(group)
+#         else:
+#             transformed_pos = pca.transform(pos)
+#             # transformed_pos_3d = PCA(n_components=3).fit(first_pos).transform(pos)
+#             transformed_first_pos = pca.transform(first_pos)
+#             groups_hemi = find_groups_hemi(electrodes, transformed_pos, bipolar)
+#             sorted_groups = sort_groups(first_electrodes, transformed_first_pos, groups_hemi, bipolar)
+#     print(sorted_groups)
+#     utils.save(sorted_groups, op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl'))
+#     if do_plot:
+#         # utils.plot_3d_scatter(pos, names=electrodes.tolist(), labels=first_electrodes.values())
+#         # electrodes_3d_scatter_plot(pos, first_pos)
+#         first_electrodes_names = list(first_electrodes.values())
+#         utils.plot_2d_scatter(transformed_first_pos, names=first_electrodes_names)
+#         # utils.plot_2d_scatter(transformed_pos, names=electrodes.tolist(), labels=first_electrodes_names)
 
 
 def read_edf(edf_fname, from_t, to_t):

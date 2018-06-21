@@ -141,7 +141,8 @@ def _electrodes_update():
             print_electrode_loc(loc)
             if bpy.context.scene.color_lables:
                 plot_labels_probs(loc)
-            rotate_brain_via_lookup(current_electrode, loc)
+            if bpy.context.scene.electrode_rotate:
+                rotate_brain_via_lookup(current_electrode, loc)
     else:
         pass
         # print('lookup table is None!')
@@ -215,12 +216,15 @@ def electode_was_manually_selected(selected_electrode_name):
 def color_electrodes(current_electrode, prev_electrode):
     # bpy.context.scene.bipolar = '-' in current_electrode
     current_electrode_group = mu.elec_group(current_electrode, bpy.context.scene.bipolar)
-    current_electrode_hemi = ElecsPanel.groups_hemi[current_electrode_group]
-    prev_electrode_group = mu.elec_group(prev_electrode, bpy.context.scene.bipolar)
-    prev_electrode_hemi = ElecsPanel.groups_hemi[prev_electrode_group]
-    if current_electrode_hemi != prev_electrode_hemi:
-        print('flip hemis! clear {}'.format(prev_electrode_hemi))
-        _addon().clear_cortex([prev_electrode_hemi])
+    if ElecsPanel.groups_hemi:
+        current_electrode_hemi = ElecsPanel.groups_hemi[current_electrode_group]
+        prev_electrode_group = mu.elec_group(prev_electrode, bpy.context.scene.bipolar)
+        prev_electrode_hemi = ElecsPanel.groups_hemi[prev_electrode_group]
+        if current_electrode_hemi != prev_electrode_hemi:
+            print('flip hemis! clear {}'.format(prev_electrode_hemi))
+            _addon().clear_cortex([prev_electrode_hemi])
+    else:
+        _addon().clear_cortex()
     color = bpy.context.scene.electrodes_color
     _addon().object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
     if prev_electrode != current_electrode:
@@ -541,48 +545,51 @@ def elecs_draw(self, context):
         for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
             mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
 
-    layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
-    # row = layout.row(align=True)
-    if ElecsPanel.electrodes_labeling_file_exist:
-        layout.prop(context.scene, 'color_lables', text="Color probabilities")
-        # row.prop(context.scene, 'electrodes_label_contours', text="Color contours")
-    # layout.label(text='What to color: ')
-    # if bpy.context.scene.color_lables:
-    #     layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
-    row = layout.row(align=True)
-    row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
-    row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
-    if ElecsPanel.electrodes_labeling_file_exist:
-        layout.prop(context.scene, "electrode_rotate", text="Rotate view on click")
+    if bpy.context.scene.electrodes_more_settings:
+        layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
+        # row = layout.row(align=True)
+        if ElecsPanel.electrodes_labeling_file_exist:
+            layout.prop(context.scene, 'color_lables', text="Color probabilities")
+            # row.prop(context.scene, 'electrodes_label_contours', text="Color contours")
+        # layout.label(text='What to color: ')
+        # if bpy.context.scene.color_lables:
+        #     layout.prop(context.scene, 'electrodes_what_to_color', text='What to color', expand=True)
+        if ElecsPanel.groups_hemi:
+            row = layout.row(align=True)
+            row.prop(context.scene, "show_lh_electrodes", text="Left hemi")
+            row.prop(context.scene, "show_rh_electrodes", text="Right hemi")
+        if ElecsPanel.electrodes_labeling_file_exist:
+            layout.prop(context.scene, "electrode_rotate", text="Rotate view on click")
 
-    # layout.prop(context.scene, "elc_size", text="")
-    # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
-    # row = layout.row(align=True)
-    layout.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
-    # row.prop(context.scene, "electrodes_leads_color", text='')
+        # layout.prop(context.scene, "elc_size", text="")
+        # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
+        # row = layout.row(align=True)
+        layout.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
+        # row.prop(context.scene, "electrodes_leads_color", text='')
 
-    if ElecsPanel.ela_code_exist and ElecsPanel.atlases_exist:
-        layout.prop(context.scene, "show_ela", text="Show ELA options")
-        if bpy.context.scene.show_ela:
-            col = layout.box().column()
-            col.prop(context.scene, "ela_bipolar", text="Bipolar")
-            col.prop(context.scene, "ela_atlas", text='')
-            col.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
+        if ElecsPanel.ela_code_exist and ElecsPanel.atlases_exist:
+            layout.prop(context.scene, "show_ela", text="Show ELA options")
+            if bpy.context.scene.show_ela:
+                col = layout.box().column()
+                col.prop(context.scene, "ela_bipolar", text="Bipolar")
+                col.prop(context.scene, "ela_atlas", text='')
+                col.operator(RunELA.bl_idname, text="Calc electrodes probs", icon='TEXTURE')
 
-    row = layout.row(align=True)
-    if not bpy.context.scene.listen_to_keyboard:
-        layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
-    else:
-        layout.operator(KeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
-        box = layout.box()
-        col = box.column()
-        mu.add_box_line(col, 'Left', 'Previous electrodes')
-        mu.add_box_line(col, 'Right', 'Next electrodes')
-        mu.add_box_line(col, 'Down', 'Previous lead')
-        mu.add_box_line(col, 'Up', 'Next lead')
-    row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
-    row.prop(context.scene, 'electrodes_color', text='')
+        row = layout.row(align=True)
+        if not bpy.context.scene.listen_to_keyboard:
+            layout.operator(KeyboardListener.bl_idname, text="Listen to keyboard", icon='COLOR_GREEN')
+        else:
+            layout.operator(KeyboardListener.bl_idname, text="Stop listen to keyboard", icon='COLOR_RED')
+            box = layout.box()
+            col = box.column()
+            mu.add_box_line(col, 'Left', 'Previous electrodes')
+            mu.add_box_line(col, 'Right', 'Next electrodes')
+            mu.add_box_line(col, 'Down', 'Previous lead')
+            mu.add_box_line(col, 'Up', 'Next lead')
+        row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
+        row.prop(context.scene, 'electrodes_color', text='')
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
+    layout.prop(context.scene, 'electrodes_more_settings', text='More settings')
 
     # Color picker:
     # row = layout.row(align=True)
@@ -778,6 +785,7 @@ bpy.types.Scene.show_ela = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_bipolar = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
 
 
 class ElecsPanel(bpy.types.Panel):
@@ -842,6 +850,7 @@ def init(addon, do_register=True):
     bpy.context.scene.show_rh_electrodes = True
     bpy.context.scene.show_ela = False
     bpy.context.scene.electrode_rotate = False
+    bpy.context.scene.electrodes_more_settings = False
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")
@@ -866,7 +875,7 @@ def init_sorted_groups():
         if op.isfile(op.join(mu.get_user_fol(), 'sorted_groups.pkl')):
             shutil.move(op.join(mu.get_user_fol(), 'sorted_groups.pkl'), sorted_groups_fname)
         else:
-            print("Can't register electrodes panel, no sorted groups file")
+            print("electrodes_panel: no sorted groups file")
             # return
     if op.isfile(sorted_groups_fname):
         ElecsPanel.sorted_groups = mu.load(sorted_groups_fname)
@@ -875,7 +884,8 @@ def init_sorted_groups():
 def init_leads_list(leads=None):
     # ElecsPanel.leads = sorted(list(set([mu.elec_group(elc, bipolar) for elc in ElecsPanel.electrodes])))
     if leads is None:
-        ElecsPanel.leads = ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
+        ElecsPanel.leads = list(ElecsPanel.groups_electrodes.keys()) # ElecsPanel.sorted_groups['lh'] + ElecsPanel.sorted_groups['rh']
+        print('init_leads_list: {}'.format(ElecsPanel.leads))
     else:
         ElecsPanel.leads = leads
     leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
