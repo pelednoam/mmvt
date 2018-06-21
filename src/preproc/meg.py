@@ -2342,9 +2342,12 @@ def calc_labels_avg_per_condition(
         extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
         factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, read_only_from_annot=True, task='',
         overwrite=False, do_plot=False, n_jobs=1):
+
     def _check_all_files_exist():
         return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
-            get_labels_data_fname(labels_data_template, inverse_method, task, atlas, em, hemi)))) for em in extract_modes])
+            get_labels_data_fname(labels_data_template, im, task, atlas, em, hemi))))
+            for em, im in product(extract_modes, inverse_method)])
+
     if labels_data_template == '':
         labels_data_template = LBL
     if _check_all_files_exist() and not overwrite:
@@ -2428,14 +2431,15 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
                      labels_data_template, task='', factor=1, positive=False, moving_average_win_size=0):
     if not isinstance(labels_names[0], str):
         labels_names = [utils.to_str(l.name) for l in labels_names]
-    for em in extract_modes:
+    for em, im in product(extract_modes, inverse_method):
         labels_data[em] = labels_data[em].squeeze()
         if np.max(labels_data[em]) < 1e-4:
             labels_data[em] *= np.power(10, factor)
         if positive or moving_average_win_size > 0:
-            labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
+            labels_data[em] = utils.make_evoked_smooth_and_positive(
+                labels_data[em], conditions, positive, moving_average_win_size)
         labels_output_fname = get_labels_data_fname(
-            labels_data_template, inverse_method, inverse_method, task, atlas, em, hemi)
+            labels_data_template, im, task, atlas, em, hemi)
         print('Saving to {}'.format(labels_output_fname))
         utils.make_dir(utils.get_parent_fol(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
@@ -3006,29 +3010,29 @@ def calc_labels_minmax(atlas, inverse_method, extract_modes, task='', labels_dat
     if isinstance(extract_modes, str):
         extract_modes = [extract_modes]
     min_max_output_template = get_labels_minmax_template(labels_data_template)
-    for em in extract_modes:
-        min_max_output_fname = get_minmax_fname(min_max_output_template, task, atlas, em)
+    for em, im in product(extract_modes, inverse_method):
+        min_max_output_fname = get_minmax_fname(min_max_output_template, im, task, atlas, em)
         min_max_mmvt_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', utils.namebase_with_ext(min_max_output_fname))
         print('Saving {} labels minmax to {}'.format(em, min_max_mmvt_output_fname))
         if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
-        template = get_labels_data_fname(labels_data_template, inverse_method, task, atlas, em, '{hemi}')
+        template = get_labels_data_fname(labels_data_template, im, task, atlas, em, '{hemi}')
         if utils.both_hemi_files_exist(template):
-            calc_labels_data_minmax(template, min_max_output_fname, em)
+            calc_labels_data_minmax(template, im, min_max_output_fname, em)
         else:
             print("Can't find {}!".format(template))
     return np.all([op.isfile(
-        op.join(MMVT_DIR, MRI_SUBJECT, 'meg', get_minmax_fname(min_max_output_template, task, atlas, em))) \
-        for em in extract_modes])
+        op.join(MMVT_DIR, MRI_SUBJECT, 'meg', get_minmax_fname(
+            min_max_output_template, im, task, atlas, em))) for em, im in product(extract_modes, inverse_method)])
 
 
-def calc_labels_data_minmax(labels_data_fname_template, min_max_output_fname='', task='', atlas='', em='mean-flip',
-                            labels_data_template=''):
+def calc_labels_data_minmax(labels_data_fname_template, inverse_method='dSPM', min_max_output_fname='', task='', atlas='',
+                            em='mean-flip', labels_data_template=''):
     if min_max_output_fname == '':
         if labels_data_template == '':
             labels_data_template = LBL
         min_max_output_template = get_labels_minmax_template(labels_data_template)
-        min_max_output_fname = get_minmax_fname(min_max_output_template, task, atlas, em)
+        min_max_output_fname = get_minmax_fname(min_max_output_template, inverse_method, task, atlas, em)
     labels_data = [np.load(labels_data_fname_template.format(hemi=hemi)) for hemi in utils.HEMIS]
     labels_min, labels_max = _calc_labels_data_minmax(labels_data)
     labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
@@ -3050,8 +3054,8 @@ def get_labels_data_fname(labels_data_template, inverse_method, task, atlas, em,
     return labels_data_template.format(task.lower(), atlas, inverse_method, em, hemi).replace('__', '_')
 
 
-def get_minmax_fname(min_max_output_template, task, atlas, em):
-    return  min_max_output_template.format(task.lower(), atlas, em).replace('__', '_')
+def get_minmax_fname(min_max_output_template, inverse_method, task, atlas, em):
+    return  min_max_output_template.format(task.lower(), atlas, inverse_method, em).replace('__', '_')
 
 
 def get_labels_minmax_template(labels_data_template):
@@ -3073,7 +3077,8 @@ def calc_stc_diff(stc1_fname, stc2_fname, output_name):
             print('Saving to {}'.format('{}-{}.stc'.format(mmvt_fname, hemi)))
 
 
-def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_conditions='', norm_data=False):
+def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, inverse_method='dSPM',
+                     new_conditions='', norm_data=False):
     labels_data_diff = {}
     for hemi in utils.HEMIS:
         d1 = utils.Bag(np.load(labels_data1_fname.format(hemi=hemi)))
@@ -3105,7 +3110,7 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, new_c
         hemi_output_fname = output_fname.format(hemi=hemi)
         np.savez(hemi_output_fname, **labels_data_diff[hemi])
     min_max_output_fname = '{}_minmax.npz'.format(output_fname.format(hemi='lh')[:-len('_lh.npz')])
-    calc_labels_data_minmax(output_fname, min_max_output_fname)
+    calc_labels_data_minmax(output_fname, inverse_method, min_max_output_fname)
     return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
 
 

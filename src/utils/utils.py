@@ -1540,14 +1540,20 @@ def merge_two_dics(dic1, dic2):
 #         return None
 
 
-def make_evoked_smooth_and_positive(evoked, positive=True, moving_average_win_size=100):
+def make_evoked_smooth_and_positive(evoked, conditions, positive=True, moving_average_win_size=100):
     evoked_smooth = None
-    for cond_ind in range(evoked.shape[2]):
+    if (evoked.ndim == 3 and evoked.shape[2] > 1 and len(conditions) == 1) or \
+            (evoked.ndim == 2 and len(conditions) > 1):
+        raise Exception('mismatch between conditions and evoked dimentions!')
+    for cond_ind in enumerate(conditions):
         for label_ind in range(evoked.shape[0]):
-            x = evoked[label_ind, :, cond_ind]
+            x = evoked[label_ind, :, cond_ind] if evoked.ndim == 3 else evoked[label_ind]
             if positive:
                 x *= np.sign(x[np.argmax(np.abs(x))])
-            evoked[label_ind, :, cond_ind] = x
+            if evoked.ndim == 3:
+                evoked[label_ind, :, cond_ind] = x
+            else:
+                evoked[label_ind] = x
         if moving_average_win_size > 0:
             evoked_smooth_cond = moving_avg(evoked[:, :, cond_ind], moving_average_win_size)
             if evoked_smooth is None:
