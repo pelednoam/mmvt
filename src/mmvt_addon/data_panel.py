@@ -48,6 +48,7 @@ bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'co
 bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_labels_extract_method = bpy.props.StringProperty()
 bpy.types.Scene.fmri_labels_extract_method = bpy.props.StringProperty(default='mean')
+bpy.types.Scene.add_meg_labels_data_overwrite = bpy.props.BoolProperty(default=True, description="")
 
 
 def _addon():
