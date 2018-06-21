@@ -2953,12 +2953,11 @@ def extract_label_data(label, src, stc):
 
 
 def calc_labels_avg_per_condition_wrapper(
-        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None,
-        overwrite=False):
+        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         labels_data_exist = all([utils.both_hemi_files_exist(args.labels_data_template.format(
             args.atlas, me, '{hemi}')) for me in args.extract_mode])
-        if labels_data_exist and not overwrite:
+        if labels_data_exist and not args.overwrite_labels_data:
             if utils.should_run(args, 'calc_labels_min_max'):
                 flags['calc_labels_min_max'] = calc_labels_minmax(
                     atlas, args.inverse_method, args.extract_mode, args.task, args.labels_data_template,
@@ -2986,7 +2985,7 @@ def calc_labels_avg_per_condition_wrapper(
                 labels_data_template=args.labels_data_template, task=args.task,
                 stcs=stcs_conds, factor=factor, inv_fname=args.inv_fname,
                 fwd_usingMEG=args.fwd_usingMEG, fwd_usingEEG=args.fwd_usingMEG,
-                stcs_num=stcs_num, read_only_from_annot=args.read_only_from_annot, overwrite=overwrite,
+                stcs_num=stcs_num, read_only_from_annot=args.read_only_from_annot, overwrite=args.overwrite_labels_data,
                 n_jobs=args.n_jobs)
             if stcs_conds and isinstance(stcs_conds[list(conditions_keys)[0]], types.GeneratorType) and hemi_ind == 0:
                 # Create the stc generator again for the second hemi
@@ -3722,8 +3721,7 @@ def main(tup, remote_subject_dir, args, flags=None):
     flags, stcs_conds, stcs_num = calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
     # flags: calc_labels_avg_per_condition
     flags = calc_labels_avg_per_condition_wrapper(
-        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs,
-        args.overwrite_labels_data)
+        subject, conditions, args.atlas, inverse_method, stcs_conds, args, flags, stcs_num, raw, epochs)
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(mri_subject, args)
