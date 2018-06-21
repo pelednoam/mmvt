@@ -1308,11 +1308,17 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                                 evk, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                     else:
                         stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-                if save_stc and not op.isfile(stc_fname):
-                    print('Saving the source estimate to {}.stc'.format(stc_fname))
-                    stcs[cond_name].save(stc_fname)
-                    # mmvt_stc_name = ''
-                    stcs[cond_name].save(op.join(MMVT_DIR, MRI_SUBJECT, modality, utils.namebase(stc_fname)))
+            if np.max(stcs[cond_name].data) < 1e-4:
+                factor = 6 if modality == 'eeg' else 12  # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
+                stcs[cond_name] = mne.SourceEstimate(
+                    stcs[cond_name].data * np.power(10, factor), vertices=stcs[cond_name].vertices,
+                    tmin=stcs[cond_name].tmin, tstep=stcs[cond_name].tstep, subject=stcs[cond_name].subject,
+                    verbose=stcs[cond_name].verbose)
+            if save_stc and not op.isfile(stc_fname):
+                print('Saving the source estimate to {}.stc'.format(stc_fname))
+                stcs[cond_name].save(stc_fname)
+                mmvt_fol = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, modality))
+                stcs[cond_name].save(op.join(mmvt_fol, utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())
@@ -2814,7 +2820,7 @@ def calc_labels_avg_for_rest(
         atlas, inverse_method, raw=None, pick_ori=None, extract_modes=['mean_flip'], snr=1, raw_fname='', inv_fname='',
         labels_data_template='', overwrite_stc=False, overwrite_labels_data=False, fwd_usingMEG=True, fwd_usingEEG=True,
         cond_name='all', positive=False, moving_average_win_size=0, save_data_files=True, do_plot_time_series=True,
-        n_jobs=6):
+        modality='meg', n_jobs=6):
 
     def collect_parallel_results(indices, results, labels_num):
         labels_data_hemi = {}
@@ -2875,7 +2881,7 @@ def calc_labels_avg_for_rest(
         data_min = min([np.min(labels_data[hemi][em]) for hemi in utils.HEMIS])
         # data_minmax = utils.get_max_abs(data_max, data_min)
         # factor = -int(utils.ceil_floor(np.log10(data_minmax)))
-        factor = 9 # to get nAmp
+        factor = 6 if modality == 'eeg' else 12  # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
         min_max_output_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', min_max_output_template.format('rest', atlas, em))
         np.savez(min_max_output_fname, labels_minmax=[data_min, data_max])
         if (not labels_data_exist) or overwrite_labels_data:
@@ -2957,7 +2963,8 @@ def extract_label_data(label, src, stc):
 
 
 def calc_labels_avg_per_condition_wrapper(
-        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None):
+        subject, conditions, atlas, inverse_method, stcs_conds, args, flags={}, stcs_num={}, raw=None, epochs=None,
+        modality='meg'):
     if utils.should_run(args, 'calc_labels_avg_per_condition'):
         labels_data_exist = all([utils.both_hemi_files_exist(args.labels_data_template.format(
             args.atlas, me, '{hemi}')) for me in args.extract_mode])
@@ -2980,7 +2987,7 @@ def calc_labels_avg_per_condition_wrapper(
             stcs_conds = get_stc_conds(conditions, inverse_method, args.stc_hemi_template)
             if stcs_conds is None:
                 return False
-        factor = 9 # to get nAmp
+        factor = 6 if modality == 'eeg' else 12  # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_modes=args.extract_mode,
@@ -3035,8 +3042,11 @@ def calc_labels_data_minmax(labels_data_fname_template, inverse_method='dSPM', m
         min_max_output_fname = get_minmax_fname(min_max_output_template, inverse_method, task, atlas, em)
     labels_data = [np.load(labels_data_fname_template.format(hemi=hemi)) for hemi in utils.HEMIS]
     labels_min, labels_max = _calc_labels_data_minmax(labels_data)
-    labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
-    labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
+    if labels_data[0]['data'].ndim > 2:
+        labels_diff_min = min([np.min(np.diff(d['data'])) for d in labels_data])
+        labels_diff_max = max([np.max(np.diff(d['data'])) for d in labels_data])
+    else:
+        labels_diff_min, labels_diff_max = labels_min, labels_max
     np.savez(min_max_output_fname, labels_minmax=[labels_min, labels_max],
              labels_diff_minmax=[labels_diff_min, labels_diff_max])
     print('{}: min: {}, max: {}'.format(em, labels_min, labels_max))

@@ -1550,6 +1550,8 @@ def make_evoked_smooth_and_positive(evoked, conditions, positive=True, moving_av
             x = evoked[label_ind, :, cond_ind] if evoked.ndim == 3 else evoked[label_ind]
             if positive:
                 x *= np.sign(x[np.argmax(np.abs(x))])
+                if np.min(x) < 0:
+                    print('label {} has negative values!'.format(label_ind))
             if evoked.ndim == 3:
                 evoked[label_ind, :, cond_ind] = x
             else:
