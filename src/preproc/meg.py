@@ -1309,14 +1309,14 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                     else:
                         stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
             if np.max(stcs[cond_name].data) < 1e-4:
-                factor = 6 if modality == 'eeg' else 12  # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
+                factor = 6 if modality == 'eeg' else 12  # todo: depends on the inverse method, should check
                 stcs[cond_name] = mne.SourceEstimate(
                     stcs[cond_name].data * np.power(10, factor), vertices=stcs[cond_name].vertices,
                     tmin=stcs[cond_name].tmin, tstep=stcs[cond_name].tstep, subject=stcs[cond_name].subject,
                     verbose=stcs[cond_name].verbose)
             if save_stc and (not op.isfile(stc_fname) or overwrite_stc):
                 mmvt_fol = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, modality))
-                print('Saving the source estimate to {}.stc and {}.src'.format(
+                print('Saving the source estimate to {}.stc and\n {}.stc'.format(
                     stc_fname, op.join(mmvt_fol, utils.namebase(stc_fname))))
                 print('max: {}, min: {}'.format(np.max(stcs[cond_name].data), np.min(stcs[cond_name].data)))
                 stcs[cond_name].save(stc_fname)

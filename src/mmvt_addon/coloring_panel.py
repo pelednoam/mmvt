@@ -117,6 +117,7 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
     fol = mu.make_dir(op.join(mu.get_user_fol(), 'meg', 'cache'))
     stc_t_fname = op.join(fol, '{}_t{}'.format(bpy.context.scene.meg_files, t))
     if op.isfile('{}-rh.stc'.format(stc_t_fname)) and op.isfile('{}-lh.stc'.format(stc_t_fname)):
+        print('Reading stc_t_smooth from {}'.format(stc_t_fname))
         stc_t_smooth = mne.read_source_estimate(stc_t_fname)
     else:
         # subjects_dir = mu.get_link_dir(mu.get_links_dir(), 'subjects')
@@ -1431,8 +1432,8 @@ def _meg_files_update(context):
             # ColoringMakerPanel.stc = mne.read_source_estimate(full_stc_fname)
             ColoringMakerPanel.stc = None
             # if not _addon().colorbar_values_are_locked():
+            data_min, data_max, data_len = calc_stc_minmax()
             if not _addon().colorbar_values_are_locked():
-                data_min, data_max, data_len = calc_stc_minmax()
                 _addon().set_colorbar_max_min(data_max, data_min, force_update=True)
                 _addon().set_colorbar_title('MEG')
             T = data_len - 1
@@ -1509,10 +1510,10 @@ def calc_stc_minmax(meg_min_max_prec=None, stc_name=''):
         data_max = mu.max_stc(ColoringMakerPanel.stc)
     # data_minmax = mu.get_max_abs(data_max, data_min)
     # factor = -int(mu.ceil_floor(np.log10(data_minmax)))
-    if np.max(ColoringMakerPanel.stc._data) < 1e-5:
-        ColoringMakerPanel.stc._data *= np.power(10, 9)
-        data_min *= np.power(10, 9)
-        data_max *= np.power(10, 9)
+    # if np.max(ColoringMakerPanel.stc._data) < 1e-5:
+    #     ColoringMakerPanel.stc._data *= np.power(10, 9)
+    #     data_min *= np.power(10, 9)
+    #     data_max *= np.power(10, 9)
     if np.sign(data_max) != np.sign(data_min) and data_min != 0:
         data_minmax = max(map(abs, [data_min, data_max]))
         ColoringMakerPanel.meg_data_min, ColoringMakerPanel.meg_data_max = -data_minmax, data_minmax
