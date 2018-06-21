@@ -1572,7 +1572,7 @@ def get_evoked_cond(cond_name, evo_fname='', epo_fname='', baseline=(None, 0), a
     epo_fname = get_epo_fname(epo_fname)
     if '{cond}' not in evo_fname:
         if not op.isfile(evo_fname):
-            print('get_evoked_cond: No evoked file found!')
+            print('get_evoked_cond: No evoked file found! ({})'.format(evo_fname))
             return None
         try:
             evoked = mne.read_evokeds(evo_fname, condition=cond_name, baseline=baseline)
