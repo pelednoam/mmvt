@@ -93,7 +93,8 @@ def change_graph_all_vals(mat):
     try:
         StreamingPanel.cycle_data = mat if StreamingPanel.cycle_data == [] else np.hstack((StreamingPanel.cycle_data, mat))
     except:
-        print('asfd')
+        StreamingPanel.cycle_data = mat
+        # print('asfd')
     bpy.context.scene.frame_current += mat.shape[1]
     if bpy.context.scene.frame_current > MAX_STEPS - 1:
         bpy.context.scene.frame_current = bpy.context.scene.frame_current - MAX_STEPS
@@ -210,7 +211,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
                 next_val = sock.recv(2048)
         except socket.timeout as e:
             if e.args[0] == 'timed out':
-                # print('!!! timed out !!!')
+                print('!!! timed out !!!')
                 if prev_val is None and mat_len > 0:
                     prev_val = np.zeros((mat_len, 1))
                 else:
@@ -220,6 +221,10 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
                 print('!!! {} !!!'.format(e))
                 raise Exception(e)
         else:
+            # https://docs.scipy.org/doc/numpy/user/basics.byteswapping.html
+            #             data = pnet(socket,'read',packetSize,dtype,'intel');
+            # big-endian:
+            # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>i2', buffer=next_val)
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
             if first_message:
@@ -227,12 +232,17 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
                 first_message = False
             else:
                 if len(next_val) != mat_len:
-                    print('Wrong message len! {}'.format(len(next_val)))
+                    pass
+                    # print('Wrong message len! {}'.format(len(next_val)))
             # next_val = next_val[:mat_len]
             next_val = next_val[..., np.newaxis]
 
         prev_val = next_val
-        buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
+        try:
+            buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
+        except:
+            # todo: transpose first if needed
+            buffer = next_val if buffer == [] else np.hstack((buffer, next_val.T))
         # buffer.append(next_val)
         if buffer.shape[1] >= buffer_size:
         # if len(buffer) >= buffer_size:
@@ -322,6 +332,7 @@ class StreamButton(bpy.types.Operator):
                         multicast_group=bpy.context.scene.multicast_group,
                         port=bpy.context.scene.streaming_server_port,
                         timeout=bpy.context.scene.timeout,
+                        multicast=bpy.context.scene.multicast,
                         mat_len=len(bpy.data.objects['Deep_electrodes'].children))
             if bpy.context.scene.stream_type == 'offline':
                 config = mu.read_config_ini(op.join(
@@ -355,6 +366,10 @@ class StreamButton(bpy.types.Operator):
                 self._time = time.time()
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
+                    if len(np.where(data)[0]) > 0:
+                        print('no zeros!')
+                    else:
+                        print('only zeros!')
                     change_graph_all_vals(data)
                     if bpy.context.scene.stream_type == 'offline':
                         mu.view_all_in_graph_editor()

@@ -3196,11 +3196,9 @@ def calc_labels_power_bands(
             data_minmax = utils.calc_abs_minmax(data[band])
             data[band] /= data_minmax
             labels_data_output_name = '{}_norm'.format(labels_data_output_name)
-        try:
-            data_max = utils.calc_max(data[band], norm_percs=precentiles)
-        except:
-            data_max = utils.calc_max(data[band], norm_percs=precentiles)
+        data_max = utils.calc_max(data[band], norm_percs=precentiles)
         print('calc_labels_func minmax: {}, {}'.format(0, data_max))
+        print('calc_labels_power_bands: Saving results in {}'.format(output_fname))
         np.savez(output_fname, names=np.array(labels), atlas=atlas, data=data[band],
                  title=labels_data_output_name.replace('_', ' '), data_min=0, data_max=data_max, cmap='RdOrYl')
     return all([op.isfile(op.join(fol, '{}_{}_{}.npz'.format(conds, func_name, band))) for band in bands.keys()])
