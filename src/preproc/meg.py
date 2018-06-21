@@ -139,7 +139,7 @@ def init_globals(subject, mri_subject='', fname_format='', fname_format_cond='',
     STC_MORPH = op.join(SUBJECT_MEG_FOLDER, task, '{}', '{}-{}-inv.stc') # cond, method
     STC_ST = _get_pkl_name('{method}_st')
     # LBL = op.join(SUBJECT_MEG_FOLDER, 'labels_data_{}_{}_{}.npz') # atlas, extract_method, hemi
-    LBL = op.join(MMVT_SUBJECT_FOLDER, 'meg', 'labels_data_{}_{}_{}_{}.npz')  # task, atlas, extract_method, hemi
+    LBL = op.join(MMVT_SUBJECT_FOLDER, 'meg', 'labels_data_{}_{}_{}_{}_{}.npz')  # task, atlas, extract_method, hemi
     ACT = op.join(MMVT_SUBJECT_FOLDER, 'activity_map_{}') # hemi
     # MRI files
     MRI = op.join(SUBJECT_MRI_FOLDER, 'mri', 'transforms', '{}-trans.fif'.format(MRI_SUBJECT))
@@ -2304,8 +2304,8 @@ def get_stc_conds(events, inverse_method, stc_hemi_template):
     return stcs
 
 
-def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_method, labels_output_fname_template='',
-                                task=''):
+def calc_labels_avg_per_cluster(subject, atlas, events, inverse_method, stc_names, extract_method,
+                                labels_output_fname_template='', task=''):
     if labels_output_fname_template == '':
         labels_output_fname_template = LBL
     labels_data = {hemi:{} for hemi in utils.HEMIS}
@@ -2329,20 +2329,22 @@ def calc_labels_avg_per_cluster(subject, atlas, events, stc_names, extract_metho
             label_name = '{name}_max_{max:.2f}_size_{size}'.format(**info)
             labels_names[info.hemi].append(label_name)
     for hemi in utils.HEMIS:
-        labels_output_fname = get_labels_data_fname(labels_output_fname_template, task, atlas, extract_method, hemi)
+        labels_output_fname = get_labels_data_fname(
+            labels_output_fname_template, inverse_method, task, atlas, extract_method, hemi)
         lables_mmvt_fname = op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[hemi][extract_method],
                  names=labels_names, conditions=conditions)
         shutil.copy(labels_output_fname, lables_mmvt_fname)
 
 
-def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', labels_fol='', stcs=None, stcs_num={},
+def calc_labels_avg_per_condition(
+        atlas, hemi, events=None, surf_name='pial', labels_fol='', stcs=None, stcs_num={}, inverse_method='dSPM',
         extract_modes=['mean_flip'], positive=False, moving_average_win_size=0, labels_data_template='', src=None,
         factor=1, inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True, read_only_from_annot=True, task='',
         overwrite=False, do_plot=False, n_jobs=1):
     def _check_all_files_exist():
         return all([op.isfile(op.join(MMVT_DIR, MRI_SUBJECT, 'meg', op.basename(
-            get_labels_data_fname(labels_data_template, task, atlas, em, hemi)))) for em in extract_modes])
+            get_labels_data_fname(labels_data_template, inverse_method, task, atlas, em, hemi)))) for em in extract_modes])
     if labels_data_template == '':
         labels_data_template = LBL
     if _check_all_files_exist() and not overwrite:
@@ -2412,8 +2414,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', la
                 # plt.show()
                 plt.savefig(op.join(SUBJECT_MEG_FOLDER, 'figures', '{}: {} {}.png'.format(cond_name, hemi, atlas)))
 
-        save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, labels_data_template, task,
-                         factor, positive, moving_average_win_size)
+        save_labels_data(labels_data, hemi, labels, atlas, conditions, extract_modes, inverse_method,
+                         labels_data_template, task, factor, positive, moving_average_win_size)
         flag = _check_all_files_exist()
     except:
         print(traceback.format_exc())
@@ -2422,8 +2424,8 @@ def calc_labels_avg_per_condition(atlas, hemi, events=None, surf_name='pial', la
     return flag
 
 
-def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract_modes, labels_data_template, task='',
-                     factor=1, positive=False, moving_average_win_size=0):
+def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract_modes, inverse_method,
+                     labels_data_template, task='', factor=1, positive=False, moving_average_win_size=0):
     if not isinstance(labels_names[0], str):
         labels_names = [utils.to_str(l.name) for l in labels_names]
     for em in extract_modes:
@@ -2432,7 +2434,8 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
             labels_data[em] *= np.power(10, factor)
         if positive or moving_average_win_size > 0:
             labels_data[em] = utils.make_evoked_smooth_and_positive(labels_data[em], positive, moving_average_win_size)
-        labels_output_fname = get_labels_data_fname(labels_data_template, task, atlas, em, hemi)
+        labels_output_fname = get_labels_data_fname(
+            labels_data_template, inverse_method, inverse_method, task, atlas, em, hemi)
         print('Saving to {}'.format(labels_output_fname))
         utils.make_dir(utils.get_parent_fol(labels_output_fname))
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
@@ -2958,7 +2961,8 @@ def calc_labels_avg_per_condition_wrapper(
         if labels_data_exist and not overwrite:
             if utils.should_run(args, 'calc_labels_min_max'):
                 flags['calc_labels_min_max'] = calc_labels_minmax(
-                    atlas, args.extract_mode, args.task, args.labels_data_template, args.overwrite_labels_data)
+                    atlas, args.inverse_method, args.extract_mode, args.task, args.labels_data_template,
+                    args.overwrite_labels_data)
             return flags
 
         conditions_keys = conditions.keys() if conditions is not None else ['all']
@@ -2977,7 +2981,7 @@ def calc_labels_avg_per_condition_wrapper(
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(
                 args.atlas, hemi, conditions, extract_modes=args.extract_mode,
-                positive=args.evoked_flip_positive,
+                positive=args.evoked_flip_positive, inverse_method=args.inverse_method,
                 moving_average_win_size=args.evoked_moving_average_win_size,
                 labels_data_template=args.labels_data_template, task=args.task,
                 stcs=stcs_conds, factor=factor, inv_fname=args.inv_fname,
@@ -2991,11 +2995,13 @@ def calc_labels_avg_per_condition_wrapper(
 
     if utils.should_run(args, 'calc_labels_min_max'):
         flags['calc_labels_min_max'] = calc_labels_minmax(
-            atlas, args.extract_mode, args.task, args.labels_data_template, args.overwrite_labels_data)
+            atlas, args.inverse_method, args.extract_mode, args.task, args.labels_data_template,
+            args.overwrite_labels_data)
     return flags
 
 
-def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', overwrite_labels_data=False):
+def calc_labels_minmax(atlas, inverse_method, extract_modes, task='', labels_data_template='',
+                       overwrite_labels_data=False):
     if labels_data_template == '':
         labels_data_template = LBL
     if isinstance(extract_modes, str):
@@ -3007,7 +3013,7 @@ def calc_labels_minmax(atlas, extract_modes, task='', labels_data_template='', o
         print('Saving {} labels minmax to {}'.format(em, min_max_mmvt_output_fname))
         if op.isfile(min_max_output_fname) and op.isfile(min_max_mmvt_output_fname) and not overwrite_labels_data:
             continue
-        template = get_labels_data_fname(labels_data_template, task, atlas, em, '{hemi}')
+        template = get_labels_data_fname(labels_data_template, inverse_method, task, atlas, em, '{hemi}')
         if utils.both_hemi_files_exist(template):
             calc_labels_data_minmax(template, min_max_output_fname, em)
         else:
@@ -3041,8 +3047,8 @@ def _calc_labels_data_minmax(hemis_data):
     return labels_min, labels_max
 
 
-def get_labels_data_fname(labels_data_template, task, atlas, em, hemi):
-    return labels_data_template.format(task.lower(), atlas, em, hemi).replace('__', '_')
+def get_labels_data_fname(labels_data_template, inverse_method, task, atlas, em, hemi):
+    return labels_data_template.format(task.lower(), atlas, inverse_method, em, hemi).replace('__', '_')
 
 
 def get_minmax_fname(min_max_output_template, task, atlas, em):

@@ -737,7 +737,7 @@ def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, con
     # src = meg.create_smooth_src(subject)
     for hemi in ['rh', 'lh']:
         meg.calc_labels_avg_per_condition(atlas, hemi, 'pial', events_id, labels_from_annot=False,
-            labels_fol=labels_fol, stcs=None,
+            labels_fol=labels_fol, stcs=None, inverse_method=inverse_method,
             labels_output_fname_template=labels_output_fname)
 
 

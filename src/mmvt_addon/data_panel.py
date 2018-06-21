@@ -628,7 +628,7 @@ def add_data_to_brain(source_files):
                     # remove the orange keyframe sign in the fcurves window
                     fcurves = bpy.data.objects[obj_name].animation_data.action.fcurves[cond_ind]
                     mod = fcurves.modifiers.new(type='LIMITS')
-            else:
+            elif bpy.context.scene.add_meg_labels_data_overwrite:
                 for fcurve_ind, fcurve in enumerate(cur_obj.animation_data.action.fcurves):
                     fcurve.keyframe_points[0].co[1] = 0
                     fcurve.keyframe_points[-1].co[1] = 0
@@ -1133,6 +1133,7 @@ def data_draw(self, context):
         row = col.row(align=True)
         row.prop(context.scene, 'add_meg_data_to_labels', text="labels")
         row.prop(context.scene, 'add_meg_labels_data_to_parent', text="diff")
+        col.prop(context.scene, 'add_meg_labels_data_overwrite', text="Overwrite")
         col.prop(context.scene, 'import_unknown', text="Import unknown")
     if DataMakerPanel.subcortical_meg_data_exist:
         col.prop(context.scene, 'add_meg_subcorticals_data', text="subcorticals")
@@ -1327,6 +1328,7 @@ def init(addon):
         bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(
             items=items,description="fMRI_dynamic")
         bpy.context.scene.fMRI_dynamic_files = files_names[0]
+    bpy.context.scene.add_meg_labels_data_overwrite = True
     # _addon().create_inflated_curv_coloring()
     DataMakerPanel.init = True
     register()

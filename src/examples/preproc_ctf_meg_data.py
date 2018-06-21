@@ -297,11 +297,11 @@ def calc_functional_rois(conds, args):
         meg.call_main(_args)
 
 
-def calc_labels_avg_per_cluster(conditions, extract_method):
+def calc_labels_avg_per_cluster(conditions, extract_method, inverse_method):
     atlas = 'MNE-1-15-precentral'
     stc_names = ['left-MNE-1-15', 'right-MNE-1-15']
-    meg.calc_labels_avg_per_cluster(subject, atlas, conditions, stc_names, extract_method)
-    meg.calc_labels_minmax(atlas, extract_method)
+    meg.calc_labels_avg_per_cluster(subject, atlas, conditions, inverse_method, stc_names, extract_method)
+    meg.calc_labels_minmax(atlas, inverse_method, extract_method)
 
 
 if __name__ == '__main__':

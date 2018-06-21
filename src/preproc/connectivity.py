@@ -235,6 +235,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     else:
         labels_subs_indices = []
 
+    # Check this code!!!
+    if data.ndim == 3 and data.shape[2] == len(conditions):
+        data = np.diff(data, axis=2).squeeze()
     if data.ndim == 2 or labels_extract_mode.startswith('pca_') and data.ndim == 3:
         # No windows yet
         import math
