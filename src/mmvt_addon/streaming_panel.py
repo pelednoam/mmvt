@@ -208,7 +208,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             if multicast:
                 next_val, address = sock.recvfrom(2048)
             else:
-                next_val = sock.recv(2048)
+                next_val = sock.recv(2048 * 16)
         except socket.timeout as e:
             if e.args[0] == 'timed out':
                 print('!!! timed out !!!')
@@ -226,9 +226,11 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # big-endian:
             # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>f8', buffer=next_val)
             # dt = np.dtype(np.float64).newbyteorder('>')
-            # return numpy.frombuffer(next_val.read(buffer_len), dtype=dt)
-            next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
-            next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
+            # x = np.frombuffer(next_val, dtype=dt)
+            next_val = np.frombuffer(next_val, dtype=np.dtype(np.float64)).reshape(14, 100)[10:, :]
+            print(next_val[0])
+            # next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
+            # next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
             if first_message:
                 mat_len = len(next_val)
                 first_message = False
@@ -369,9 +371,9 @@ class StreamButton(bpy.types.Operator):
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
                     if len(np.where(data)[0]) > 0:
-                        print('no zeros!')
-                    else:
-                        print('only zeros!')
+                        print('spike!!!!!')
+                    # else:
+                        # print('only zeros!')
                     change_graph_all_vals(data)
                     if bpy.context.scene.stream_type == 'offline':
                         mu.view_all_in_graph_editor()

@@ -34,7 +34,9 @@ def start_udp_listener(buffer_size=10, multicast=True):
                 next_val, address = sock.recvfrom(2048)
             else:
                 next_val = sock.recv(2048)
-            next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
+            dt = np.dtype(np.float64).newbyteorder('>')
+            next_val = np.frombuffer(next_val, dtype=dt)
+            # next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             buffer.append(next_val)
             if len(buffer) >= buffer_size:
                 # stdout_print(str(datetime.now() - time))
@@ -97,15 +99,16 @@ def start_udp_listener_timeout(buffer_size=10, multicast=True):
                 errs_num += 1
                 err = e.args[0]
                 if err == 'timed out':
-                    print('timed out')
-                    next_val = np.zeros((101, 1))
+                    # print('timed out')
+                    continue
+                    # next_val = np.zeros((101, 1))
                 else:
                     raise Exception(e)
             else:
                 messages_time.append((datetime.now() - time).microseconds / 1000)
                 time = datetime.now()
-                next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
-                next_val = np.array([to_float(f) for f in next_val.split(',')])
+                # next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
+                # next_val = np.array([to_float(f) for f in next_val.split(',')])
                 next_val = next_val[..., np.newaxis]
             buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
             if buffer.shape[1] >= buffer_size:
@@ -116,7 +119,8 @@ def start_udp_listener_timeout(buffer_size=10, multicast=True):
                 # extra_times.append((diff.microseconds - 10000) / 1000)
                 # stdout_print(str(datetime.now() - time))
 
-                # stdout_print(','.join(buffer))
+                # stdout_print(buffer.tostring())
+                print(np.where(buffer))
                 buffer = []
     except:
         print(traceback.format_exc())
