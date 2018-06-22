@@ -222,7 +222,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
                 raise Exception(e)
         else:
             # https://docs.scipy.org/doc/numpy/user/basics.byteswapping.html
-            #             data = pnet(socket,'read',packetSize,dtype,'intel');
+            # data = pnet(socket,'read',packetSize,dtype,'intel');
             # big-endian:
             # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>i2', buffer=next_val)
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')

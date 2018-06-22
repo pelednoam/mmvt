@@ -476,22 +476,6 @@ def get_links_dir(links_fol_name='links'):
     links_dir = op.join(parent_fol, links_fol_name)
     return links_dir
 
-
-def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname=''):
-    if other_fname == '':
-        # We remove the 'all_rois' and 'stretch' for the name!
-        electrode_labeling_fname = op.join(blender_root, subject, 'electrodes',
-            '{}_{}_electrodes_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
-            '_bipolar' if bipolar else ''))
-    else:
-        electrode_labeling_fname = other_fname
-    if op.isfile(electrode_labeling_fname):
-        labeling = load(electrode_labeling_fname)
-        return labeling, electrode_labeling_fname
-    else:
-        print("Can't find the electrodes' labeling file in {}!".format(electrode_labeling_fname))
-        return None, None
-
 # def read_sub_cortical_lookup_table(lookup_table_file_name):
 #     names = {}
 #     with open(lookup_table_file_name, 'r') as f:
@@ -2021,6 +2005,11 @@ def time_to_seconds(time_str, time_format='%H:%M:%S'):
     x = time.strptime(time_str.split(',')[0], time_format)
     seconds = datetime.timedelta(hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec).total_seconds()
     return seconds
+
+
+def get_mmvt_code_root():
+    curr_dir = op.dirname(os.path.realpath(__file__))
+    return op.dirname(os.path.split(curr_dir)[0])
 
 
 if __name__ == '__main__':

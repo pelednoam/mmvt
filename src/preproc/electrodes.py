@@ -987,12 +987,31 @@ def create_electrodes_groups_coloring(subject, bipolar, coloring_fname=''):
             colors_file.write('{},{},{},{}\n'.format(elc, *group_colors[elc_group]))
 
 
+def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname='',
+                            overwrite_ela=False):
+    if other_fname == '':
+        # We remove the 'all_rois' and 'stretch' for the name!
+        electrode_labeling_fname = op.join(blender_root, subject, 'electrodes',
+            '{}_{}_electrodes_cigar_r_{}_l_{}{}.pkl'.format(subject, atlas, error_radius, elec_length,
+            '_bipolar' if bipolar else ''))
+    else:
+        electrode_labeling_fname = other_fname
+    if not op.isfile(electrode_labeling_fname):
+        run_ela(subject, atlas, bipolar, overwrite_ela, error_radius, elec_length)
+    if op.isfile(electrode_labeling_fname):
+        labeling = utils.load(electrode_labeling_fname)
+        return labeling, electrode_labeling_fname
+    else:
+        print("Can't find the electrodes' labeling file in {}!".format(electrode_labeling_fname))
+        return None, None
+
+
 @pu.tryit_ret_bool
 def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4,
-        p_threshold=0.05, legend_name='', coloring_fname=''):
+                                        overwrite_ela=False, p_threshold=0.05, legend_name='', coloring_fname=''):
     # elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
-    elecs_probs, electrode_labeling_fname = utils.get_electrodes_labeling(
-        subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length)
+    elecs_probs, electrode_labeling_fname = get_electrodes_labeling(
+        subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length, overwrite_ela=overwrite_ela)
     if elecs_probs is None:
         print('No electrodes labeling file!')
         return
@@ -1207,6 +1226,37 @@ def get_ras_file(subject, args):
     return op.isfile(local_fname)
 
 
+def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
+    mmvt_code_fol = utils.get_mmvt_code_root()
+    ela_code_fol = op.join(mu.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
+    if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py')):
+        print("Can't find ELA folder!")
+        return
+
+    output_name = '{}_{}_electrodes_cigar_r_{}_l_{}{}.csv'.format(
+        subject, atlas, elc_r, elc_len, '_bipolar' if bipolar else '')
+    output_fname = op.join(ela_code_fol, 'electrodes', output_name)
+    mmvt_ela_fname = op.join(MMVT_DIR, subject, 'electrodes', output_name)
+    if op.isfile(output_fname) or op.isfile(mmvt_ela_fname) and not overwrite:
+        if not op.isfile(mmvt_ela_fname) and op.isfile(output_fname):
+            shutil.copyfile(output_fname, mmvt_ela_fname)
+        return True
+
+    import importlib
+    import sys
+    if ela_code_fol not in sys.path:
+        sys.path.append(ela_code_fol)
+    from src import find_rois
+    importlib.reload(find_rois)
+    args = find_rois.get_args(['-s', subject, '-a', atlas, '-b', str(bipolar)])
+    find_rois.run_for_all_subjects(args)
+    if not op.isfile(output_fname):
+        return False
+    else:
+        shutil.copyfile(output_fname, mmvt_ela_fname)
+        return True
+
+
 def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(ELECTRODES_DIR, subject))
     utils.make_dir(op.join(MMVT_DIR, subject))
@@ -1240,7 +1290,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'create_electrodes_labeling_coloring'):
         flags['create_electrodes_labeling_coloring'] = create_electrodes_labeling_coloring(
-            subject, args.bipolar, args.atlas)
+            subject, args.bipolar, args.atlas, overwrite_ela=args.overwrite_ela)
 
     if utils.should_run(args, 'create_electrodes_groups_coloring'):
         flags['create_electrodes_groups_coloring'] = create_electrodes_groups_coloring(
@@ -1262,6 +1312,10 @@ def main(subject, remote_subject_dir, args, flags):
     if 'electrodes_inside_the_dura' in args.function:
         flags['electrodes_inside_the_dura'] = check_how_many_electrodes_inside_the_dura(
             subject, args.sigma, args.bipolar)
+
+    if 'run_ela' in args.function:
+        flags['run_ela'] = run_ela(
+            subject, args.atlas, args.bipolar, args.overwrite_ela, args.error_radius, args.elc_length)
 
     return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
@@ -1321,6 +1375,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--trans_to_subject', help='transform electrodes coords to this subject', required=False, default='')
     parser.add_argument('--trans_from_subject', help='transform electrodes coords from this subject', required=False,
                         default='colin27')
+    parser.add_argument('--overwrite_ela', required=False, default=0, type=au.is_true)
+    parser.add_argument('--error_radius', help='error radius', required=False, default=3)
+    parser.add_argument('--elc_length', help='elc length', required=False, default=4)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
