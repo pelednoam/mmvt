@@ -224,7 +224,9 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # https://docs.scipy.org/doc/numpy/user/basics.byteswapping.html
             # data = pnet(socket,'read',packetSize,dtype,'intel');
             # big-endian:
-            # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>i2', buffer=next_val)
+            # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>f8', buffer=next_val)
+            # dt = np.dtype(np.float64).newbyteorder('>')
+            # return numpy.frombuffer(next_val.read(buffer_len), dtype=dt)
             next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
             if first_message:

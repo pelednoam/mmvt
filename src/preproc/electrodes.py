@@ -1228,7 +1228,7 @@ def get_ras_file(subject, args):
 
 def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
     mmvt_code_fol = utils.get_mmvt_code_root()
-    ela_code_fol = op.join(mu.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
+    ela_code_fol = op.join(utils.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
     if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py')):
         print("Can't find ELA folder!")
         return
