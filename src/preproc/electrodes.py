@@ -1235,7 +1235,7 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
         print("Can't find ELA folder!")
         return
 
-    output_name = '{}_{}_electrodes_cigar_r_{}_l_{}{}.csv'.format(
+    output_name = '{}_{}_electrodes_cigar_r_{}_l_{}{}.pkl'.format(
         subject, atlas, elc_r, elc_len, '_bipolar' if bipolar else '')
     output_fname = op.join(ela_code_fol, 'electrodes', output_name)
     mmvt_ela_fname = op.join(MMVT_DIR, subject, 'electrodes', output_name)
