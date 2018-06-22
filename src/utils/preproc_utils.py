@@ -21,8 +21,8 @@ def decode_subjects(subjects, remote_subject_dir=''):
             subjects.remove(sub)
             subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
             if remote_subject_dir != '':
-                subjects.extend([utils.namebase(fol) for fol in
-                                 glob.glob(op.join(remote_subject_dir.format(subject=sub)))])
+                subjects.extend([utils.namebase(fol)[utils.namebase(fol).index(sub.replace('*', '')):] for
+                                 fol in glob.glob(op.join(remote_subject_dir.format(subject=sub)))])
                 subjects = list(set(subjects))
         elif 'file:' in sub:
             subjects.remove(sub)
