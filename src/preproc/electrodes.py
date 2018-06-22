@@ -985,6 +985,7 @@ def create_electrodes_groups_coloring(subject, bipolar, coloring_fname=''):
                 continue
             elc_group = utils.elec_group(elc, bipolar)
             colors_file.write('{},{},{},{}\n'.format(elc, *group_colors[elc_group]))
+    return op.isfile(coloring_fname)
 
 
 def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname='',
@@ -1046,6 +1047,7 @@ def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=N
     with open(op.join(coloring_fol, 'electrodes_report.txt'), 'w') as elecs_report_file:
         for inv_roi, electrodes_names in elec_names_rois_colors.items():
             elecs_report_file.write('{},{},{}\n'.format(inv_roi, rois_colors_names[inv_roi], ','.join(electrodes_names)))
+    return op.isfile(op.join(coloring_fol, 'electrodes_report.txt'))
 
 
 def remove_bad_channels(labels, data, bad_channels):
