@@ -1229,7 +1229,7 @@ def get_ras_file(subject, args):
 def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
     mmvt_code_fol = utils.get_mmvt_code_root()
     ela_code_fol = op.join(utils.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
-    if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py')):
+    if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'find_rois', 'find_rois.py')):
         print("Can't find ELA folder!")
         return
 
@@ -1237,7 +1237,7 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
         subject, atlas, elc_r, elc_len, '_bipolar' if bipolar else '')
     output_fname = op.join(ela_code_fol, 'electrodes', output_name)
     mmvt_ela_fname = op.join(MMVT_DIR, subject, 'electrodes', output_name)
-    if op.isfile(output_fname) or op.isfile(mmvt_ela_fname) and not overwrite:
+    if op.isfile(output_fname) or (not op.isfile(mmvt_ela_fname) and overwrite):
         if not op.isfile(mmvt_ela_fname) and op.isfile(output_fname):
             shutil.copyfile(output_fname, mmvt_ela_fname)
         return True
@@ -1246,7 +1246,7 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
     import sys
     if ela_code_fol not in sys.path:
         sys.path.append(ela_code_fol)
-    from src import find_rois
+    from find_rois import find_rois
     importlib.reload(find_rois)
     args = find_rois.get_args(['-s', subject, '-a', atlas, '-b', str(bipolar)])
     find_rois.run_for_all_subjects(args)
