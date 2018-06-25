@@ -870,6 +870,8 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
             remote_subject_dir = remote_subject_dir_template
     else:
         remote_subject_dir = ''
+    if is_windows() and remote_subject_dir.startswith('\\\\'):
+        remote_subject_dir = remote_subject_dir.replace('\\\\', '\\')
     return remote_subject_dir
 
 
