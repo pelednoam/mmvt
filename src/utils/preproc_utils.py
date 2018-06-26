@@ -22,9 +22,10 @@ def decode_subjects(subjects, remote_subject_dir=''):
             subjects.remove(sub)
             subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(SUBJECTS_DIR, sub))])
             if remote_subject_dir != '':
-                subjects.extend([utils.namebase(fol)[
-                                 utils.namebase(remote_subject_dir).index('{subject}'):len('{subject}')] for fol in
-                                 glob.glob(op.join(remote_subject_dir.format(subject=sub)))])
+                for fol in glob.glob(op.join(remote_subject_dir.format(subject=sub))):
+                    start_ind = utils.namebase(remote_subject_dir).index('{subject}')
+                    end_ind = re.search('[-_,\.!?]', utils.namebase(fol)[start_ind:]).start() + start_ind
+                    subjects.append(utils.namebase(fol)[start_ind:end_ind])
                 subjects = list(set(subjects))
         elif 'file:' in sub:
             subjects.remove(sub)
