@@ -1681,12 +1681,11 @@ def color_eeg_helmet(use_abs=None):
     colors_ratio = 256 / (data_max - data_min)
 
     cur_obj = bpy.data.objects['eeg_helmet']
-    eeg_loc = np.array([eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
-    hel_loc = np.array([v.co for v in cur_obj.data.vertices])
-    from scipy.spatial.distance import cdist
-    indices = np.argmin(cdist(hel_loc, eeg_loc), axis=1)
-
-    data_t = data[indices, bpy.context.scene.frame_current]
+    # eeg_loc = np.array([eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+    # hel_loc = np.array([v.co for v in cur_obj.data.vertices])
+    # from scipy.spatial.distance import cdist
+    # indices = np.argmin(cdist(hel_loc, eeg_loc), axis=1)
+    data_t = data[ColoringMakerPanel.eeg_helmet_indices, bpy.context.scene.frame_current]
 
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
@@ -2510,6 +2509,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fMRI_contrasts_names = []
     fMRI_constrasts_exist = False
     run_meg_minmax_prec_update = True
+    eeg_helmet_indices = []
     # activity_map_coloring = activity_map_coloring
 
     def draw(self, context):
@@ -2728,6 +2728,14 @@ def init_eeg_sensors():
         bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items, description="EEG sensors")
         bpy.context.scene.eeg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('eeg_sensors')
+
+    eeg_helmet = bpy.data.objects['eeg_helmet']
+    if eeg_helmet is not None:
+        from scipy.spatial.distance import cdist
+        eeg_sensors_loc = np.array(
+            [eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+        eeg_helmet_vets_loc = np.array([v.co for v in eeg_helmet.data.vertices])
+        ColoringMakerPanel.eeg_helmet_indices = np.argmin(cdist(eeg_helmet_vets_loc, eeg_sensors_loc), axis=1)
 
 
 def init_meg_labels_coloring_type():
