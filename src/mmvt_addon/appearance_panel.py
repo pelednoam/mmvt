@@ -111,6 +111,10 @@ def show_electrodes(value=True):
     show_hide_electrodes(value)
 
 
+def hide_electrodes():
+    show_hide_electrodes(False)
+
+
 def is_pial():
     return bpy.context.scene.surface_type == 'pial'
 

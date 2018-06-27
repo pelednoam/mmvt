@@ -9,6 +9,7 @@ import selection_panel
 import logging
 import shutil
 from collections import Iterable
+import importlib
 
 STAT_AVG, STAT_DIFF = range(2)
 
@@ -366,7 +367,7 @@ def create_eeg_mesh():
     mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
     create_empty_if_doesnt_exists('Helmets', _addon().BRAIN_EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
     mu.change_layer(_addon().EEG_LAYER)
-    current_mat = bpy.data.materials['unselected_label_Mat_cortex']
+    current_mat = bpy.data.materials['Helmet_map_mat']
     bpy.ops.import_mesh.ply(filepath=eeg_mesh_fname)
     mesh_obj = bpy.context.selected_objects[0]
     mesh_obj.name = 'eeg_helmet'
@@ -377,6 +378,22 @@ def create_eeg_mesh():
     mesh_obj.active_material = current_mat
     mesh_obj.hide = False
     return mesh_obj
+
+
+def recalc_eeg_mesh_faces_verts():
+    mu.add_mmvt_code_root_to_path()
+    from src.utils import utils
+    importlib.reload(utils)
+    eeg_helmet = bpy.data.objects.get('eeg_helmet')
+    if eeg_helmet is None:
+        print('eeg helmet is None!')
+        return
+    verts = np.array([v.co for v in eeg_helmet.data.vertices])
+    faces = np.array([f.vertices for f in eeg_helmet.data.polygons])
+    out_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_faces_verts.npy')
+    ply_file_name = op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply')
+    utils.calc_ply_faces_verts(verts, faces, out_file, overwrite=True)
+    utils.write_ply_file(verts, faces, ply_file_name, write_also_npz=True)
 
 
 class ImportRois(bpy.types.Operator):
@@ -405,6 +422,19 @@ def import_eeg_sensors(overwrite_sensors=False):
                       overwrite=overwrite_sensors)
     bpy.types.Scene.eeg_imported = True
     print('EEG sensors importing is Finished ')
+
+
+def export_eeg_sensors(parnet_name='EEG_sensors'):
+    parent_obj = bpy.data.objects.get(parnet_name)
+    if parent_obj is None:
+        print('Can\'t find the parent object! ({})'.format(parnet_name))
+        return
+    sensors_tup = [(elc_obj.matrix_world.to_translation() * 10, elc_obj.name) for elc_obj in parent_obj.children]
+    sensors_pos = np.array([t[0] for t in sensors_tup])
+    sensors_names = np.array([t[1] for t in sensors_tup])
+    fol = mu.make_dir(op.join(mu.get_user_fol(), 'eeg'))
+    output_fname = op.join(fol, 'eeg_sensors_positions.npz')
+    np.savez(output_fname, pos=sensors_pos, names=sensors_names)
 
 
 def get_electrodes_radius():
@@ -584,7 +614,11 @@ class ImportEEG(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        import_eeg_sensors()
+        eeg_sensors_positions_file = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_positions.npz')
+        if op.isfile(eeg_sensors_positions_file):
+            import_eeg_sensors()
+        else:
+            export_eeg_sensors()
         return {"FINISHED"}
 
 
@@ -594,7 +628,10 @@ class CreateEEGMesh(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        create_eeg_mesh()
+        if bpy.data.objects.get('eeg_helmet'):
+            recalc_eeg_mesh_faces_verts()
+        else:
+            create_eeg_mesh()
         return {"FINISHED"}
 
 
@@ -1182,10 +1219,15 @@ def data_draw(self, context):
         col.operator(ImportEEG.bl_idname, text="Import EEG sensors", icon='COLOR_GREEN')
         eeg_mesh_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply')
         if op.isfile(eeg_mesh_fname):
-            col.operator(CreateEEGMesh.bl_idname, text="Import EEG mesh", icon='COLOR_GREEN')
+            if bpy.data.objects.get('eeg_helmet'):
+                col.operator(CreateEEGMesh.bl_idname, text="Export EEG mesh", icon='LAMP_AREA')
+            else:
+                col.operator(CreateEEGMesh.bl_idname, text="Import EEG mesh", icon='COLOR_GREEN')
         if eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
             col.prop(context.scene, 'eeg_data_files', text="")
             col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
+    else:
+        col.operator(ImportEEG.bl_idname, text="Export EEG sensors", icon='LAMP_AREA')
 
 
 class AddDataToEEGSensors(bpy.types.Operator):

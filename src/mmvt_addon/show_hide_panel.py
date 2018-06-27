@@ -339,6 +339,10 @@ def _split_view():
     ShowHideObjectsPanel.split_view += 1
     if ShowHideObjectsPanel.split_view == 3:
         ShowHideObjectsPanel.split_view = 0
+        _addon().appearance.show_electrodes(ShowHideObjectsPanel.electrodes_are_shown)
+    elif ShowHideObjectsPanel.split_view == 1:
+        ShowHideObjectsPanel.electrodes_are_shown = _addon().appearance.showing_electordes()
+        _addon().appearance.hide_electrodes()
     view = ShowHideObjectsPanel.split_view
     split_view(view)
     if bpy.context.scene.render_split:
@@ -577,6 +581,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     init = False
     split_view = 0
     split_view_text = {0:'Split Lateral', 1:'Split Medial', 2:'Normal view'}
+    electrodes_are_shown = False
     time_of_view_selection = mu.get_time_obj
 
     def draw(self, context):

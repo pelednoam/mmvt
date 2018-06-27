@@ -79,12 +79,12 @@ def create_eeg_mesh(subject, excludes=[], overwrite_faces_verts=True):
     try:
         from scipy.spatial import Delaunay
         from src.utils import trig_utils
-        input_file = op.join(MMVT_DIR, subject, 'eeg', 'eeg_positions.npz')
+        input_file = op.join(MMVT_DIR, subject, 'eeg', 'eeg_sensors_positions.npz')
         mesh_ply_fname = op.join(MMVT_DIR, subject, 'eeg', 'eeg_helmet.ply')
         faces_verts_out_fname = op.join(MMVT_DIR, subject, 'eeg', 'eeg_faces_verts.npy')
         f = np.load(input_file)
         verts = f['pos']
-        excluded_inds = [np.where(f['names'] == e)[0] for e in excludes]
+        # excluded_inds = [np.where(f['names'] == e)[0] for e in excludes]
         # verts = np.delete(verts, excluded_inds, 0)
         verts_tup = [(x, y, z) for x, y, z in verts]
         tris = Delaunay(verts_tup)
@@ -136,14 +136,16 @@ def main(tup, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_minmax'):
         flags['calc_minmax'] = calc_minmax(mri_subject, args)
 
-    if not op.isfile(meg.COR):
-        eeg_cor = op.join(meg.SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(subject))
-        if op.isfile(eeg_cor):
-            meg.COR = eeg_cor
-            flags = meg.calc_fwd_inv_wrapper(subject, args, conditions, flags, mri_subject)
-            flags = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
-        else:
-            print("Can't find head-MRI transformation matrix. Should be in {} or in {}".format(meg.COR, eeg_cor))
+    if utils.should_run(args, 'make_forward_solution') or utils.should_run(args, 'calc_inverse_operator') or \
+            utils.should_run(args, 'calc_stc'):
+        if not op.isfile(meg.COR):
+            eeg_cor = op.join(meg.SUBJECT_MEG_FOLDER, '{}-cor-trans.fif'.format(subject))
+            if op.isfile(eeg_cor):
+                meg.COR = eeg_cor
+                flags = meg.calc_fwd_inv_wrapper(subject, args, conditions, flags, mri_subject)
+                flags = meg.calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, flags)
+            else:
+                print("Can't find head-MRI transformation matrix. Should be in {} or in {}".format(meg.COR, eeg_cor))
 
     return flags
 

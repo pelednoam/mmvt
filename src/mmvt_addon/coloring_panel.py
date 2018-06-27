@@ -1659,21 +1659,35 @@ def color_eeg_helmet(use_abs=None):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     fol = mu.get_user_fol()
-    data_fname = op.join(fol, 'eeg', 'eeg_data.npy')
-    data = np.load(data_fname)
-    data = np.diff(data).squeeze()
+    data, meta = get_eeg_sensors_data()
+    if bpy.context.scene.eeg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        data = np.diff(data, axis=2).squeeze()
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors conditions difference')
     lookup = np.load(op.join(fol, 'eeg', 'eeg_faces_verts.npy'))
     threshold = 0
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+        data_maxmin = max([abs(data_min), abs(data_max)])
+        data_min, data_max = -data_maxmin, data_maxmin
         _addon().set_colorbar_max_min(data_max, data_min, True)
-        _addon().set_colorbar_title('EEG')
     colors_ratio = 256 / (data_max - data_min)
-    data_t = data[:, bpy.context.scene.frame_current]
 
     cur_obj = bpy.data.objects['eeg_helmet']
+    eeg_loc = np.array([eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+    hel_loc = np.array([v.co for v in cur_obj.data.vertices])
+    from scipy.spatial.distance import cdist
+    indices = np.argmin(cdist(hel_loc, eeg_loc), axis=1)
+
+    data_t = data[indices, bpy.context.scene.frame_current]
+
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
@@ -2346,8 +2360,8 @@ def draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, "eeg_sensors_conditions", text="")
         col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensors", icon='POTATO')
-        # if not bpy.data.objects.get('eeg_helmet', None) is None:
-        #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
+        if not bpy.data.objects.get('eeg_helmet', None) is None:
+            col.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
 
     if ColoringMakerPanel.electrodes_files_exist:
         col = layout.box().column()
