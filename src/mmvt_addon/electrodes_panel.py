@@ -41,11 +41,11 @@ def show_electrodes_groups_leads_update(self, context):
             points = [get_elc_pos(e) for e in electrodes]
             points_inside_cylinder, _, dists = mu.points_in_cylinder(
                 get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points, 0.07)
-            if len(points_inside_cylinder) == len(electrodes):
-                create_lead(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), '{}_lead'.format(group))
-            else:
-                for ind, (p1, p2) in enumerate(zip(points[:-1], points[1:])):
-                    create_lead(p1, p2, '{}_lead_{}'.format(group, ind))
+            # if len(points_inside_cylinder) == len(electrodes):
+            create_lead(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), '{}_lead'.format(group))
+            # else:
+            #     for ind, (p1, p2) in enumerate(zip(points[:-1], points[1:])):
+            #         create_lead(p1, p2, '{}_lead_{}'.format(group, ind))
 
     for group_lead_obj in leads_obj.children:
         group_lead_obj.hide = not show_leads
