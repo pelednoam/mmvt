@@ -40,7 +40,7 @@ def show_electrodes_groups_leads_update(self, context):
         for group, electrodes in ElecsPanel.groups_electrodes.items():
             points = [get_elc_pos(e) for e in electrodes]
             points_inside_cylinder, _, dists = mu.points_in_cylinder(
-                get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points, 0.1)
+                get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points, 0.07)
             if len(points_inside_cylinder) == len(electrodes):
                 create_lead(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), '{}_lead'.format(group))
             else:
