@@ -1475,6 +1475,17 @@ def meg_minmax_prec_update(selc, context):
     calc_stc_minmax()
 
 
+def electrodes_minmax_prec_update(selc, context):
+    if not ColoringMakerPanel.run_electrodes_minmax_prec_update:
+        return
+    ColoringMakerPanel.run_electrodes_minmax_prec_update = False
+    if bpy.context.scene.electrodes_min_prec >= bpy.context.scene.electrodes_max_prec:
+        bpy.context.scene.electrodes_min_prec = bpy.context.scene.electrodes_max_prec - 1
+    if bpy.context.scene.electrodes_max_prec <= bpy.context.scene.electrodes_min_prec:
+        bpy.context.scene.electrodes_max_prec = bpy.context.scene.electrodes_min_prec + 1
+    ColoringMakerPanel.run_electrodes_minmax_prec_update = True
+
+
 def set_meg_minmax_prec(min_prec, max_prec, stc_name):
     if ColoringMakerPanel.stc_exist:
         ColoringMakerPanel.run_meg_minmax_prec_update = False
@@ -1764,7 +1775,7 @@ def color_electrodes():
     threshold = bpy.context.scene.coloring_lower_threshold
     data, names, conditions = _addon().load_electrodes_data()
     if not _addon().colorbar_values_are_locked():
-        norm_percs = (3, 97)  # todo: add to gui
+        norm_percs = (bpy.context.scene.electrodes_min_prec, bpy.context.scene.electrodes_max_prec)
         data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
         colors_ratio = 256 / (data_max - data_min)
         _addon().set_colorbar_max_min(data_max, data_min)
@@ -2366,6 +2377,9 @@ def draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, "electrodes_conditions", text="")
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+        row = col.row(align=True)
+        row.prop(context.scene, 'electrodes_min_prec', 'min percentile')
+        row.prop(context.scene, 'electrodes_max_prec', 'max percentile')
         # if ColoringMakerPanel.electrodes_dists_exist:
         #     col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
         if ColoringMakerPanel.electrodes_labels_files_exist:
@@ -2424,6 +2438,8 @@ bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
     items=[('abs', 'Absolute values', '', 0), ('pos', 'Only positive', '', 1), ('neg', 'only negative', '', 2)])
 bpy.types.Scene.meg_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
 bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
+bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)
+bpy.types.Scene.electrodes_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)
 bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description="MEG files")
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
@@ -2509,6 +2525,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fMRI_contrasts_names = []
     fMRI_constrasts_exist = False
     run_meg_minmax_prec_update = True
+    run_electrodes_minmax_prec_update = True
     eeg_helmet_indices = []
     # activity_map_coloring = activity_map_coloring
 

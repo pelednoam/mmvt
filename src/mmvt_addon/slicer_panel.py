@@ -510,8 +510,9 @@ def slicer_draw(self, context):
     col.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
     col.prop(context.scene, 'show_full_slice', text='Show full slice')
     col = layout.box().column()
+    row = col.row(align=0)
     if SlicerPanel.ct_exist or SlicerPanel.t2_exist:
-        col.prop(context.scene, 'slices_modality', expand=True)
+        row.prop(context.scene, 'slices_modality', expand=True)
         if bpy.context.scene.slices_modality == 'mri':
             col.label(text='T1 value: {:.2f}'.format(bpy.context.scene.t1_value))
         elif bpy.context.scene.slices_modality == 't2':

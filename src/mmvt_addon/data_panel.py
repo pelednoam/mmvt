@@ -939,6 +939,7 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
         conditions = [str(c) for c in meta_data['conditions']]
     if isinstance(conditions, str):
         conditions = [conditions]
+    print('keyframing for {}'.format(meta_data['names']))
     for obj_counter, (obj_name, data) in enumerate(zip(meta_data['names'], all_data)):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         obj_name = obj_name.astype(str)
