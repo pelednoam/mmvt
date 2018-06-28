@@ -336,24 +336,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
 
 
 def plot_electrodes(cur_frame, threshold, stim=False):
-    # todo: need to use the threshold
-    # threshold = bpy.context.scene.coloring_lower_threshold
-    # if stim:
-    #     names, colors = PlayPanel.stim_names, PlayPanel.stim_colors
-    # else:
-    # names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_colors
     _addon().color_electrodes()
-    # names = PlayPanel.electrodes_names
-    # data = PlayPanel.electrodes_data
-    # colors = _addon().calc_colors(data[:, cur_frame], PlayPanel.electrodes_data_min, PlayPanel.electrodes_colors_ratio).squeeze()
-    # for obj_name, new_color in zip(names, colors):
-    # # for obj_name in names:
-    #     # if cur_frame < len(names):
-    #     # new_color = object_colors[cur_frame]
-    #     if bpy.data.objects.get(obj_name) is not None:
-    #         _addon().object_coloring(bpy.data.objects[obj_name], new_color)
-    #     else:
-    #         print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
 
 def get_meg_data(per_condition=True):

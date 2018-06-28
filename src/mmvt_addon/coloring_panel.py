@@ -1769,8 +1769,8 @@ def color_electrodes_dists():
 
 def color_electrodes():
     # mu.set_show_textured_solid(False)
-    bpy.context.scene.show_hide_electrodes = True
-    _addon().show_hide_electrodes(True)
+    # bpy.context.scene.show_hide_electrodes = True
+    # _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_lower_threshold
     data, names, conditions = _addon().load_electrodes_data()
@@ -1791,7 +1791,7 @@ def color_electrodes():
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('Electrodes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
-    _addon().show_electrodes()
+    # _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
     #     bpy.ops.object.editmode_toggle()
     #     bpy.ops.object.editmode_toggle()

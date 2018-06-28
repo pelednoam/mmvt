@@ -361,7 +361,7 @@ def split_view(view):
     shift = pial_shift + (bpy.context.scene.inflating + 1) * (inflated_shift - pial_shift)
     bpy.context.scene.cursor_is_snapped = view == 0
     if view == 0:  # Normal
-        show_coronal()
+        # show_coronal()
         mu.set_zoom_level(bpy.context.scene.surface_type, relative=1)
         # if _addon().is_inflated():
         bpy.data.objects['inflated_lh'].location[0] = 0

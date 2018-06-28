@@ -442,6 +442,11 @@ def show_hide_hierarchy(val, obj_name, also_parent=False, select=True):
                 child.select = val
 
 
+def show_hide_obj(obj, val=True):
+    obj.hide = not val
+    obj.hide_render = not val
+
+
 def rand_letters(num):
     return str(uuid.uuid4())[:num]
 
@@ -2540,12 +2545,29 @@ def mouse_coo_to_3d_loc(event, context):
 
 def points_in_cylinder(pt1, pt2, points, radius_sq, N=100):
     from scipy.spatial.distance import cdist
-    dist = np.linalg.norm(pt1 - pt2)
-    elc_ori = (pt2 - pt1) / dist
-    elc_line = (pt1.reshape(3, 1) + elc_ori.reshape(3, 1) @ np.linspace(0, dist, N).reshape(1, N)).T
+    # dist = np.linalg.norm(pt1 - pt2)
+    # elc_ori = (pt2 - pt1) / dist
+    # elc_line = (pt1.reshape(3, 1) + elc_ori.reshape(3, 1) @ np.linspace(0, dist, N).reshape(1, N)).T
+    elc_line = get_elc_line(pt1, pt2, N)
     dists = np.min(cdist(elc_line, points), 0)
     points_inside_cylinder = np.where(dists <= radius_sq)[0]
     return points_inside_cylinder, elc_line, dists[points_inside_cylinder]
+
+
+def get_elc_line(pt1, pt2, N=100):
+    dist = np.linalg.norm(pt1 - pt2)
+    elc_ori = (pt2 - pt1) / dist
+    return (pt1.reshape(3, 1) + elc_ori.reshape(3, 1) @ np.linspace(0, dist, N).reshape(1, N)).T
+
+
+def move_electrodes_to_line(pt1, pt2, points, N=100):
+    from scipy.spatial.distance import cdist
+    elc_line = get_elc_line(pt1, pt2, N)
+    new_points = []
+    for elc_pos in points:
+        elc_line_ind = np.argmin(cdist([elc_pos], elc_line), 1)[0]
+        new_points.append(elc_line[elc_line_ind])
+    return new_points
 
 
 def is_float(x):
