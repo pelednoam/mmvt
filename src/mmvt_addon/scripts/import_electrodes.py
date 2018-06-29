@@ -72,6 +72,8 @@ def wrap_mmvt_calls(subject_fname):
         su.debug()
     mmvt = su.init_mmvt_addon()
     mmvt.utils.write_to_stderr('{} Importing electrodes...'.format(args.subject))
+    if args.overwrite:
+        mmvt.utils.delete_hierarchy('Deep_electrodes')
     mmvt.import_electrodes(args.pos_file, mmvt.ELECTRODES_LAYER, args.bipolar, args.radius)
     mmvt.set_render_output_path = su.get_figures_dir(args)
     su.save_blend_file(subject_fname)
