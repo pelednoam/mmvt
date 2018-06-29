@@ -36,8 +36,8 @@ def create_mmvt_file(subject, stim_channel, channel_list, fs, time, stim, theta,
 if __name__ == '__main__':
     subject = 'mg118'
     stim_channel = 'LMF2-LMF1'
-    root = '/autofs/space/thibault_001/users/npeled/Documents/darpa_year4_meeting'
-    fname = op.join(root, 'MG118_Theta_TurnOn.mat')
+    home = [d for d in ['/home/npeled', '/autofs/space/thibault_001/users/npeled/'] if op.isdir(d)][0]
+    fname = op.join(home, 'Documents', 'darpa_year4_meeting', 'MG118_Theta_TurnOn.mat')
     downsample_ratio = 10
 
     channel_list, fs, time, stim, theta = load_file(fname)
