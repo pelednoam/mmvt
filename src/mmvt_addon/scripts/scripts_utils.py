@@ -223,7 +223,7 @@ def make_dir(fol):
 
 
 def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
-                only_verbose=False, err_pipe=None, std_pipe=None):
+                only_verbose=False, err_pipe=None, std_pipe=None, stay_alive=True):
     # if args.blender_fol == '':
     #     args.blender_fol = get_blender_dir()
     blender_fol = get_blender_dir()
@@ -258,7 +258,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')
         if not only_verbose:
             utils.run_script(
-                cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
+                cmd, stay_alive=stay_alive, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
         # if blend_fname_is_None:
         #     blend_fname = None
         # if call_args_is_None:
@@ -546,6 +546,26 @@ def get_mmvt_object(subject):
     except:
         pass
     return mmvt
+
+
+def decode_subjects(subjects, remote_subject_dir=''):
+    import glob
+    import re
+    for sub in subjects:
+        if '*' in sub:
+            subjects.remove(sub)
+            subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(get_subjects_dir(), sub))])
+            if remote_subject_dir != '':
+                for fol in glob.glob(op.join(remote_subject_dir.format(subject=sub))):
+                    start_ind = utils.namebase(remote_subject_dir).index('{subject}')
+                    end_ind = re.search('[-_,\.!?]', utils.namebase(fol)[start_ind:]).start() + start_ind
+                    subjects.append(utils.namebase(fol)[start_ind:end_ind])
+                subjects = list(set(subjects))
+        elif 'file:' in sub:
+            subjects.remove(sub)
+            subjects.extend(utils.read_list_from_file(sub[len('file:'):]))
+    return subjects
+
 
 
 class RedirectStdStreams(object):
