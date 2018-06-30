@@ -257,6 +257,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         cmd = '"{blender_exe}" "{blend_fname}" {background} --python "{script_fname}" -- {call_args}'.format( # > {log_fname}
             blender_exe='./blender', background='--background' if run_in_background else '',
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')
+        print(cmd)
         if not only_verbose:
             utils.run_script(
                 cmd, stay_alive=stay_alive, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
