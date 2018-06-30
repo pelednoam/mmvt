@@ -1102,6 +1102,9 @@ def load_electrodes_data(stat='diff'):
     # else:
     #     return DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_names, DataMakerPanel.electrodes_conditions
 
+def set_bipolar(val):
+    bpy.context.scene.bipolar = val
+
 
 def meg_evoked_files_update(self, context):
     _meg_evoked_files_update()

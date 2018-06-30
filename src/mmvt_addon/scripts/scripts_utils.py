@@ -253,6 +253,7 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         if call_args is None:
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
+        print('Writing output to {}'.format(log_fname))
         cmd = '"{blender_exe}" "{blend_fname}" {background} --python "{script_fname}" -- {call_args}'.format( # > {log_fname}
             blender_exe='./blender', background='--background' if run_in_background else '',
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')
@@ -276,7 +277,7 @@ def get_logs_fol(subject):
 def get_subject_fname(args):
     mmvt_dir = get_mmvt_dir()
     atlas = get_real_atlas_name(args.atlas, short_name=True)
-    new_fname = op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, atlas))
+    new_fname = op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', atlas))
     # return op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', args.atlas))
     return new_fname
 
@@ -309,9 +310,9 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     print('mmvt_addon_fol: {}'.format(mmvt_addon_fol))
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon
-    if bpy.context.scene.mmvt_initialized:
-        print('mmvt was already initialized')
-        return mmvt_addon
+    # if bpy.context.scene.mmvt_initialized:
+    #     print('mmvt was already initialized')
+    #     return mmvt_addon
     # imp.reload(mmvt_addon)
     addon_prefs = Bag({'python_cmd':sys.executable, 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
                        'freeview_cmd_stdin':True})

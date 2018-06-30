@@ -2658,6 +2658,11 @@ def get_annot_fname(hemi, atlas):
     return annot_fname
 
 
+def children(obj_name):
+    obj = bpy.data.objects.get(obj_name)
+    return [] if obj is None else obj.children
+
+
 def is_freesurfer_exist():
     return os.environ.get('FREESURFER_HOME', '') != ''
 
