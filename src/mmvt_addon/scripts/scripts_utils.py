@@ -244,8 +244,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         args.subjects = ''
         # print('*********** {} ***********'.format(subject))
         logs_fol = get_logs_fol(subject)
-        if op.isfile(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')):
-            os.remove(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log'))
+        # if op.isfile(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')):
+        #     os.remove(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log'))
         if blend_fname is None:
             blend_fname = get_subject_fname(args)
         else:
