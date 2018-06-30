@@ -131,6 +131,7 @@ class ModalTimerOperator(bpy.types.Operator):
 
 
 def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_to_camera_mode=False):
+    set_play_to(play_to)
     bpy.context.scene.play_type = play_type
     bpy.context.scene.render_movie = True
     print('In play movie!')
