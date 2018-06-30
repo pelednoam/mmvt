@@ -18,6 +18,7 @@ def wrap_blender_call(args=None):
 
 
 def read_args(argv=None):
+    print('play_electrodes argv: {}'.format(argv))
     parser = su.add_default_args()
     parser = add_args(parser)
     return su.parse_args(parser, argv)
