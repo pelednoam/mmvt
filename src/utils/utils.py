@@ -1863,8 +1863,13 @@ def ignore_warnings(f, *args, **kw):
 def check_for_freesurfer(func):
     def wrapper(*args, **kwargs):
         if os.environ.get('FREESURFER_HOME', '') == '':
-            raise Exception('Source freesurfer and rerun')
-        retval = func(*args, **kwargs)
+            if is_windows:
+                print('You need Freesurfer (Linux/Mac) to run this function')
+                retval = False
+            else:
+                raise Exception('Source freesurfer and rerun')
+        else:
+            retval = func(*args, **kwargs)
         return retval
     return wrapper
 
