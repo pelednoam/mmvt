@@ -64,7 +64,7 @@ def get_colormaps_names():
 def find_color_map(color_map):
     color_map_name = color_map if isinstance(color_map, str) else color_map.name
     if color_map_name not in plt.cm.cmap_d:
-        color_map_name = color_map_name.replace('-', '_')
+        # color_map_name = color_map_name.replace('-', '_')
         if color_map_name in get_colormaps_names():
             color_map = cmu.get_cm_obj(color_map_name)
         else:

@@ -36,22 +36,30 @@ def show_electrodes_groups_leads_update(self, context):
     show_leads = bpy.context.scene.show_electrodes_groups_leads
     if show_leads and leads_obj is None:
         leads_obj = mu.create_empty_if_doesnt_exists(parent_name, _addon().BRAIN_EMPTY_LAYER, None)
+    elif not show_leads and leads_obj is None:
+        return
+
     if len(leads_obj.children) == 0:
         for group, electrodes in ElecsPanel.groups_electrodes.items():
             points = [get_elc_pos(e) for e in electrodes]
-            points_inside_cylinder, _, dists = mu.points_in_cylinder(
-                get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points, 0.1)
-            if len(points_inside_cylinder) == len(electrodes):
-                create_lead(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), '{}_lead'.format(group))
-            else:
+            # points_inside_cylinder, _, dists = mu.points_in_cylinder(
+            #     get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points, 0.1)
+            # if len(points_inside_cylinder) == len(electrodes):
+            if bpy.context.scene.electrodes_create_curved_leads:
                 for ind, (p1, p2) in enumerate(zip(points[:-1], points[1:])):
                     create_lead(p1, p2, '{}_lead_{}'.format(group, ind))
+            else:
+                create_lead(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), '{}_lead'.format(group))
+            # group_new_pos = mu.move_electrodes_to_line(get_elc_pos(electrodes[0]), get_elc_pos(electrodes[-1]), points)
+            # for elc_name, elc_new_pos in zip(electrodes, group_new_pos):
+            #     bpy.data.objects[elc_name].location = elc_new_pos
+
 
     for group_lead_obj in leads_obj.children:
         group_lead_obj.hide = not show_leads
 
 
-def create_lead(p1, p2, lead_name, radius=0.05):
+def create_lead(p1, p2, lead_name, radius=0.03):
     if bpy.data.objects.get(lead_name) is not None:
         return bpy.data.objects.get(lead_name)
     layers = [False] * 20
@@ -508,7 +516,7 @@ def unselect_prev_electrode(prev_electrodes):
 def run_ela_alg():
     mmvt_code_fol = mu.get_mmvt_code_root()
     ela_code_fol = op.join(mu.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
-    if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py')):
+    if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'find_rois', 'find_rois.py')):
         print("Can't find ELA folder!")
         return
 
@@ -516,11 +524,22 @@ def run_ela_alg():
     import sys
     if ela_code_fol not in sys.path:
         sys.path.append(ela_code_fol)
-    from src import find_rois
+    from find_rois import find_rois
     importlib.reload(find_rois)
     args = find_rois.get_args(['-s', mu.get_user(), '-a', bpy.context.scene.ela_atlas,
                                '-b', str(bpy.context.scene.ela_bipolar)])
     find_rois.run_for_all_subjects(args)
+    import shutil
+    ela_output_fname_template = op.join(
+        ela_code_fol, 'electrodes', '{}_{}_electrodes_cigar_r_*_l_*{}.pkl'.format(
+            mu.get_user(), bpy.context.scene.ela_atlas, '_bipolar' if bpy.context.scene.ela_bipolar else '' ))
+    ela_output_fnames = glob.glob(ela_output_fname_template)
+    if len(ela_output_fnames) > 0:
+        for ela_output_fname in ela_output_fnames:
+            shutil.copyfile(ela_output_fname, op.join(
+                mu.get_user_fol(), 'electrodes', mu.namebase_with_ext(ela_output_fname)))
+    else:
+        print('couldn\'t find any ELA output! ({})'.format(ela_output_fname_template))
     init(_addon(), False)
 
 
@@ -563,8 +582,11 @@ def elecs_draw(self, context):
 
         # layout.prop(context.scene, "elc_size", text="")
         # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
-        # row = layout.row(align=True)
-        layout.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
+        row = layout.row(align=True)
+        row.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
+        leads_obj = bpy.data.objects.get('leads', None)
+        if leads_obj is None or len(leads_obj.children) == 0:
+            row.prop(context.scene, "electrodes_create_curved_leads", text="Curved")
         # row.prop(context.scene, "electrodes_leads_color", text='')
 
         if ElecsPanel.ela_code_exist and ElecsPanel.atlases_exist:
@@ -786,6 +808,7 @@ bpy.types.Scene.ela_bipolar = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=False)
 
 
 class ElecsPanel(bpy.types.Panel):
@@ -851,6 +874,7 @@ def init(addon, do_register=True):
     bpy.context.scene.show_ela = False
     bpy.context.scene.electrode_rotate = False
     bpy.context.scene.electrodes_more_settings = False
+    bpy.context.scene.electrodes_create_curved_leads = False
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")
@@ -925,7 +949,7 @@ def init_electrodes_list():
 
 def init_electrodes_labeling(addon):
     ela_code_fol = op.join(mu.get_parent_fol(mu.get_mmvt_code_root()), 'electrodes_rois')
-    ElecsPanel.ela_code_exist = op.isfile(op.join(ela_code_fol, 'src', 'find_rois.py'))
+    ElecsPanel.ela_code_exist = op.isfile(op.join(ela_code_fol, 'find_rois', 'find_rois.py'))
     ElecsPanel.labling_files = labling_files = find_elecrode_labeling_files()
     if len(labling_files) > 0:
         files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
@@ -1006,8 +1030,14 @@ def create_groups_electrodes_lookup(electrodes):
     groups = defaultdict(list)
     bipolar = '-' in electrodes[0]
     for elc in electrodes:
-        group = mu.elec_group(elc, bipolar)
-        groups[group].append(elc)
+        if bipolar:
+            group, num, _ = mu.elec_group_number(elc, bipolar)
+        else:
+            group, num = mu.elec_group_number(elc, bipolar)
+        # group = mu.elec_group(elc, bipolar)
+        groups[group].append((num, elc))
+    for group in groups.keys():
+        groups[group] = [t[1] for t in sorted(groups[group])]
     return groups
 
 

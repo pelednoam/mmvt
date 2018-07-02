@@ -422,7 +422,18 @@ def find_random_group(runs_num=100):
     #     mu.save(DellPanel.log, op.join(DellPanel.output_fol, '{}_log.pkl'.format(
     #         int(bpy.context.scene.dell_ct_threshold))))
     print('find_random_group: exit afer {} runs'.format(run_num))
+    if len(group) == 0:
+        bpy.context.scene.dell_all_groups_were_found = True
     return len(group) > 0
+
+
+def project_electrodes_on_leads():
+    for g in DellPanel.groups:
+        group_elecs_pos = [DellPanel.pos[g[k]] for k in range(len(g))]
+        group_elecs_names = [DellPanel.names[g[k]] for k in range(len(g))]
+        group_elecs_new_pos = mu.move_electrodes_to_line(DellPanel.pos[g[0]], DellPanel.pos[g[-1]], group_elecs_pos)
+        for elc_name, elc_new_pos in zip(group_elecs_names, group_elecs_new_pos):
+            bpy.data.objects[elc_name].location = elc_new_pos * 0.1
 
 
 def save_ct_neighborhood():
@@ -556,6 +567,7 @@ def clear_groups():
         shutil.copy(log_fname, '{}_backup{}'.format(*op.splitext(log_fname)))
         os.remove(log_fname)
     # DellPanel.log = []
+    bpy.context.scene.dell_all_groups_were_found = False
     DellPanel.is_playing = False
 
 
@@ -634,6 +646,63 @@ def install_dell_reqs():
     sutils.run_script(cmd)
 
 
+def dell_draw_presentation(self, context):
+    layout = self.layout
+    parent = bpy.data.objects.get('Deep_electrodes', None)
+    if parent is None or len(parent.children) == 0:
+        row = layout.row(align=0)
+        row.prop(context.scene, 'dell_ct_threshold', text="Threshold")
+        row.prop(context.scene, 'dell_ct_threshold_percentile', text='Percentile')
+        row.operator(CalcThresholdPercentile.bl_idname, text="Calc threshold", icon='STRANDS')
+        layout.prop(context.scene, 'dell_brain_mask_sigma', text='Brain mask sigma')
+        layout.prop(context.scene, 'dell_find_nei_maxima', text='Find local nei maxima')
+        layout.operator(FindHowManyElectrodesAboveThrshold.bl_idname, text="Find how many electrodes", icon='NODE_SEL')
+        layout.operator(GetElectrodesAboveThrshold.bl_idname, text="Import electrodes", icon='ROTATE')
+        if bpy.context.scene.dell_how_many_electrodes_above_threshold != '':
+            layout.label(text='Found {} potential electrodes'.format(
+                bpy.context.scene.dell_how_many_electrodes_above_threshold))
+    else:
+        # layout.prop(context.scene, 'dell_ct_min_elcs_for_lead', text="Min electrodes per lead")
+        if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
+            layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
+                            icon='WORLD_DATA')
+            layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
+        if not bpy.context.scene.dell_all_groups_were_found:
+            layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
+            layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
+        layout.operator(ProjectElectrodesOnLeads.bl_idname, text="Project electrodes on leads", icon='SURFACE_DATA')
+        layout.prop(context.scene, 'ct_mark_noise', text='Show noise')
+        if len(DellPanel.groups) > 0:
+            layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
+            # rd = context.scene.render
+            # row = layout.row()
+            # row.template_list("DellGroupItem", "", rd, "layers", rd.layers, "active_index", rows=2)
+            box = layout.box()
+            col = box.column()
+            for g in DellPanel.groups:
+                mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
+        layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
+    if parent is not None and len(parent.children) > 0:
+        layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
+        if bpy.context.scene.dell_delete_electrodes:
+            layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
+        row = layout.row(align=True)
+        row.prop(context.scene, 'dell_move_x')
+        row.prop(context.scene, 'dell_move_y')
+        row.prop(context.scene, 'dell_move_z')
+
+
+class DellGroupItem(bpy.types.UIList):
+    # http://sinestesia.co/blog/tutorials/using-uilists-in-blender/
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        layer = item
+        g = DellPanel.groups[index]
+        layout.label(text=DellPanel.names[g[0]])
+        layout.label(text=DellPanel.names[g[-1]])
+        layout.label(text=str(len(g)))
+        layout.prop(layer, "use", text="", index=index)
+
+
 def dell_draw(self, context):
     layout = self.layout
     parent = bpy.data.objects.get('Deep_electrodes', None)
@@ -696,12 +765,6 @@ def dell_draw(self, context):
             if select_elc_group >= 0:
                 layout.prop(context.scene, "dell_selected_electrode_group_name", text="Group name")
             layout.label(text='pos: {}'.format(pos))
-        layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
-        if len(DellPanel.groups) > 0:
-            box = layout.box()
-            col = box.column()
-            for g in DellPanel.groups:
-                mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         # if len(bpy.context.selected_objects) == 1:
         #     layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
         # if len(DellPanel.dell_files) > 1:
@@ -730,11 +793,18 @@ def dell_draw(self, context):
         #         bpy.context.selected_objects[k].name in DellPanel.names for k in range(4)):
         if len(bpy.context.selected_objects) == 0:
             layout.operator(FindGroupBetweenTwoElectrodesOnDural.bl_idname, text="Find grid on dural", icon='EXPORT')
-        layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
-        layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
-        layout.prop(context.scene, 'dell_do_post_search', text='Do post search')
-        layout.prop(context.scene, 'dell_find_all_group_using_timer', text='Use timer')
+        if not bpy.context.scene.dell_all_groups_were_found:
+            layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
+            layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
+            layout.prop(context.scene, 'dell_do_post_search', text='Do post search')
+            layout.prop(context.scene, 'dell_find_all_group_using_timer', text='Use timer')
         # layout.operator(SaveCTNeighborhood.bl_idname, text="Save CT neighborhood", icon='EDIT')
+        layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
+        if len(DellPanel.groups) > 0:
+            box = layout.box()
+            col = box.column()
+            for g in DellPanel.groups:
+                mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     if parent is not None and len(parent.children) > 0:
         layout.operator(MarkNonGroupElectrodesAsNoise.bl_idname, text="Mark non group electrodes as noise", icon='RADIO')
@@ -960,6 +1030,16 @@ class FindAllLeads(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class ProjectElectrodesOnLeads(bpy.types.Operator):
+    bl_idname = "mmvt.project_electrodes_on_leads"
+    bl_label = "project_electrodes_on_leads"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        project_electrodes_on_leads()
+        return {'PASS_THROUGH'}
+
+
 class SaveCTNeighborhood(bpy.types.Operator):
     bl_idname = "mmvt.save_ct_neighborhood"
     bl_label = "save_ct_neighborhood"
@@ -1171,6 +1251,7 @@ bpy.types.Scene.dell_move_z = bpy.props.IntProperty(default=0, step=1, name='z',
 bpy.types.Scene.dell_selected_electrode_group_name = bpy.props.StringProperty()
 bpy.types.Scene.dell_how_many_electrodes_above_threshold = bpy.props.StringProperty()
 bpy.types.Scene.dell_files = bpy.props.EnumProperty(items=[], description="Dell files")
+bpy.types.Scene.dell_all_groups_were_found = bpy.props.BoolProperty(default=True)
 
 
 class DellPanel(bpy.types.Panel):
@@ -1196,7 +1277,8 @@ class DellPanel(bpy.types.Panel):
 
     def draw(self, context):
         if DellPanel.init:
-            dell_draw(self, context)
+            # dell_draw(self, context)
+            dell_draw_presentation(self, context)
 
 
 def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz', debug=True):
@@ -1245,7 +1327,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
                 DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
             init_groups()
         bpy.context.scene.dell_ct_error_radius = 2.5
-        bpy.context.scene.dell_ct_min_elcs_for_lead = 6
+        bpy.context.scene.dell_ct_min_elcs_for_lead = 4
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
         bpy.context.scene.dell_ct_min_distance = 1.5
         bpy.context.scene.dell_brain_mask_sigma = 1
@@ -1256,6 +1338,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
         bpy.context.scene.dell_binary_erosion = False
         bpy.context.scene.dell_debug = False
         bpy.context.scene.dell_how_many_electrodes_above_threshold = ''
+        bpy.context.scene.dell_all_groups_were_found = False
         if bpy.context.scene.dell_debug:
             DellPanel.debug_fol = mu.make_dir(op.join(DellPanel.output_fol, mu.rand_letters(5)))
         if not DellPanel.init:
@@ -1343,6 +1426,7 @@ def register():
         bpy.utils.register_class(FindElectrodeLead)
         bpy.utils.register_class(FindRandomLead)
         bpy.utils.register_class(FindAllLeads)
+        bpy.utils.register_class(ProjectElectrodesOnLeads)
         bpy.utils.register_class(SaveCTNeighborhood)
         bpy.utils.register_class(PrevCTElectrode)
         bpy.utils.register_class(NextCTElectrode)
@@ -1362,6 +1446,7 @@ def register():
         bpy.utils.register_class(SaveElectrodesObjects)
         bpy.utils.register_class(RefreshElectrodesObjects)
         bpy.utils.register_class(ModalDellTimerOperator)
+        bpy.utils.register_class(DellGroupItem)
     except:
         print("Can't register Dell Panel!")
 
@@ -1397,6 +1482,8 @@ def unregister():
         bpy.utils.unregister_class(SaveElectrodesObjects)
         bpy.utils.unregister_class(RefreshElectrodesObjects)
         bpy.utils.unregister_class(ModalDellTimerOperator)
+        bpy.utils.unregister_class(DellGroupItem)
+        bpy.utils.unregister_class(ProjectElectrodesOnLeads)
     except:
         pass
 

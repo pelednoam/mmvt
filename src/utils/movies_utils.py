@@ -233,7 +233,7 @@ def video_to_frames():
 def find_images_props(fol, start_number=-1, images_prefix='', images_format='', images_type=''):
     if images_type == '':
         images_types = set([utils.file_type(image) for image in glob.glob(op.join(fol, '{}*.*'.format(images_prefix)))])
-        for opt_type in ['png', 'jpg', 'bmp', 'gif']:
+        for opt_type in ['png', 'jpg', 'jpeg', 'bmp', 'gif']:
             if opt_type in images_types:
                 images_type = opt_type
                 print('Images type is {}'.format(images_type))

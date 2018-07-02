@@ -11,4 +11,5 @@ def run(mmvt):
     import dell_panel
     importlib.reload(dell_panel)
     dell_panel.init(mmvt)
+    mmvt.dell = dell_panel
 

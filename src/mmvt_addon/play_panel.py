@@ -131,17 +131,22 @@ class ModalTimerOperator(bpy.types.Operator):
 
 
 def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_to_camera_mode=False):
+    set_play_to(play_to)
     bpy.context.scene.play_type = play_type
     bpy.context.scene.render_movie = True
     print('In play movie!')
     for limits in range(play_from, play_to + 1, play_dt):
         print('limits: {}'.format(limits))
+        mu.write_to_stderr('rendering frame {}'.format(limits))
         bpy.context.scene.frame_current = limits
         try:
             plot_something(None, bpy.context, limits, camera_fname=camera_fname, set_to_camera_mode=set_to_camera_mode)
         except:
             print(traceback.format_exc())
             print('Error in plotting at {}!'.format(limits))
+            mu.write_to_stderr(traceback.format_exc())
+        else:
+            mu.write_to_stderr('Done!')
 
 
 def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_camera_mode=True):
@@ -336,24 +341,7 @@ def plot_graph(context, data, graph_colors, image_fol, plot_time=False):
 
 
 def plot_electrodes(cur_frame, threshold, stim=False):
-    # todo: need to use the threshold
-    # threshold = bpy.context.scene.coloring_lower_threshold
-    # if stim:
-    #     names, colors = PlayPanel.stim_names, PlayPanel.stim_colors
-    # else:
-    # names, colors = PlayPanel.electrodes_names, PlayPanel.electrodes_colors
     _addon().color_electrodes()
-    # names = PlayPanel.electrodes_names
-    # data = PlayPanel.electrodes_data
-    # colors = _addon().calc_colors(data[:, cur_frame], PlayPanel.electrodes_data_min, PlayPanel.electrodes_colors_ratio).squeeze()
-    # for obj_name, new_color in zip(names, colors):
-    # # for obj_name in names:
-    #     # if cur_frame < len(names):
-    #     # new_color = object_colors[cur_frame]
-    #     if bpy.data.objects.get(obj_name) is not None:
-    #         _addon().object_coloring(bpy.data.objects[obj_name], new_color)
-    #     else:
-    #         print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
 
 def get_meg_data(per_condition=True):

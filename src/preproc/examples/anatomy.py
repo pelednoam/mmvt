@@ -1,10 +1,14 @@
 import os.path as op
 import argparse
+import shutil
+
 from src.preproc import anatomy as anat
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
-from gooey import Gooey
+# from gooey import Gooey
+
+SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 
 
 def get_subject_files_using_sftp(args):
@@ -19,6 +23,37 @@ def get_subject_files_using_sftp(args):
             function='prepare_subject_folder'
         ))
         pu.run_on_subjects(args, anat.main)
+
+
+@utils.check_for_freesurfer
+def create_annot_from_mad(args):
+    remote_subject_dir_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
+    for subject in args.subject:
+        remote_subject_dir = remote_subject_dir_template.format(subject=subject)
+        if utils.both_hemi_files_exist(op.join(remote_subject_dir, 'label', '{hemi}.aparc.DKTatlas40.annot')):
+            print('{} has already both annot files!'.format(subject))
+            continue
+        args = anat.read_cmd_args(dict(
+            subject=subject.lower(),
+            atlas=args.atlas,
+            remote_subject_dir=remote_subject_dir_template,
+            function='create_annotation',
+            ignore_missing=True,
+        ))
+        pu.run_on_subjects(args, anat.main)
+        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject.lower(), 'label', '{hemi}.aparc.DKTatlas40.annot')):
+            print('Couldn\'t create annot files for {}!'.format(subject))
+            continue
+        local_annot_fol = utils.make_dir(op.join(SUBJECTS_DIR, 'annot_files', subject.lower()))
+        for hemi in utils.HEMIS:
+            local_annot_fname = op.join(SUBJECTS_DIR, subject.lower(), 'label', '{}.aparc.DKTatlas40.annot'.format(hemi))
+            remote_annot_fname = op.join(remote_subject_dir, 'label', '{}.aparc.DKTatlas40.annot'.format(hemi))
+            local_temp_annot_fname = op.join(local_annot_fol, '{}.aparc.DKTatlas40.annot'.format(hemi))
+            if not op.isfile(remote_annot_fname):
+                if op.isfile(local_annot_fname):
+                    shutil.copyfile(local_annot_fname, local_temp_annot_fname)
+                else:
+                    print('Can\'t copy {} for {}, it doesn\'t exist!'.format(local_annot_fname, subject))
 
 
 # def get_subject_files_from_server(subject, args):

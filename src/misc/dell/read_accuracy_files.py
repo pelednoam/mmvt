@@ -37,7 +37,7 @@ def read_subject_results(subject, root):
         return False, 0, 0, 0, 0, 0
     else:
         found = sum(all_hits_prob) / groups_num
-        # print('{}: {:.2f}% found, {:.2f}% extra'.format(subject, found, extra))
+        print('{}: {:.2f}% found, {:.2f}% extra'.format(subject, found, extra))
         return True, found, all_hits, all_extra, groups_num, elecs_num
 
 

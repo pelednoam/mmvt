@@ -26,11 +26,14 @@ def read_args(argv=None):
     parser = su.add_default_args()
     parser.add_argument('-r', '--radius', help='radius', required=False, default=0.15, type=float)
     parser.add_argument('-p', '--pos_file', help='position file', required=False, default='', type=su.str_arr_type)
+    parser.add_argument('--no_mni', help='no mni pos files', required=False, default=True, type=su.is_true)
     args = su.parse_args(parser, argv)
     if len(args.subjects) == 0:
-        args.subjects = [args.subject]
+        args.subjects = args.subject.split(',')
+        # args.subjects = [args.subject]
     if len(args.pos_file) == 0:
         args.pos_file = [''] * len(args.subjects)
+    args.subjects = su.decode_subjects(args.subjects)
     pos_files = []
     for subject, pos_file in zip(args.subjects, args.pos_file):
         args.subject = subject
@@ -42,6 +45,8 @@ def read_args(argv=None):
                 pos_file_options = [fname for fname in pos_file_options if 'bipolar' in fname]
             else:
                 pos_file_options = [fname for fname in pos_file_options if 'bipolar' not in fname]
+            if args.no_mni:
+                pos_file_options = [fname for fname in pos_file_options if '_mni' not in su.namebase(fname)]
             if len(pos_file_options) == 0:
                 raise Exception('No electrodes position files ({}) in {}!'.format(
                     op.join(pos_files_fol, 'electrodes*positions*.npz'), pos_files_fol))
@@ -61,19 +66,24 @@ def read_args(argv=None):
     return args
 
 
-def import_electrodes(subject_fname):
+def wrap_mmvt_calls(subject_fname):
     args = read_args(su.get_python_argv())
+    if args.debug:
+        su.debug()
     mmvt = su.init_mmvt_addon()
+    mmvt.utils.write_to_stderr('{} Importing electrodes...'.format(args.subject))
+    if args.overwrite:
+        mmvt.utils.delete_hierarchy('Deep_electrodes')
     mmvt.import_electrodes(args.pos_file, mmvt.ELECTRODES_LAYER, args.bipolar, args.radius)
     mmvt.set_render_output_path = su.get_figures_dir(args)
     su.save_blend_file(subject_fname)
+    mmvt.utils.write_to_stderr('{} Done!'.format(args.subject))
     su.exit_blender()
 
 
 if __name__ == '__main__':
     import sys
-    subject_fname = sys.argv[1]
-    if sys.argv[2] == '--background':
-        import_electrodes(subject_fname)
-    else:
+    if op.isfile(sys.argv[0]) and sys.argv[0][-2:] == 'py':
         wrap_blender_call()
+    else:
+        wrap_mmvt_calls(sys.argv[1])

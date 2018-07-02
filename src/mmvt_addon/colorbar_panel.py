@@ -111,7 +111,7 @@ def lock_colorbar_values(val=True):
 
 def load_colormap():
     colormap_fname = op.join(mu.file_fol(), 'color_maps', '{}.npy'.format(
-        bpy.context.scene.colorbar_files.replace('-', '_')))
+        bpy.context.scene.colorbar_files)) # .replace('-', '_')
     colormap = np.load(colormap_fname)
     ColorbarPanel.cm = colormap
     for ind in range(colormap.shape[0]):
@@ -409,13 +409,13 @@ def init(addon):
         print("No full_colorbar object, Can't load the colorbar panel")
         return
     ColorbarPanel.addon = addon
-    colorbar_files_template = op.join(mu.get_resources_dir(), 'color_maps', '*.npy')
+    colorbar_files_template = op.join(mu.get_parent_fol(mu.get_user_fol()), 'color_maps', '*.npy')
     # colorbar_files_template = op.join(mu.file_fol(), 'color_maps', '*.npy')
     colorbar_files = glob.glob(colorbar_files_template)
     if len(colorbar_files) == 0:
         print("No colorbar files ({}), Can't load the colorbar panel".format(colorbar_files_template))
         return None
-    files_names = [mu.namebase(fname).replace('_', '-') for fname in colorbar_files]
+    files_names = [mu.namebase(fname) for fname in colorbar_files] # .replace('_', '-')
     ColorbarPanel.maps_names = files_names
     colorbar_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(

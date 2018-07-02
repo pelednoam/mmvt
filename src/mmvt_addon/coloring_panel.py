@@ -1475,6 +1475,17 @@ def meg_minmax_prec_update(selc, context):
     calc_stc_minmax()
 
 
+def electrodes_minmax_prec_update(selc, context):
+    if not ColoringMakerPanel.run_electrodes_minmax_prec_update:
+        return
+    ColoringMakerPanel.run_electrodes_minmax_prec_update = False
+    if bpy.context.scene.electrodes_min_prec >= bpy.context.scene.electrodes_max_prec:
+        bpy.context.scene.electrodes_min_prec = bpy.context.scene.electrodes_max_prec - 1
+    if bpy.context.scene.electrodes_max_prec <= bpy.context.scene.electrodes_min_prec:
+        bpy.context.scene.electrodes_max_prec = bpy.context.scene.electrodes_min_prec + 1
+    ColoringMakerPanel.run_electrodes_minmax_prec_update = True
+
+
 def set_meg_minmax_prec(min_prec, max_prec, stc_name):
     if ColoringMakerPanel.stc_exist:
         ColoringMakerPanel.run_meg_minmax_prec_update = False
@@ -1659,21 +1670,34 @@ def color_eeg_helmet(use_abs=None):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     fol = mu.get_user_fol()
-    data_fname = op.join(fol, 'eeg', 'eeg_data.npy')
-    data = np.load(data_fname)
-    data = np.diff(data).squeeze()
+    data, meta = get_eeg_sensors_data()
+    if bpy.context.scene.eeg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        data = np.diff(data, axis=2).squeeze()
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors conditions difference')
     lookup = np.load(op.join(fol, 'eeg', 'eeg_faces_verts.npy'))
     threshold = 0
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
         data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+        data_maxmin = max([abs(data_min), abs(data_max)])
+        data_min, data_max = -data_maxmin, data_maxmin
         _addon().set_colorbar_max_min(data_max, data_min, True)
-        _addon().set_colorbar_title('EEG')
     colors_ratio = 256 / (data_max - data_min)
-    data_t = data[:, bpy.context.scene.frame_current]
 
     cur_obj = bpy.data.objects['eeg_helmet']
+    # eeg_loc = np.array([eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+    # hel_loc = np.array([v.co for v in cur_obj.data.vertices])
+    # from scipy.spatial.distance import cdist
+    # indices = np.argmin(cdist(hel_loc, eeg_loc), axis=1)
+    data_t = data[ColoringMakerPanel.eeg_helmet_indices, bpy.context.scene.frame_current]
+
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
@@ -1745,13 +1769,13 @@ def color_electrodes_dists():
 
 def color_electrodes():
     # mu.set_show_textured_solid(False)
-    bpy.context.scene.show_hide_electrodes = True
-    _addon().show_hide_electrodes(True)
+    # bpy.context.scene.show_hide_electrodes = True
+    # _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
     threshold = bpy.context.scene.coloring_lower_threshold
     data, names, conditions = _addon().load_electrodes_data()
     if not _addon().colorbar_values_are_locked():
-        norm_percs = (3, 97)  # todo: add to gui
+        norm_percs = (bpy.context.scene.electrodes_min_prec, bpy.context.scene.electrodes_max_prec)
         data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
         colors_ratio = 256 / (data_max - data_min)
         _addon().set_colorbar_max_min(data_max, data_min)
@@ -1767,7 +1791,7 @@ def color_electrodes():
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('Electrodes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
-    _addon().show_electrodes()
+    # _addon().show_electrodes()
     # for obj in bpy.data.objects['Deep_electrodes'].children:
     #     bpy.ops.object.editmode_toggle()
     #     bpy.ops.object.editmode_toggle()
@@ -2346,13 +2370,16 @@ def draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, "eeg_sensors_conditions", text="")
         col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensors", icon='POTATO')
-        # if not bpy.data.objects.get('eeg_helmet', None) is None:
-        #     layout.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
+        if not bpy.data.objects.get('eeg_helmet', None) is None:
+            col.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
 
     if ColoringMakerPanel.electrodes_files_exist:
         col = layout.box().column()
         col.prop(context.scene, "electrodes_conditions", text="")
         col.operator(ColorElectrodes.bl_idname, text="Plot Electrodes", icon='POTATO')
+        row = col.row(align=True)
+        row.prop(context.scene, 'electrodes_min_prec', 'min percentile')
+        row.prop(context.scene, 'electrodes_max_prec', 'max percentile')
         # if ColoringMakerPanel.electrodes_dists_exist:
         #     col.operator(ColorElectrodesDists.bl_idname, text="Plot Electrodes Dists", icon='POTATO')
         if ColoringMakerPanel.electrodes_labels_files_exist:
@@ -2411,6 +2438,8 @@ bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
     items=[('abs', 'Absolute values', '', 0), ('pos', 'Only positive', '', 1), ('neg', 'only negative', '', 2)])
 bpy.types.Scene.meg_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
 bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
+bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)
+bpy.types.Scene.electrodes_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)
 bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description="MEG files")
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
@@ -2496,6 +2525,8 @@ class ColoringMakerPanel(bpy.types.Panel):
     fMRI_contrasts_names = []
     fMRI_constrasts_exist = False
     run_meg_minmax_prec_update = True
+    run_electrodes_minmax_prec_update = True
+    eeg_helmet_indices = []
     # activity_map_coloring = activity_map_coloring
 
     def draw(self, context):
@@ -2714,6 +2745,14 @@ def init_eeg_sensors():
         bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items, description="EEG sensors")
         bpy.context.scene.eeg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('eeg_sensors')
+
+    eeg_helmet = bpy.data.objects['eeg_helmet']
+    if eeg_helmet is not None:
+        from scipy.spatial.distance import cdist
+        eeg_sensors_loc = np.array(
+            [eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+        eeg_helmet_vets_loc = np.array([v.co for v in eeg_helmet.data.vertices])
+        ColoringMakerPanel.eeg_helmet_indices = np.argmin(cdist(eeg_helmet_vets_loc, eeg_sensors_loc), axis=1)
 
 
 def init_meg_labels_coloring_type():

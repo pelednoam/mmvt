@@ -643,6 +643,9 @@ def fix_scale():
             for i in range(3):
                 sub_obj.scale[i] = 0.1
 
+    for sub_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
+        _fix_scale(sub_obj.name)
+
     for obj_name in ['inner_skull', 'outer_skull', 'eeg_helmet', 'seghead']:
         _fix_scale(obj_name)
     # _fix_scale('skull_plane')
@@ -775,6 +778,7 @@ def main(addon_prefs=None):
             panel.unregister()
         if bpy.data.objects.get('rh', None) is None:
             data_panel.init(mmvt)
+            scripts_panel.init(mmvt)
             # appearance_panel.init(mmvt)
             # transparency_panel.init(mmvt)
             # render_panel.init(mmvt)

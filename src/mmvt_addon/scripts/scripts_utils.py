@@ -223,7 +223,7 @@ def make_dir(fol):
 
 
 def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
-                only_verbose=False, err_pipe=None, std_pipe=None):
+                only_verbose=False, err_pipe=None, std_pipe=None, stay_alive=True):
     # if args.blender_fol == '':
     #     args.blender_fol = get_blender_dir()
     blender_fol = get_blender_dir()
@@ -244,8 +244,8 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         args.subjects = ''
         # print('*********** {} ***********'.format(subject))
         logs_fol = get_logs_fol(subject)
-        if op.isfile(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')):
-            os.remove(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log'))
+        # if op.isfile(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log')):
+        #     os.remove(op.join(get_mmvt_dir(), subject, 'logs', 'pizco.log'))
         if blend_fname is None:
             blend_fname = get_subject_fname(args)
         else:
@@ -253,12 +253,14 @@ def call_script(script_fname, args, log_name='', blend_fname=None, call_args=Non
         if call_args is None:
             call_args = create_call_args(args)
         log_fname = op.join(logs_fol, '{}.log'.format(log_name))
+        print('Writing output to {}'.format(log_fname))
         cmd = '"{blender_exe}" "{blend_fname}" {background} --python "{script_fname}" -- {call_args}'.format( # > {log_fname}
             blender_exe='./blender', background='--background' if run_in_background else '',
             blend_fname=blend_fname, script_fname=script_fname, call_args=call_args, log_fname=log_fname) # op.join(args.blender_fol, 'blender')
+        print(cmd)
         if not only_verbose:
             utils.run_script(
-                cmd, stay_alive=True, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
+                cmd, stay_alive=stay_alive, log_fname=log_fname, cwd=blender_fol, err_pipe=err_pipe) #mmvt_addon_fol)
         # if blend_fname_is_None:
         #     blend_fname = None
         # if call_args_is_None:
@@ -276,7 +278,7 @@ def get_logs_fol(subject):
 def get_subject_fname(args):
     mmvt_dir = get_mmvt_dir()
     atlas = get_real_atlas_name(args.atlas, short_name=True)
-    new_fname = op.join(mmvt_dir, '{}_{}.blend'.format(args.subject, atlas))
+    new_fname = op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', atlas))
     # return op.join(mmvt_dir, '{}_{}{}.blend'.format(args.subject, 'bipolar_' if args.bipolar else '', args.atlas))
     return new_fname
 
@@ -309,9 +311,9 @@ def init_mmvt_addon(mmvt_addon_fol=''):
     print('mmvt_addon_fol: {}'.format(mmvt_addon_fol))
     sys.path.append(mmvt_addon_fol)
     import mmvt_addon
-    if bpy.context.scene.mmvt_initialized:
-        print('mmvt was already initialized')
-        return mmvt_addon
+    # if bpy.context.scene.mmvt_initialized:
+    #     print('mmvt was already initialized')
+    #     return mmvt_addon
     # imp.reload(mmvt_addon)
     addon_prefs = Bag({'python_cmd':sys.executable, 'freeview_cmd':'freeview', 'freeview_cmd_verbose':True,
                        'freeview_cmd_stdin':True})
@@ -350,6 +352,7 @@ def add_default_args():
     parser.add_argument('--real_atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
     parser.add_argument('-d', '--debug', help='debug', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite', help='overwrite', required=False, default=1, type=au.is_true)
     # parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 
@@ -546,6 +549,26 @@ def get_mmvt_object(subject):
     except:
         pass
     return mmvt
+
+
+def decode_subjects(subjects, remote_subject_dir=''):
+    import glob
+    import re
+    for sub in subjects:
+        if '*' in sub:
+            subjects.remove(sub)
+            subjects.extend([utils.namebase(fol) for fol in glob.glob(op.join(get_subjects_dir(), sub))])
+            if remote_subject_dir != '':
+                for fol in glob.glob(op.join(remote_subject_dir.format(subject=sub))):
+                    start_ind = utils.namebase(remote_subject_dir).index('{subject}')
+                    end_ind = re.search('[-_,\.!?]', utils.namebase(fol)[start_ind:]).start() + start_ind
+                    subjects.append(utils.namebase(fol)[start_ind:end_ind])
+                subjects = list(set(subjects))
+        elif 'file:' in sub:
+            subjects.remove(sub)
+            subjects.extend(utils.read_list_from_file(sub[len('file:'):]))
+    return subjects
+
 
 
 class RedirectStdStreams(object):

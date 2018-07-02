@@ -165,6 +165,7 @@ def calc_groups_dist_to_dura(elc_name, output_fol, threshold):
     plt.show()
     print('asdf')
 
+
 def find_electrode_group(elc_ind, groups):
     groups_mask = [(elc_ind in g) for g in groups]
     if sum(groups_mask) == 1:
