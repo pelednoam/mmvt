@@ -186,10 +186,10 @@ def convert_and_rename_subcortical_files(fol, new_fol, lookup):
 #     shutil.copytree(subcorticals_fol, blender_fol)
 
 
-def create_surfaces(subject, hemi='both', overwrite=False):
+def create_surfaces(subject, surfaces_types=('inflated', 'pial'), hemi='both', overwrite=False):
     for hemi in lu.get_hemis(hemi):
         utils.make_dir(op.join(MMVT_DIR, subject, 'surf'))
-        for surf_type in ['inflated', 'pial', 'dural']:
+        for surf_type in surfaces_types:
             surf_name = op.join(SUBJECTS_DIR, subject, 'surf', '{}.{}'.format(hemi, surf_type))
             mmvt_hemi_ply_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf_type))
             mmvt_hemi_npz_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf_type))
@@ -1431,7 +1431,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'create_surfaces'):
         # *) convert rh.pial and lh.pial to rh.pial.ply and lh.pial.ply
-        flags['create_surfaces'] = create_surfaces(subject, overwrite=args.overwrite_hemis_ply)
+        flags['create_surfaces'] = create_surfaces(subject, args.surf_type, overwrite=args.overwrite_hemis_ply)
 
     if utils.should_run(args, 'create_annotation'):
         # *) Create annotation file from fsaverage
@@ -1544,6 +1544,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--template_subject', help='template subject', required=False,
                         default='fsaverage6,fsaverage5,fsaverage,colin27', type=au.str_arr_type)
     parser.add_argument('--surf_name', help='surf_name', required=False, default='pial')
+    parser.add_argument('--surf_type', required=False, default='inflated,pial,dural', type=au.str_arr_type)
     parser.add_argument('--cerebellum_segmentation_loose', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--overwrite', help='overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_subcorticals', help='overwrite', required=False, default=0, type=au.is_true)

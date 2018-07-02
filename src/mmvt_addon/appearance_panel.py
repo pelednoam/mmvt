@@ -607,7 +607,7 @@ class SelectionListener(bpy.types.Operator):
                     bpy.context.scene.cursor_is_snapped = False
                     _addon().electode_was_manually_selected(selected_obj_name)
                     try:
-                        _addon().dell_ct_electrode_was_selected(selected_obj_name)
+                        _addon().dell.dell_ct_electrode_was_selected(selected_obj_name)
                     except:
                         pass
                 if bpy.context.scene.find_curves_sep_auto:

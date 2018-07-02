@@ -50,6 +50,7 @@ bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_labels_extract_method = bpy.props.StringProperty()
 bpy.types.Scene.fmri_labels_extract_method = bpy.props.StringProperty(default='mean')
 bpy.types.Scene.add_meg_labels_data_overwrite = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.data_overwrite_electrodes = bpy.props.BoolProperty(default=True, description="")
 
 
 def _addon():
@@ -592,7 +593,7 @@ class ImportElectrodes(bpy.types.Operator):
     def invoke(self, context, event=None):
         input_file = op.join(mu.get_user_fol(), 'electrodes',
                              '{}.npz'.format(bpy.context.scene.electrodes_positions_files))
-        import_electrodes(input_file, _addon().ELECTRODES_LAYER)
+        import_electrodes(input_file, _addon().ELECTRODES_LAYER, overwrite=bpy.context.scene.data_overwrite_electrodes)
         bpy.types.Scene.electrodes_imported = True
         print('Electrodes importing is Finished ')
         return {"FINISHED"}
@@ -1163,6 +1164,7 @@ def data_draw(self, context):
             col.operator(AddDataToElectrodes.bl_idname, text="Add data to Electrodes", icon='FCURVE')
         col.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions",
             icon='GROUP_VERTEX').filepath = op.join(mu.get_user_fol(), 'electrodes', '*.npz')
+        col.prop(context.scene, 'data_overwrite_electrodes', text='Overwrite')
     else:
         col = layout.box().column()
         col.operator(ChooseElectrodesPositionsFile.bl_idname, text="Load electrodes positions",

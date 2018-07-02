@@ -31,4 +31,4 @@ bpy.types.Scene.import_plys_fol = bpy.props.StringProperty(subtype='DIR_PATH')
 
 def draw(self, context):
     layout = self.layout
-    layout.prop(context.scene, 'import_plys_fol', text='ply')
+    layout.prop(context.scene, 'import_plys_fol', text='plys folder')
