@@ -227,7 +227,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>f8', buffer=next_val)
             # dt = np.dtype(np.float64).newbyteorder('>')
             # x = np.frombuffer(next_val, dtype=dt)
-            next_val = np.frombuffer(next_val, dtype=np.dtype(np.float64)).reshape(14, 100)[10:, :]
+            next_val = np.frombuffer(next_val, dtype=np.dtype(np.float64)) #.reshape(14, 100)[10:, :]
             print(next_val[0])
             # next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             # next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
