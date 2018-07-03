@@ -1827,6 +1827,22 @@ def rotate_view_to_vertice(vert_ind=None, mesh=None):
     rotate_view3d(vert_normal.to_track_quat('Z', 'Y'))
 
 
+def get_screen(screen_name='Neuro'):
+    return bpy.data.screens[screen_name]
+
+
+def get_images_areas(screen_name='Neuro'):
+    screen = get_screen(screen_name)
+    return [area for area in screen.areas if area.type == 'IMAGE_EDITOR']
+
+
+def get_image_area_override(area):
+    override = bpy.context.copy()
+    override['area'] = area
+    override['screen'] = get_screen()
+    return override
+
+
 # def set_zoom_for_flatmap(relative=False):
 #     if relative is False:
 #         get_view3d_region().view_distance = 23.0

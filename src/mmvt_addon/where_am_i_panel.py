@@ -414,18 +414,6 @@ def update_slices(modality='mri', ratio=1, images=None):
     images_names = ['{}.{}'.format(pres, _addon().get_figure_format()) for pres in perspectives]
     images_fol = op.join(mu.get_user_fol(), 'figures', 'slices')
     ind = 0
-    # slice_images = [img.name for img in bpy.data.images if img.name.startswith('sagital')]
-    # if len(slice_images) > 0:
-    #     ftype = mu.file_type(slice_images[0]).lower()
-    # else:
-    #     ftype = _addon().get_figure_format()
-
-    # not sure why, the following code can crashes Blender
-    # necessary_images = set(['axial.{}'.format(ftype), 'coronal.{}'.format(ftype), 'sagital.{}'.format(ftype),
-    #                         'Render Result', 'device.{}'.format(ftype)])
-    # extra_images = set([img.name for img in bpy.data.images]) - necessary_images
-    # for img_name in list(extra_images):
-    #     bpy.data.images.remove(bpy.data.images[img_name], do_unlink=True)
     for area in screen.areas:
         if area.type == 'IMAGE_EDITOR':
             override = bpy.context.copy()
@@ -506,7 +494,7 @@ def calc_tkreg_ras_from_snapped_cursor():
 
 
 def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_num=-1, smooth=None, clim=None,
-                  plot_cross=None, mark_voxel=None):
+                  plot_cross=None, mark_voxel=None, pos_in_vox=False):
     if zoom_around_voxel is None:
         zoom_around_voxel = bpy.context.scene.slices_zoom_around_voxel
     if zoom_voxels_num == -1:
@@ -554,11 +542,11 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
         return
 
     if modality == 'mri':
-        x, y, z = np.rint(apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
+        x, y, z = np.rint(apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int) if not pos_in_vox else pos
     elif modality == 't2':
-        x, y, z = np.rint(apply_trans(t2_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int)
+        x, y, z = np.rint(apply_trans(t2_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int) if not pos_in_vox else pos
     elif modality == 'ct':
-        vox = apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0]
+        vox = apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0] if not pos_in_vox else pos
         ras = apply_trans(t1_trans().vox2ras, np.array([vox]))[0]
         x, y, z = np.rint(apply_trans(_ct_trans().ras2vox, np.array([ras]))[0]).astype(int)
     xyz = [x, y, z]

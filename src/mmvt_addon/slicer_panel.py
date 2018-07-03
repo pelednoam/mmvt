@@ -40,6 +40,24 @@ def slices_update(self, context):
             clim=clim, plot_cross=bpy.context.scene.slices_plot_cross, mark_voxel=bpy.context.scene.slices_mark_voxel)
 
 
+def set_slices_plot_cross(val):
+    bpy.context.scene.slices_plot_cross = val
+
+
+def get_perspectives():
+    return ['sagital', 'coronal', 'axial']
+
+
+def get_slices_names(ind=None):
+    slices_name_type = set([mu.file_type(img.name) for img in bpy.data.images if img.name != 'Render Result'])
+    if len(slices_name_type) > 1:
+        print('get_slices_names: different images types! {}'.format(slices_name_type))
+        return []
+    slice_file_type = list(slices_name_type)[0]
+    return ['{}{}.{}'.format(pres, '_{}'.format(ind) if ind is not None else '',
+                             slice_file_type) for pres in get_perspectives()]
+
+
 def get_slices_modality():
     return bpy.context.scene.slices_modality
 
