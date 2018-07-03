@@ -715,8 +715,11 @@ def downsample(x, R):
         raise Exception('Currently supports only matrices with up to 2 dims!')
 
 
-def downsample_2d(x, R):
-    return x.reshape(x.shape[0],-1,R).mean(2)
+def downsample_2d(x, R, use_mean=True):
+    if use_mean:
+        return x.reshape(x.shape[0], -1, R).mean(2)
+    else:
+        return x.reshape(x.shape[0], -1, R)[:, :, 0]
 
 
 def downsample_3d(x, R):
