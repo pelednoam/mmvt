@@ -141,9 +141,13 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     buffer_size = kargs.get('buffer_size', 10)
     bad_channels = kargs.get('bad_channels', '')
     bad_channels = list(map(mu.to_int, bad_channels.split(','))) if bad_channels != '' else []
+    no_channels = kargs.get('no_channels', '')
+    no_channels = list(map(mu.to_int, no_channels.split(','))) if bad_channels != '' else []
     good_channels = kargs.get('good_channels', '')
     good_channels = list(map(mu.to_int, good_channels.split(','))) if good_channels != '' else []
     data[bad_channels] = 0
+    if len(no_channels) > 0:
+        data = np.delete(data, no_channels, axis=0)
     if good_channels:
         data = data[good_channels]
     ind = 0
@@ -347,6 +351,7 @@ class StreamButton(bpy.types.Operator):
             if 'STREAMING' in config.sections():
                 args['good_channels'] = config['STREAMING'].get('good_electrodes', '')
                 args['bad_channels'] = config['STREAMING'].get('bad_electrodes', '')
+                args['no_channels'] = config['STREAMING'].get('no_electrodes', '')
             if bpy.context.scene.stream_type == 'offline':
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
                 StreamingPanel.udp_queue = mu.run_thread(
@@ -492,7 +497,7 @@ def init(addon):
     streaming_items = [('udp', 'udp', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
     streaming_files = glob.glob(op.join(input_fol, '**', 'streaming_data_*.npy'), recursive=True)
-    logs_dirs = [logs_dir.split(op.sep)[-1] for logs_dir in glob.glob(op.join(input_fol, '*.*')) if op.isdir(logs_dir) and \
+    logs_dirs = [logs_dir.split(op.sep)[-1] for logs_dir in glob.glob(op.join(input_fol, '*')) if op.isdir(logs_dir) and \
                  len(glob.glob(op.join(input_fol, logs_dir, 'streaming_data_*.npy'))) > 0]
     if len(streaming_files) > 0 and len(logs_dirs) > 0:
         streaming_items.append(('offline', 'Offline recordings', '', 2))
