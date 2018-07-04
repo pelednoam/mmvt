@@ -78,6 +78,8 @@ def change_graph_all_vals(mat, channels_names=()):
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         fcurve_name = mu.get_fcurve_name(fcurve)
         if len(channels_names) > 0 and fcurve_name not in channels_names:
+            bpy.data.objects[fcurve_name].select = False
+            fcurve.hide = True
             continue
         if first_curve:
             max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
@@ -90,9 +92,11 @@ def change_graph_all_vals(mat, channels_names=()):
             if t > max_steps:
                 t = ind
             fcurve.keyframe_points[t].co[1] = mat[elc_ind, ind] + (C / 2 - fcurve_ind) * bpy.context.scene.electrodes_sep
+            # if fcurve.keyframe_points[t].co[1] != 0:
+            #     print(elc_ind, ind, fcurve.keyframe_points[t].co[1])
         _addon().color_objects_homogeneously([mat[elc_ind, ind]], [fcurve_name], None, data_min, colors_ratio)
-        fcurve.keyframe_points[max_steps + 1].co[1] = 0
-        fcurve.keyframe_points[0].co[1] = 0
+        # fcurve.keyframe_points[max_steps + 1].co[1] = 0
+        # fcurve.keyframe_points[0].co[1] = 0
 
     try:
         StreamingPanel.cycle_data = mat if StreamingPanel.cycle_data == [] else np.hstack((StreamingPanel.cycle_data, mat))
@@ -551,7 +555,7 @@ def init_electrodes_animation():
         mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
         mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
         for ind in range(T):
-            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, ind + 2)
+            mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0.1, ind + 2)
         fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
         mod = fcurves.modifiers.new(type='LIMITS')
 
