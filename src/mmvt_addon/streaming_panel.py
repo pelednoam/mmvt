@@ -54,14 +54,21 @@ def electrodes_sep_update(self, context):
 
 
 # @mu.profileit()
-def change_graph_all_vals(mat, channels_names=()):
+def change_graph_all_vals(mat, channels_names=(), stim_channels=(), stim_length=50):
     MAX_STEPS = StreamingPanel.max_steps
     T = min(mat.shape[1], MAX_STEPS)
     parent_obj = bpy.data.objects['Deep_electrodes']
     C = len(parent_obj.animation_data.action.fcurves)
     good_electrodes = range(mat.shape[0])
     elecs_cycle = cycle(good_electrodes)
-    data_min, data_max = np.min(mat[good_electrodes]), np.max(mat[good_electrodes])
+    no_zeros_data = mat[good_electrodes]
+    no_zeros_data = no_zeros_data[np.where(no_zeros_data)]
+    if len(no_zeros_data) == 0:
+        data_min, data_max = 0, 0
+        colors_ratio = 256
+    else:
+        data_min, data_max = np.min(no_zeros_data), np.max(no_zeros_data)
+        colors_ratio = 256 / (data_max - data_min)
     StreamingPanel.data_min = data_min = min(data_min, StreamingPanel.data_min)
     StreamingPanel.data_max = data_max = max(data_max, StreamingPanel.data_max)
     data_abs_minmax = max([abs(data_min), abs(data_max)])
@@ -70,15 +77,23 @@ def change_graph_all_vals(mat, channels_names=()):
     #     StreamingPanel.minmax_vals = StreamingPanel.minmax_vals[-100:]
     # StreamingPanel.data_min = data_min = -np.median(StreamingPanel.minmax_vals)
     # StreamingPanel.data_max = data_max = np.median(StreamingPanel.minmax_vals)
-    colors_ratio = 256 / (data_max - data_min)
     if not _addon().colorbar_values_are_locked():
         _addon().set_colorbar_max_min(data_max, data_min)
     curr_t = bpy.context.scene.frame_current
     first_curve = True
+    stim_ch_indices = [channels_names.index(s) for s in stim_channels if s in channels_names]
+    for stim_ch_indice in stim_ch_indices:
+        if len(np.unique(mat[stim_ch_indice])) == 1:
+            mat[stim_ch_indice] = 0
+        else:
+            stim_indices = np.where(np.diff(mat[stim_ch_indice]) == 1)[0] + 1
+            for stim_indice in stim_indices:
+                mat[stim_ch_indice][(np.arange(T) < stim_indice) | (np.arange(T) > stim_indice + stim_length)] = 0
+
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         fcurve_name = mu.get_fcurve_name(fcurve)
-        if len(channels_names) > 0 and fcurve_name not in channels_names:
-            bpy.data.objects[fcurve_name].select = False
+        if len(channels_names) > 0 and fcurve_name not in channels_names and fcurve_name not in stim_channels:
+            bpy.data.objects[fcurve_name].hide = bpy.context.scene.stream_show_only_good_electrodes
             fcurve.hide = True
             continue
         if first_curve:
@@ -325,6 +340,7 @@ class StreamButton(bpy.types.Operator):
     _first_time = True
     _first_timer = True
     _channels_names = []
+    _stim_channels = []
 
     def invoke(self, context, event=None):
         self._first_time = True
@@ -364,7 +380,8 @@ class StreamButton(bpy.types.Operator):
                 args['good_channels'] = config['STREAMING'].get('good_electrodes', '')
                 args['bad_channels'] = config['STREAMING'].get('bad_electrodes', '')
                 args['no_channels'] = config['STREAMING'].get('no_electrodes', '')
-                StreamButton._channels_names = config['STREAMING'].get('electrodes_names', '')
+                StreamButton._channels_names = config['STREAMING'].get('electrodes_names', '').split(',')
+                StreamButton._stim_channels = config['STREAMING'].get('stim_electrodes', '').split(',')
             if bpy.context.scene.stream_type == 'offline':
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
                 StreamingPanel.udp_queue = mu.run_thread(
@@ -392,7 +409,7 @@ class StreamButton(bpy.types.Operator):
                     #     print('spike!!!!!')
                     # else:
                         # print('only zeros!')
-                    change_graph_all_vals(data, StreamButton._channels_names)
+                    change_graph_all_vals(data, StreamButton._channels_names, StreamButton._stim_channels)
                     if bpy.context.scene.stream_type == 'offline':
                         mu.view_all_in_graph_editor()
                     # if self._first_timer and bpy.context.scene.frame_current > 10:
@@ -437,6 +454,7 @@ def streaming_draw(self, context):
     if StreamingPanel.stim_exist:
         layout.operator(StimButton.bl_idname, text="Stim", icon='COLOR_RED')
     layout.prop(context.scene, 'save_streaming', text='save streaming data')
+    layout.prop(context.scene, 'stream_show_only_good_electrodes', text='Show only good electrodes')
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
 
@@ -453,6 +471,7 @@ bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.good_channels_detector = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.logs_folders = bpy.props.EnumProperty(items=[], description='logs folder')
+bpy.types.Scene.stream_show_only_good_electrodes = bpy.props.BoolProperty(default=False)
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -506,7 +525,7 @@ def init(addon):
         bpy.context.scene.multicast_group = stream_con.get('multicast_group', '1.1.1.1')
         bpy.context.scene.streaming_server_port = int(stream_con.get('port', 222))
         bpy.context.scene.timeout = float(stream_con.get('timeout', 0.1))
-
+    bpy.context.scene.stream_show_only_good_electrodes = False
     streaming_items = [('udp', 'udp', '', 1)]
     input_fol = op.join(mu.get_user_fol(), 'electrodes', 'streaming')
     streaming_files = glob.glob(op.join(input_fol, '**', 'streaming_data_*.npy'), recursive=True)
