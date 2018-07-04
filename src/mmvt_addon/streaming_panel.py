@@ -54,7 +54,7 @@ def electrodes_sep_update(self, context):
 
 
 # @mu.profileit()
-def change_graph_all_vals(mat):
+def change_graph_all_vals(mat, channels_names=()):
     MAX_STEPS = StreamingPanel.max_steps
     T = min(mat.shape[1], MAX_STEPS)
     parent_obj = bpy.data.objects['Deep_electrodes']
@@ -66,18 +66,22 @@ def change_graph_all_vals(mat):
     StreamingPanel.data_max = data_max = max(data_max, StreamingPanel.data_max)
     data_abs_minmax = max([abs(data_min), abs(data_max)])
     StreamingPanel.minmax_vals.append(data_abs_minmax)
-    if len(StreamingPanel.minmax_vals) > 100:
-        StreamingPanel.minmax_vals = StreamingPanel.minmax_vals[-100:]
-    StreamingPanel.data_min = data_min = -np.median(StreamingPanel.minmax_vals)
-    StreamingPanel.data_max = data_max = np.median(StreamingPanel.minmax_vals)
+    # if len(StreamingPanel.minmax_vals) > 100:
+    #     StreamingPanel.minmax_vals = StreamingPanel.minmax_vals[-100:]
+    # StreamingPanel.data_min = data_min = -np.median(StreamingPanel.minmax_vals)
+    # StreamingPanel.data_max = data_max = np.median(StreamingPanel.minmax_vals)
     colors_ratio = 256 / (data_max - data_min)
     if not _addon().colorbar_values_are_locked():
         _addon().set_colorbar_max_min(data_max, data_min)
     curr_t = bpy.context.scene.frame_current
+    first_curve = True
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         fcurve_name = mu.get_fcurve_name(fcurve)
-        if fcurve_ind == 0:
+        if len(channels_names) > 0 and fcurve_name not in channels_names:
+            continue
+        if first_curve:
             max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
+            first_curve - False
         elc_ind = next(elecs_cycle) #fcurve_ind
         if elc_ind >= mat.shape[0]:
             continue
@@ -145,6 +149,9 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     no_channels = list(map(mu.to_int, no_channels.split(','))) if bad_channels != '' else []
     good_channels = kargs.get('good_channels', '')
     good_channels = list(map(mu.to_int, good_channels.split(','))) if good_channels != '' else []
+    channels_names = kargs.get('channels_names', '')
+    channels_names = list(map(mu.to_int, channels_names.split(','))) if channels_names != '' else []
+
     data[bad_channels] = 0
     if len(no_channels) > 0:
         data = np.delete(data, no_channels, axis=0)
@@ -215,7 +222,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
                 next_val = sock.recv(2048 * 16)
         except socket.timeout as e:
             if e.args[0] == 'timed out':
-                print('!!! timed out !!!')
+                # print('!!! timed out !!!')
                 if prev_val is None and mat_len > 0:
                     prev_val = np.zeros((mat_len, 1))
                 else:
@@ -313,6 +320,7 @@ class StreamButton(bpy.types.Operator):
     _jobs = Queue()
     _first_time = True
     _first_timer = True
+    _channels_names = []
 
     def invoke(self, context, event=None):
         self._first_time = True
@@ -352,6 +360,7 @@ class StreamButton(bpy.types.Operator):
                 args['good_channels'] = config['STREAMING'].get('good_electrodes', '')
                 args['bad_channels'] = config['STREAMING'].get('bad_electrodes', '')
                 args['no_channels'] = config['STREAMING'].get('no_electrodes', '')
+                StreamButton._channels_names = config['STREAMING'].get('electrodes_names', '')
             if bpy.context.scene.stream_type == 'offline':
                 args['data'] = copy.deepcopy(StreamingPanel.offline_data)
                 StreamingPanel.udp_queue = mu.run_thread(
@@ -375,11 +384,11 @@ class StreamButton(bpy.types.Operator):
                 self._time = time.time()
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:
-                    if len(np.where(data)[0]) > 0:
-                        print('spike!!!!!')
+                    # if len(np.where(data)[0]) > 0:
+                    #     print('spike!!!!!')
                     # else:
                         # print('only zeros!')
-                    change_graph_all_vals(data)
+                    change_graph_all_vals(data, StreamButton._channels_names)
                     if bpy.context.scene.stream_type == 'offline':
                         mu.view_all_in_graph_editor()
                     # if self._first_timer and bpy.context.scene.frame_current > 10:

@@ -1026,15 +1026,16 @@ def prepare_subject_folder(subject, remote_subject_dir, args, necessary_files=No
 @utils.tryit()
 def save_subject_orig_trans(subject):
     from src.utils import trans_utils as tu
+    output_fname_template = op.join(MMVT_DIR, subject, '{}_trans.npz')
     for image_name in ['T1.mgz', 'T2.mgz']:
         header = tu.get_subject_mri_header(subject, SUBJECTS_DIR, image_name)
         if header is None:
             continue
-        output_fname = op.join(MMVT_DIR, subject, '{}_trans.npz'.format(utils.namebase(image_name.lower())))
+        output_fname = output_fname_template.format(utils.namebase(image_name.lower()))
         ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
         print('save_subject_orig_trans: saving {}'.format(output_fname))
         np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
-    return op.isfile(output_fname)
+    return op.isfile(output_fname_template.format('t1')
 
 
 def get_trans_functions(header):
