@@ -17,9 +17,10 @@ def load_file(fname):
         channel_list.append('{1}-{0}'.format(*elecs))
         # channel_list.extend(elecs)
     fs = d.fs[0][0]
-    time = d.T.squeeze()
-    stim = np.array(d.stim, dtype=np.int)
-    theta = d.Theta
+    time = d.T10.squeeze()
+    stim = np.array(d.stim10, dtype=np.int)
+    print('number of stims: {}'.format(len(np.where(np.diff(stim.squeeze()) == 1)[0] + 1)))
+    theta = d.Theta10
     return channel_list, fs, time, stim, theta
 
 
@@ -31,13 +32,16 @@ def create_mmvt_file(subject, stim_channel, channel_list, fs, time, stim, theta,
         theta_smooth[k] = scipy.signal.savgol_filter(theta[k], smooth_win_len, 5)
         theta_smooth[k] -= np.min(theta_smooth[k])
         theta_smooth[k] /= np.max(theta_smooth[k])
-    theta_smooth *= -1
-
     plt.plot(theta_smooth.T)
     plt.show()
+    theta_smooth *= -1
+
     stim = utils.downsample(stim.squeeze(), downsample_ratio)
-    stim[stim >= 0.5] = 1
-    stim[stim < 0.5] = 0
+    stim[stim > 0] = 1
+    stim_indices = np.where(np.diff(stim) == 1)[0] + 1
+    print('{} stim!'.format(len(stim_indices)))
+    plt.plot(stim)
+    plt.show()
 
     data = np.vstack((stim, theta_smooth))
     data = data[:, :, np.newaxis]
@@ -50,8 +54,8 @@ if __name__ == '__main__':
     subject = 'mg118'
     stim_channel = 'LMF2-LMF1'
     home = [d for d in ['/home/npeled', '/autofs/space/thibault_001/users/npeled/'] if op.isdir(d)][0]
-    fname = op.join(home, 'Documents', 'darpa_year4_meeting', 'MG118_Theta_TurnOn.mat')
-    downsample_ratio = 100
+    fname = op.join(home, 'Documents', 'darpa_year4_meeting', 'MG118_Theta_TurnOn_2.mat')
+    downsample_ratio = 10
     downsample_using_mean = False
 
     channel_list, fs, time, stim, theta = load_file(fname)

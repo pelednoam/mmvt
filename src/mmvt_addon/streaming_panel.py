@@ -508,10 +508,10 @@ class StreamingPanel(bpy.types.Panel):
 
 
 def init(addon):
-    cm_fname = op.join(mu.file_fol(), 'color_maps', 'BuPu_YlOrRd.npy')
-    if not op.isfile(cm_fname):
-        print("Streaming: Can't load without the cm file {}".format(cm_fname))
-        return
+    cm_fname = op.join(mu.file_fol(), 'color_maps', 'BuPu-YlOrRd.npy')
+    # if not op.isfile(cm_fname):
+    #     print("Streaming: Can't load without the cm file {}".format(cm_fname))
+    #     return
     if not bpy.data.objects.get('Deep_electrodes'):
         print('Streaming: No electrodes')
         return
