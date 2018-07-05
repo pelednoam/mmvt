@@ -184,7 +184,7 @@ def build_local_fname(nii_fname, user_fol):
     return op.join(user_fol, 'fmri', local_fname)
 
 
-def load_surf_files(nii_fname, run_fmri_preproc=False, user_fol='', debug=True):
+def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
     fmri_file_template = ''
     if user_fol == '':
         user_fol = mu.get_user_fol()
