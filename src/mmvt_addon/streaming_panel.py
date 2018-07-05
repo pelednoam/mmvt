@@ -81,14 +81,19 @@ def change_graph_all_vals(mat, channels_names=(), stim_channels=(), stim_length=
         _addon().set_colorbar_max_min(data_max, data_min)
     curr_t = bpy.context.scene.frame_current
     first_curve = True
+
+    # stim
     stim_ch_indices = [channels_names.index(s) for s in stim_channels if s in channels_names]
     for stim_ch_indice in stim_ch_indices:
         if len(np.unique(mat[stim_ch_indice])) == 1:
             mat[stim_ch_indice] = 0
         else:
             stim_indices = np.where(np.diff(mat[stim_ch_indice]) == 1)[0] + 1
+            stim_ch = np.zeros(T)
             for stim_indice in stim_indices:
-                mat[stim_ch_indice][(np.arange(T) < stim_indice) | (np.arange(T) > stim_indice + stim_length)] = 0
+                # mat[stim_ch_indice][(np.arange(T) < stim_indice) | (np.arange(T) > stim_indice + stim_length)] = 0
+                stim_ch[(np.arange(T) >= stim_indice) & (np.arange(T) < stim_indice + stim_length)] = 1
+            mat[stim_ch_indice] = stim_ch
 
     for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
         fcurve_name = mu.get_fcurve_name(fcurve)
@@ -409,7 +414,8 @@ class StreamButton(bpy.types.Operator):
                     #     print('spike!!!!!')
                     # else:
                         # print('only zeros!')
-                    change_graph_all_vals(data, StreamButton._channels_names, StreamButton._stim_channels)
+                    change_graph_all_vals(data, StreamButton._channels_names, StreamButton._stim_channels,
+                                          bpy.context.scene.stim_length)
                     if bpy.context.scene.stream_type == 'offline':
                         mu.view_all_in_graph_editor()
                     # if self._first_timer and bpy.context.scene.frame_current > 10:
@@ -453,8 +459,9 @@ def streaming_draw(self, context):
                     icon='COLOR_GREEN' if not StreamingPanel.is_streaming else 'COLOR_RED')
     if StreamingPanel.stim_exist:
         layout.operator(StimButton.bl_idname, text="Stim", icon='COLOR_RED')
-    layout.prop(context.scene, 'save_streaming', text='save streaming data')
+    layout.prop(context.scene, 'save_streaming', text='Save streaming data')
     layout.prop(context.scene, 'stream_show_only_good_electrodes', text='Show only good electrodes')
+    layout.prop(context.scene, 'stim_length', text='Stim length')
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
 
@@ -472,6 +479,7 @@ bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.good_channels_detector = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.logs_folders = bpy.props.EnumProperty(items=[], description='logs folder')
 bpy.types.Scene.stream_show_only_good_electrodes = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.stim_length = bpy.props.IntProperty(default=50)
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -540,6 +548,7 @@ def init(addon):
         description='Type of stream listener')
     bpy.context.scene.stream_type = 'udp'
     bpy.context.scene.multicast = False
+    bpy.context.scene.stim_length = 50
     register()
     StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()
