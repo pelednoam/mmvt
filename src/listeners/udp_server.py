@@ -97,4 +97,5 @@ if __name__ == '__main__':
     port = 45454
     multicast_group = '239.255.43.21'
     sock = bind_to_multicast()
-    broadcast_data(sock, multicast_group, port)
+    # broadcast_data(sock, multicast_group, port)
+    send_data(sock, port, data)

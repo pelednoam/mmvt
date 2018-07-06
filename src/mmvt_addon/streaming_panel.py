@@ -415,6 +415,7 @@ class StreamButton(bpy.types.Operator):
 
         if event.type == 'TIMER':
             if StreamingPanel.is_streaming and time.time() - self._time > bpy.context.scene.streaming_buffer_size / 1000.0:
+                print(time.time() - self._time)
                 self._time = time.time()
                 data = mu.queue_get(StreamingPanel.udp_queue)
                 if not data is None:

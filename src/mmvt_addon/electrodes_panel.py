@@ -20,6 +20,15 @@ def get_electrodes_names():
     return electrodes_names
 
 
+# bpy.types.Scene.electrodes_hemis = bpy.props.EnumProperty(
+#     items=[('left', 'lh', '', 1), ('right', 'rh', '', 2)], update=electrodes_hemis_update)
+# bpy.types.Scene.electrodes_hemi_labels = bpy.props.EnumProperty(items=[])
+
+def electrodes_hemis_update(self, context):
+    if bpy.context.scene.electrodes_hemis == 'rh':
+        labels =
+
+
 def elc_size_update(self, context):
     try:
         elc = bpy.context.selected_objects[0]
@@ -545,24 +554,29 @@ def run_ela_alg():
 
 def elecs_draw(self, context):
     layout = self.layout
+    box = layout.box()
     if ElecsPanel.electrodes_labeling_file_exist and len(ElecsPanel.labling_files) > 1:
         layout.prop(context.scene, "electrodes_labeling_files", text="")
-    row = layout.row(align=True)
+    row = box.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
     row.operator(NextLead.bl_idname, text="", icon='NEXT_KEYFRAME')
-    row = layout.row(align=True)
+    row = box.row(align=True)
     row.operator(PrevElectrode.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "electrodes", text="")
     row.operator(NextElectrode.bl_idname, text="", icon='NEXT_KEYFRAME')
 
     if len(ElecsPanel.subcortical_rois) > 0 or len(ElecsPanel.cortical_rois) > 0:
-        box = layout.box()
+        # box = layout.box()
         col = box.column()
         for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
             mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
         for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
             mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+
+        box = layout.box()
+        box.prop(context.scene, "electrodes_hemis", text="")
+        box.prop(context.scene, "electrodes_hemi_labels", text="")
 
     if bpy.context.scene.electrodes_more_settings:
         layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
@@ -809,6 +823,10 @@ bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=False)
+
+bpy.types.Scene.electrodes_hemis = bpy.props.EnumProperty(
+    items=[('left', 'lh', '', 1), ('right', 'rh', '', 2)], update=electrodes_hemis_update)
+bpy.types.Scene.electrodes_hemi_labels = bpy.props.EnumProperty(items=[])
 
 
 class ElecsPanel(bpy.types.Panel):
