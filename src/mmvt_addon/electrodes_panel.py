@@ -26,7 +26,7 @@ def get_electrodes_names():
 
 def electrodes_hemis_update(self, context):
     if bpy.context.scene.electrodes_hemis == 'rh':
-        labels =
+        labels = []
 
 
 def elc_size_update(self, context):
