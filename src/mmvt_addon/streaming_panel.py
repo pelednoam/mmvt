@@ -103,7 +103,7 @@ def change_graph_all_vals(mat, channels_names=(), stim_channels=(), stim_length=
             continue
         if first_curve:
             max_steps = min([len(fcurve.keyframe_points), MAX_STEPS]) - 2
-            first_curve - False
+            first_curve = False
         elc_ind = next(elecs_cycle) #fcurve_ind
         if elc_ind >= mat.shape[0]:
             continue
@@ -213,7 +213,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
         return sock
 
-    buffer_size = kargs.get('buffer_size', 10)
+    buffer_size = kargs.get('buffer_size', 1)
     server = kargs.get('server', 'localhost')
     port = kargs.get('port', 45454)
     multicast_group = kargs.get('multicast_group', '1.1.1.1')
@@ -241,6 +241,8 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     prev_val = None
     mat_len = 0
     first_message = True
+    now = time.time()
+    prev_value = None
 
     while while_termination_func():
         try:
@@ -267,7 +269,24 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # x = np.ndarray(shape=(len(next_val) / 2,), dtype='>f8', buffer=next_val)
             # dt = np.dtype(np.float64).newbyteorder('>')
             # x = np.frombuffer(next_val, dtype=dt)
-            next_val = np.frombuffer(next_val, dtype=np.dtype(np.float64)) #.reshape(14, 100)[10:, :]
+            next_val = np.frombuffer(next_val, dtype=np.dtype(np.float64)).copy() #.reshape(14, 100)[10:, :]
+            next_val[bad_channels] = 0
+            if len(no_channels) > 0:
+                next_val = np.delete(next_val, no_channels, axis=0)
+            if good_channels:
+                next_val = next_val[good_channels]
+
+            if np.allclose(next_val, 0):
+                continue
+            if prev_val is None:
+                prev_val = next_val.copy()
+            elif np.allclose(next_val.ravel(), prev_val.ravel()):
+                continue
+            prev_val = next_val.copy()
+            print('New packet! {:.5f}s'.format(time.time() - now))
+            print(next_val)
+            now = time.time()
+
             # print(next_val[0])
             # next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             # next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
@@ -281,7 +300,6 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # next_val = next_val[:mat_len]
             next_val = next_val[..., np.newaxis]
 
-        prev_val = next_val
         try:
             buffer = next_val if buffer == [] else np.hstack((buffer, next_val))
         except:
@@ -294,11 +312,6 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # print('udp_reader: ', datetime.now())
             # zeros_indices = np.where(np.all(buffer == 0, 1))[0]
             # buffer = buffer[zeros_indices]
-            buffer[bad_channels] = 0
-            if len(no_channels) > 0:
-                data = np.delete(data, no_channels, axis=0)
-            if good_channels:
-                buffer = buffer[good_channels]
             udp_queue.put(buffer)
             buffer = []
 
@@ -367,7 +380,7 @@ class StreamButton(bpy.types.Operator):
             context.window_manager.modal_handler_add(self)
             self._timer = context.window_manager.event_timer_add(0.01, context.window)
         if StreamingPanel.is_streaming:
-            init_electrodes_fcurves()
+            init_electrodes_fcurves(bpy.context.scene.streaming_window_length)
             show_electrodes_fcurves()
             self._first_timer = True
             # print('Setting _first_timer to True!')
@@ -469,12 +482,13 @@ def streaming_draw(self, context):
         layout.operator(StimButton.bl_idname, text="Stim", icon='COLOR_RED')
     layout.prop(context.scene, 'save_streaming', text='Save streaming data')
     layout.prop(context.scene, 'stream_show_only_good_electrodes', text='Show only good electrodes')
+    layout.prop(context.scene, 'streaming_window_length', text='Window length')
     layout.prop(context.scene, 'stim_length', text='Stim length')
     layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
 
 
-bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=10)
-bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=45454)
+bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=1)
+bpy.types.Scene.streaming_server_port = bpy.props.IntProperty(default=59154)
 bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group', default='1.1.1.')
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
@@ -488,6 +502,8 @@ bpy.types.Scene.good_channels_detector = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.logs_folders = bpy.props.EnumProperty(items=[], description='logs folder')
 bpy.types.Scene.stream_show_only_good_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.stim_length = bpy.props.IntProperty(default=50)
+bpy.types.Scene.streaming_window_length = bpy.props.IntProperty(default=100, min=10)
+bpy.types.Scene.streaming_fcruves_are_init = bpy.props.BoolProperty(default=False)
 
 
 class StreamingPanel(bpy.types.Panel):
@@ -557,6 +573,7 @@ def init(addon):
     bpy.context.scene.stream_type = 'udp'
     bpy.context.scene.multicast = False
     bpy.context.scene.stim_length = 50
+    bpy.context.scene.streaming_fcruves_are_init = False
     register()
     StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()
@@ -567,10 +584,10 @@ def init(addon):
     StreamingPanel.init = True
 
 
-def init_electrodes_fcurves():
+def init_electrodes_fcurves(window_length=2500):
     parent_obj = bpy.data.objects['Deep_electrodes']
     if parent_obj.animation_data is None:
-        init_electrodes_animation()
+        init_electrodes_animation(window_length)
     else:
         for fcurve_ind, fcurve in enumerate(parent_obj.animation_data.action.fcurves):
             if fcurve_ind == 0:
@@ -580,21 +597,20 @@ def init_electrodes_fcurves():
                 fcurve.keyframe_points[t].co[1] = 0
 
 
-def init_electrodes_animation():
+def init_electrodes_animation(window_length=2500):
     parent_obj = bpy.data.objects['Deep_electrodes']
-    T = _addon().get_max_time_steps()
+    # T = _addon().get_max_time_steps()
     N = len(parent_obj.children)
     now = time.time()
     for obj_counter, source_obj in enumerate(parent_obj.children):
         mu.time_to_go(now, obj_counter, N, runs_num_to_print=10)
         source_name = source_obj.name
         mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, 1)
-        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, T + 2)
-        for ind in range(T):
+        mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0, window_length + 2)
+        for ind in range(window_length):
             mu.insert_keyframe_to_custom_prop(parent_obj, source_name, 0.1, ind + 2)
         fcurves = parent_obj.animation_data.action.fcurves[obj_counter]
         mod = fcurves.modifiers.new(type='LIMITS')
-
 
 # def create_electrodes_dic():
 #     parent_obj = bpy.data.objects['Deep_electrodes']
