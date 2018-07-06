@@ -437,8 +437,9 @@ class StreamButton(bpy.types.Operator):
                         # print('only zeros!')
                     change_graph_all_vals(data, StreamButton._channels_names, StreamButton._stim_channels,
                                           bpy.context.scene.stim_length)
-                    if bpy.context.scene.stream_type == 'offline':
+                    if bpy.context.scene.stream_type == 'offline' or self._first_time:
                         mu.view_all_in_graph_editor()
+                        self._first_time = False
                     # if self._first_timer and bpy.context.scene.frame_current > 10:
                     #     print('Setting _first_timer to False! ', bpy.context.scene.frame_current)
                     #     self._first_timer = False
