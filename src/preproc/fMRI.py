@@ -256,7 +256,8 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
         else:
             clusters_labels['values'].extend(clusters_labels_hemi)
 
-    name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('.{hemi}', '').replace('fmri_', '')
+    name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('.{hemi}', '').replace(
+        'fmri_', '').replace('{hemi}.', '').replace('{hemi}_', '')
     if task != '':
         name = '{}_{}'.format(name, task)
     clusters_labels_output_fname = op.join(
@@ -442,6 +443,22 @@ def calc_subs_surface_activity(subject, fmri_file_template, template_brains, thr
     if do_plot:
         plt.savefig(op.join(MMVT_DIR, subject, 'fmri', 'subcorticals_surface_activity.png'))
         plt.show()
+
+
+def morph_fmri(morph_from, morph_to, nii_fname):
+    from src.utils import freesurfer_utils as fu
+    utils.make_dir(op.join(MMVT_DIR, morph_to, 'fmri'))
+    hemi = lu.get_label_hemi(nii_fname)
+    utils.make_dir(op.join(op.join(FMRI_DIR, morph_to)))
+    output_fname = op.join(FMRI_DIR, morph_to, utils.namebase_with_ext(nii_fname))
+    x = nib.load(nii_fname).get_data()
+    morph_from_template = check_vertice_num_for_template(hemi, x)
+    if morph_from_template != '':
+        print('Morphing from template instead! ({})'.format(morph_from_template))
+        morph_from = morph_from_template
+    fu.surf2surf(
+        morph_from, morph_to, hemi, nii_fname, output_fname)
+    return op.isfile(output_fname)
 
 
 def morph_aseg(subject, x_data, volume_fname, aseg_fname='', new_aseg_fname=''):
@@ -998,13 +1015,21 @@ def save_labels_data(
     return utils.both_hemi_files_exist(output_fname_hemi)
 
 
-def check_vertices_num(subject, hemi, x, morph_from_subject=''):
+def check_vertice_num_for_template(hemi, x):
+    morph_from_subject = ''
     if x.shape[0] == FSAVG_VERTS:
         morph_from_subject = 'fsaverage'
     elif x.shape[0] == FSAVG5_VERTS:
         morph_from_subject = 'fsaverage5'
     elif x.shape[0] == COLIN27_VERTS[hemi]:
         morph_from_subject = 'colin27'
+    return morph_from_subject
+
+
+def check_vertices_num(subject, hemi, x, morph_from_subject=''):
+    morph_from_template = check_vertice_num_for_template(hemi, x)
+    if morph_from_template != '':
+        return morph_from_template
     else:
         verts, faces = utils.read_pial(subject, MMVT_DIR, hemi)
         if x.shape[0] == verts.shape[0]:
@@ -1800,6 +1825,9 @@ def main(subject, remote_subject_dir, args, flags):
             subject, args.atlas, args.fmri_file_template, args.labels_extract_mode, args.overwrite_parc_aseg_file,
             args.norm_percs, args.print_only, args=args)
 
+    if 'morph_fmri' in args.function:
+        flags['morph_fmri'] = morph_fmri(args.morph_from, subject, args.nii_fname)
+
     return flags
 
 
@@ -1875,6 +1903,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_subs_surface_method', help='', required=False, default='max')
     parser.add_argument('--calc_subs_surface_points', help='', required=False, default=100, type=int)
     parser.add_argument('--subs_threshold', help='', required=False, default=2, type=float)
+    parser.add_argument('--morph_from', help='', required=False)
+    parser.add_argument('--nii_fname', help='', required=False)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

@@ -83,51 +83,15 @@ if IN_BLENDER:
         bl_label = "Choose niftii file"
         filename_ext = '.*' # '.nii.gz'
         filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255) # nii.gz
-        # running = False
-        # fmri_file_template = ''
-        # _timer = None
 
         def execute(self, context):
             _addon().clear_colors()
             fmri_file_template = load_surf_files(self.filepath[:-2])
-            _addon().plot_fmri_file(fmri_file_template)
-            if mu.get_parent_fol(self.filepath) != op.join(mu.get_user_fol(), 'fmri'):
-                clean_nii_temp_files(fmri_file_template)
-
-            # self.fmri_file_template, hemi, other_hemi = load_surf_files(self.filepath[:-2])
-            # if hemi == '':
-            #     bpy.context.scene.nii_label_prompt = "Can't determine the hemi!"
-            #     return {'RUNNING_MODAL'}
-            # self.fmri_npy_template_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}.npy'.format(
-            #     mu.namebase(self.fmri_file_template)))
-            # print('Waiting for both hemi files to be created ({})'.format(self.fmri_npy_template_fname))
-            # if self.fmri_file_template != '':
-            #     bpy.context.scene.nii_label_output = 'Loading nii file...'
-            #     ChooseNiftiiFile.running = True
-            #     context.window_manager.modal_handler_add(self)
-            #     self._timer = context.window_manager.event_timer_add(0.1, context.window)
-            # else:
-            #     bpy.context.scene.nii_label_prompt = 'Please select the nii file for the {} hemi'.format(
-            #         'right' if hemi == 'lh' else 'left')
+            if fmri_file_template != '':
+                _addon().plot_fmri_file(fmri_file_template)
+                if mu.get_parent_fol(self.filepath) != op.join(mu.get_user_fol(), 'fmri'):
+                    clean_nii_temp_files(fmri_file_template)
             return {'RUNNING_MODAL'}
-
-        # def modal(self, context, event):
-        #     if event.type == 'TIMER' and ChooseNiftiiFile.running:
-        #         if mu.both_hemi_files_exist(self.fmri_npy_template_fname):
-        #             _addon().plot_fmri_file(self.fmri_file_template)
-        #             if mu.get_parent_fol(self.filepath) != op.join(mu.get_user_fol(), 'fmri'):
-        #                 clean_nii_temp_files(self.fmri_file_template)
-        #             ChooseNiftiiFile.running = False
-        #             bpy.context.scene.nii_label_output = ''
-        #             self.cancel(context)
-        #     return {'PASS_THROUGH'}
-
-        # def cancel(self, context):
-        #     if self._timer:
-        #         context.window_manager.event_timer_remove(self._timer)
-        #         self._timer = None
-        #         ChooseNiftiiFile.running = False
-        #     return {'CANCELLED'}
 
 
     def load_results_draw(self, context):
@@ -197,7 +161,7 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
     if hemi == '':
         hemi = mu.find_hemi_using_vertices_num(nii_fname)
         if hemi == '':
-            return '', ''
+            return ''
     # fmri_hemis = mu.get_both_hemis_files(nii_fname)
     local_fname = build_local_fname(nii_fname, user_fol)
     if debug:
@@ -217,23 +181,17 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
         if nii_fol != op.join(user_fol, 'fmri'):
             mu.make_link(other_hemi_fname, local_other_hemi_fname, True)
         fmri_file_template = mu.get_template_hemi_label_name(mu.namebase_with_ext(local_fname))
-        # fmri_file_template_end_pos = mu.get_template_hemi_label_name(mu.namebase_with_ext(local_fname), wanted_pos='end')
-        # for hemi in mu.HEMIS:
-        #     org_fname = op.join(nii_fol, fmri_file_template.format(hemi=hemi))
-        #     dest_fname = op.join(nii_fol, fmri_file_template_end_pos.format(hemi=hemi))
-        #     if org_fname != dest_fname:
-        #         os.rename(org_fname, dest_fname)
         if run_fmri_preproc:
             mu.add_mmvt_code_root_to_path()
             from src.preproc import fMRI
             importlib.reload(fMRI)
-            ret, _ = fMRI.load_surf_files(mu.get_user(), fmri_file_template)
+            ret, npy_output_fname_template = fMRI.load_surf_files(mu.get_user(), fmri_file_template)
         else:
             mu.run_mmvt_func(
                 'src.preproc.fMRI', 'load_surf_files', flags='--fmri_file_template "{}"'.format(fmri_file_template))
     else:
         print("Couldn't find the other hemi file! ({})".format(other_hemi_fname))
-    output_fname_template = op.join(op.join(mu.get_user_fol(), 'fmri'), mu.namebase_with_ext(npy_output_fname_template)[len('fmri_'):])
+    output_fname_template = op.join(mu.get_parent_fol(npy_output_fname_template), mu.namebase_with_ext(npy_output_fname_template)[len('fmri_'):])
     return output_fname_template #, hemi, other_hemi
 
 

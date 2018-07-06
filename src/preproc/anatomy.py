@@ -1035,7 +1035,7 @@ def save_subject_orig_trans(subject):
         ras_tkr2vox, vox2ras_tkr, vox2ras, ras2vox = get_trans_functions(header)
         print('save_subject_orig_trans: saving {}'.format(output_fname))
         np.savez(output_fname, ras_tkr2vox=ras_tkr2vox, vox2ras_tkr=vox2ras_tkr, vox2ras=vox2ras, ras2vox=ras2vox)
-    return op.isfile(output_fname_template.format('t1')
+    return op.isfile(output_fname_template.format('t1'))
 
 
 def get_trans_functions(header):

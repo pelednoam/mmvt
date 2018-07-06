@@ -160,9 +160,13 @@ def export_electrodes(group_hemi_default='G'):
                 group_name = '{}G{}'.format(group_hemi, chr(ord('A') + groups_inds[group_hemi]))
             else:
                 group_name = group_hemi_default
-            elcs_names = ['{}{}'.format(group_name, k+1) for k in range(len(group))]
+            elcs_new_names = ['{}{}'.format(group_name, k+1) for k in range(len(group))]
+            group_elcs_names = [DellPanel.names[g] for g in group]
+            for elc_ind, elc_name, elc_new_name in zip(group, group_elcs_names, elcs_new_names):
+                bpy.data.objects[elc_name].name = elc_new_name
+                DellPanel.names[elc_ind] = elc_new_name
             for ind, elc_ind in enumerate(group):
-                wr.writerow([elcs_names[ind], *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
+                wr.writerow([elcs_new_names[ind], *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
             if group_hemi in groups_inds:
                 groups_inds[group_hemi] += 1
     print('The electrodes were exported to {}'.format(csv_fname))
@@ -671,6 +675,9 @@ def dell_draw_presentation(self, context):
             layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
             layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
         layout.operator(ProjectElectrodesOnLeads.bl_idname, text="Project electrodes on leads", icon='SURFACE_DATA')
+        if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
+            layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
+                            icon='WORLD_DATA')
         layout.prop(context.scene, 'ct_mark_noise', text='Show noise')
         if len(DellPanel.groups) > 0:
             layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))
@@ -683,6 +690,7 @@ def dell_draw_presentation(self, context):
                 mu.add_box_line(col, '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]]), str(len(g)), 0.8)
         layout.operator(ClearGroups.bl_idname, text="Clear groups", icon='GHOST_DISABLED')
     if parent is not None and len(parent.children) > 0:
+        layout.operator(ExportDellElectrodes.bl_idname, text="Rename & Export", icon='EXPORT')
         layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')

@@ -2513,13 +2513,15 @@ def find_hemi_using_vertices_num(fname):
             print("Can'f find the vertices number of the nii file! {}".format(fname))
         else:
             vertices_num = vertices_num[0]
-            if vertices_num == len(bpy.data.objects['rh'].data.vertices):
+            rh_verts_num = len(bpy.data.objects['rh'].data.vertices)
+            lh_verts_num = len(bpy.data.objects['lh'].data.vertices)
+            if vertices_num == rh_verts_num:
                 hemi = 'rh'
-            elif vertices_num == len(bpy.data.objects['lh'].data.vertices):
+            elif vertices_num == lh_verts_num:
                 hemi = 'lh'
             else:
-                print("The vertices num ({}) in the nii file ({}) doesn't match any hemi!".format(
-                    vertices_num, fname))
+                print("The vertices num ({}) in the nii file ({}) doesn't match any hemi! (rh:{}, lh:{})".format(
+                    vertices_num, fname, rh_verts_num, lh_verts_num))
                 hemi = ''
     return hemi
 

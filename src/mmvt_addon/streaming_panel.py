@@ -173,8 +173,8 @@ def offline_logs_reader(udp_queue, while_termination_func, **kargs):
     no_channels = list(map(mu.to_int, no_channels.split(','))) if bad_channels != '' else []
     good_channels = kargs.get('good_channels', '')
     good_channels = list(map(mu.to_int, good_channels.split(','))) if good_channels != '' else []
-    channels_names = kargs.get('channels_names', '')
-    channels_names = list(map(mu.to_int, channels_names.split(','))) if channels_names != '' else []
+    # channels_names = kargs.get('channels_names', '')
+    # channels_names = list(map(mu.to_int, channels_names.split(','))) if channels_names != '' else []
 
     data[bad_channels] = 0
     if len(no_channels) > 0:
@@ -232,6 +232,11 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
     # 3) show all task at once
     good_channels = kargs.get('good_channels', '')
     good_channels = list(map(mu.to_int, good_channels.split(','))) if good_channels != '' else []
+    bad_channels = kargs.get('bad_channels', '')
+    bad_channels = list(map(mu.to_int, bad_channels.split(','))) if bad_channels != '' else []
+    no_channels = kargs.get('no_channels', '')
+    no_channels = list(map(mu.to_int, no_channels.split(','))) if bad_channels != '' else []
+
     buffer = []
     prev_val = None
     mat_len = 0
@@ -263,7 +268,7 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # dt = np.dtype(np.float64).newbyteorder('>')
             # x = np.frombuffer(next_val, dtype=dt)
             next_val = np.frombuffer(next_val, dtype=np.dtype(np.float64)) #.reshape(14, 100)[10:, :]
-            print(next_val[0])
+            # print(next_val[0])
             # next_val = next_val.decode(sys.getfilesystemencoding(), 'ignore')
             # next_val = np.array([mu.to_float(f, 0.0) for f in next_val.split(',')])
             if first_message:
@@ -289,6 +294,9 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
             # print('udp_reader: ', datetime.now())
             # zeros_indices = np.where(np.all(buffer == 0, 1))[0]
             # buffer = buffer[zeros_indices]
+            buffer[bad_channels] = 0
+            if len(no_channels) > 0:
+                data = np.delete(data, no_channels, axis=0)
             if good_channels:
                 buffer = buffer[good_channels]
             udp_queue.put(buffer)

@@ -329,8 +329,11 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
         bpy.context.scene.fmri_clustering_threshold = val_threshold = 2
     # bpy.context.scene.fmri_cluster_val_threshold = bpy.context.scene.fmri_clustering_threshold
     fMRIPanel.clusters_labels_filtered = filter_clusters(clusters_labels_file, val_threshold, size_threshold, clusters_name)
-    sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'
-    clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
+    if bpy.context.scene.fmri_how_to_sort == 'name':
+        clusters_tup = sorted([('', cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
+    else:
+        sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'
+        clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind + 1) for ind, c in enumerate(fMRIPanel.clusters)]
@@ -419,8 +422,11 @@ def cluster_name(x):
 
 
 def _cluster_name(x, sort_mode):
-    return '{}_{:.2f}'.format(x['name'], x['max']) if sort_mode == 'tval' else\
-        '{}_{:.2f}'.format(x['name'], x['size'])
+    if sort_mode == 'tval' or sort_mode == 'name':
+        return '{}_{:.2f}'.format(x['name'], x['max'])
+    elif sort_mode == 'size':
+        return '{}_{:.2f}'.format(x['name'], x['size'])
+
 
 
 def get_clusters_files(user_fol=''):
@@ -711,7 +717,7 @@ try:
     bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
         items=[('blob', 'Plot blob', '', 1)], description='What do plot') # ('cluster', 'Plot cluster', '', 1)
     bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
-        items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
+        items=[('tval', 't-val', '', 1), ('size', 'size', '', 2), ('name', 'name', '', 3)],
         description='How to sort', update=fmri_how_to_sort_update)
     bpy.types.Scene.fmri_clusters = bpy.props.EnumProperty(items=[], description="fMRI clusters")
     bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
