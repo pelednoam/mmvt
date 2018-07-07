@@ -13,6 +13,7 @@ import types
 import scipy.io as sio
 import nibabel as nib
 from collections import Counter
+import inspect
 
 try:
     import matplotlib.pyplot as plt
@@ -1084,7 +1085,7 @@ def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
 def get_raw_fname(raw_fname=''):
     if raw_fname == '':
         raw_fname = RAW
-    print('Looking for raw fif file...')
+    print('{}: looking for raw fif file...'.format(inspect.stack()[1][3]))
     raw_fname, raw_exist = locating_meg_file(raw_fname, '*raw.fif')
     return raw_fname
 

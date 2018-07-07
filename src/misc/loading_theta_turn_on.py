@@ -9,7 +9,13 @@ from src.utils import matlab_utils as mu
 MMVT_DIR = utils.get_link_dir(utils.get_links_dir(), 'mmvt')
 
 
+def test():
+    import inspect
+    print('{}: looking for raw fif file...'.format(inspect.stack()[1][3]))
+
+
 def load_file(fname):
+    test()
     d = mu.load_mat_to_bag(fname)
     channel_list = []
     for c in mu.matlab_cell_str_to_list(d.channel_list):
