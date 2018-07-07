@@ -142,7 +142,8 @@ def meg_preproc(args):
                 remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
                 get_task_defaults=False,
                 fname_format='{}_{}_Onset'.format('{subject}', task),
-                raw_fname=utils.get_par,
+                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+                epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_Onset-epo.fif'.format(subject, task)),
                 empty_fname=empty_fnames[task],
                 function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 # function='calc_epochs',
