@@ -349,6 +349,9 @@ def unfilter_clusters():
     update_clusters(2, 1)
 
 
+def find_electrodes_in_cluster():
+
+
 def plot_all_blobs(use_abs=None):
     # fMRIPanel.dont_show_clusters_info = False
     faces_verts = _addon().get_faces_verts()
