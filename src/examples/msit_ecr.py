@@ -20,6 +20,7 @@ def prepare_files(args):
         for task in args.tasks:
             fol = utils.make_dir(op.join(MEG_DIR, task, subject))
             local_fname = op.join(fol, '{}_{}_Onset-epo.fif'.format(subject, task))
+            print('local fname: {}'.format(local_fname))
             if not op.isfile(local_fname):
                 remote_fname = op.join(args.meg_dir, subject, '{}_{}_Onset-epo.fif'.format(subject, task))
                 utils.make_link(remote_fname, local_fname)
