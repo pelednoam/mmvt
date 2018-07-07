@@ -115,6 +115,9 @@ def meg_preproc(args):
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         args.subject = subject
         for task in args.tasks:
+            if task not in cors:
+                print('{} no in get_empty_fnames!'.format(task))
+                continue
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
