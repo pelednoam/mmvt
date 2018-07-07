@@ -149,8 +149,8 @@ def meg_preproc(args):
                 # overwrite_epochs=True,
                 # overwrite_evoked=True,
                 # overwrite_inv=True,
-                overwrite_stc=True,
-                overwrite_labels_data=True,
+                # overwrite_stc=True,
+                # overwrite_labels_data=True,
                 n_jobs=args.n_jobs
             ))
             meg.call_main(meg_args)
