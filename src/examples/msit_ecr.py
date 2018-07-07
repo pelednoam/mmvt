@@ -77,28 +77,28 @@ def get_empty_fnames(subject, tasks, args):
             cors[task] = op.join(cor_dir, 'COR-{}-day{}.fif'.format('{subject}', days[task]))
     return empty_fnames, cors, days
 
-
-def calc_meg_epochs(args):
-    empty_fnames, cors, days = get_empty_fnames(args.subject[0], args.tasks, args)
-    times = (-2, 4)
-    for task in args.tasks:
-        args = meg.read_cmd_args(dict(
-            subject=args.subject, mri_subject=args.subject,
-            task=task,
-            remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
-            get_task_defaults=False,
-            fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
-            empty_fname=empty_fnames[task],
-            function='calc_epochs,calc_evokes',
-            conditions=task.lower(),
-            data_per_task=True,
-            normalize_data=False,
-            t_min=times[0], t_max=times[1],
-            read_events_from_file=False, stim_channels='STI001',
-            use_empty_room_for_noise_cov=True,
-            n_jobs=args.n_jobs
-        ))
-        meg.call_main(args)
+#
+# def calc_meg_epochs(args):
+#     empty_fnames, cors, days = get_empty_fnames(args.subject[0], args.tasks, args)
+#     times = (-2, 4)
+#     for task in args.tasks:
+#         args = meg.read_cmd_args(dict(
+#             subject=args.subject, mri_subject=args.subject,
+#             task=task,
+#             remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
+#             get_task_defaults=False,
+#             fname_format='{}_{}_nTSSS-ica-raw'.format('{subject}', task.lower()),
+#             empty_fname=empty_fnames[task],
+#             function='calc_epochs,calc_evokes',
+#             conditions=task.lower(),
+#             data_per_task=True,
+#             normalize_data=False,
+#             t_min=times[0], t_max=times[1],
+#             read_events_from_file=False, stim_channels='STI001',
+#             use_empty_room_for_noise_cov=True,
+#             n_jobs=args.n_jobs
+#         ))
+#         meg.call_main(args)
 
 
 def meg_preproc(args):
@@ -152,9 +152,9 @@ def meg_preproc(args):
             ))
             meg.call_main(meg_args)
 
-            task = task.lower()
-            meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
+            # task = task.lower()
+            # meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
+            # meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
 
 
 def post_analysis(args):

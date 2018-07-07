@@ -186,12 +186,16 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
             from src.preproc import fMRI
             importlib.reload(fMRI)
             ret, npy_output_fname_template = fMRI.load_surf_files(mu.get_user(), fmri_file_template)
+            output_fname_template = op.join(
+                mu.get_parent_fol(npy_output_fname_template),
+                mu.namebase_with_ext(npy_output_fname_template)[len('fmri_'):])
         else:
             mu.run_mmvt_func(
                 'src.preproc.fMRI', 'load_surf_files', flags='--fmri_file_template "{}"'.format(fmri_file_template))
+            # todo: find what should be the output_fname_template
+            output_fname_template = ''
     else:
         print("Couldn't find the other hemi file! ({})".format(other_hemi_fname))
-    output_fname_template = op.join(mu.get_parent_fol(npy_output_fname_template), mu.namebase_with_ext(npy_output_fname_template)[len('fmri_'):])
     return output_fname_template #, hemi, other_hemi
 
 

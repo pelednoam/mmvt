@@ -1977,6 +1977,7 @@ def get_hemi_from_full_fname(fname):
     folder = namebase(fname)
     other_hemi_fname = full_fname = fname
     hemi = get_hemi_from_fname(folder)
+    org_hemi = ''
     if hemi != '':
         other_hemi_fname = other_hemi_fname.replace(folder, get_other_hemi_label_name(folder))
         org_hemi = hemi
@@ -2001,6 +2002,9 @@ def get_hemi_from_full_fname(fname):
         #     other_hemi_fname = op.join(get_parent_fol(other_hemi_fname), file_name_other_hemi)
         #     print('get_hemi_from_full_fname: other_hemi_fname {}'.format(other_hemi_fname))
         # print('get_hemi_from_full_fname: hemi, other_hemi_fname: {}, {}'.format(hemi, other_hemi_fname))
+    if org_hemi == '':
+        print('get_hemi_from_full_fname: Can\'t find the hemi from {}!'.format(fname))
+        return {'rh': '', 'lh': ''}
     hemis_fnames = {org_hemi: full_fname, other_hemi(org_hemi): other_hemi_fname}
     # else:
     #     hemis_fnames = {'rh':'', 'lh':''}
