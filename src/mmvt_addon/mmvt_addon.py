@@ -362,6 +362,7 @@ render_movie = play_panel.render_movie
 get_current_t = play_panel.get_current_t
 set_current_t = play_panel.set_current_t
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ electrodes links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+electrodes = electrodes_panel
 color_the_relevant_lables = electrodes_panel.color_the_relevant_lables
 get_leads = electrodes_panel.get_leads
 get_lead_electrodes = electrodes_panel.get_lead_electrodes

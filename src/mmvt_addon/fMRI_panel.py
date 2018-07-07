@@ -81,6 +81,7 @@ def _clusters_update():
 
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
+    find_electrodes_in_cluster()
     mu.rotate_view_to_vertice()
 
 
@@ -350,6 +351,30 @@ def unfilter_clusters():
 
 
 def find_electrodes_in_cluster():
+    ela_model = _addon().electrodes.get_ela_model()
+    if ela_model is None:
+        return
+    electrodes = _addon().electrodes.get_electrodes_names()
+    if len(electrodes) == 0:
+        return
+    fmri_cluster = bpy.context.scene.fmri_clusters
+    fmri_roi = fmri_cluster.split('-')[0]
+    fmri_roi_hemi = '_'.join(fmri_cluster.split('_')[:-1])[-2:]
+    fmri_cluster_electrodes = []
+    for elec_name in electrodes:
+        loc = ela_model.get(elec_name, None)
+        if loc is None:
+            # print('No ela model for {}!'.format(elec_name))
+            continue
+        elec_rois = loc['cortical_rois']
+        for elc_roi in elec_rois:
+            elc_roi = elc_roi.split('_')[0]
+            elc_roi_hemi = mu.get_hemi_from_fname(elc_roi)
+            if elc_roi == fmri_roi and elc_roi_hemi == fmri_roi_hemi:
+                fmri_cluster_electrodes.append(elec_name)
+                break
+        # print(fmri_roi, fmri_roi_hemi, roi, roi_hemi)
+    print(fmri_cluster_electrodes)
 
 
 def plot_all_blobs(use_abs=None):

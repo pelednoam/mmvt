@@ -140,6 +140,10 @@ def electrodes_update(self, context):
         _electrodes_update()
 
 
+def get_ela_model():
+    return ElecsPanel.lookup
+
+
 def _electrodes_update():
     if _addon() is None or not ElecsPanel.init:
         return
