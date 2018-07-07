@@ -31,7 +31,7 @@ def anatomy_preproc(args, subject=''):
         subject=args.subject if subject == '' else subject,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
         high_level_atlas_name='darpa_atlas',
-        function='create_high_level_atlas',
+        function='create_annotation,create_high_level_atlas',
         ignore_missing=True
     ))
     anat.call_main(args)
