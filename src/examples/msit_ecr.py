@@ -102,7 +102,7 @@ def get_empty_fnames(subject, tasks, args):
 
 
 def meg_preproc(args):
-    atlas, inv_method, em = 'aparc.DKTatlas40', 'MNE', 'mean_flip'
+    inv_method, em = 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     prepare_files(args)
@@ -113,6 +113,9 @@ def meg_preproc(args):
     for subject in subjects:
         # if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
         anatomy_preproc(args, subject)
+        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
+            print('Can\'t find the atlas {}!'.format(atlas))
+            continue
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         args.subject = subject
         for task in args.tasks:
@@ -165,6 +168,7 @@ def meg_preproc(args):
     print(good_subjects)
     print('Bad subjects:')
     print(list(set(args.subject) - set(good_subjects)))
+
 
 def post_analysis(args):
     import matplotlib.pyplot as plt
