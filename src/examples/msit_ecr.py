@@ -109,6 +109,7 @@ def meg_preproc(args):
     times = (-2, 4)
 
     subjects = args.subject
+    good_subjects = []
     for subject in subjects:
         # if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
         anatomy_preproc(args, subject)
@@ -153,12 +154,17 @@ def meg_preproc(args):
                 # overwrite_labels_data=True,
                 n_jobs=args.n_jobs
             ))
-            meg.call_main(meg_args)
+            ret = meg.call_main(meg_args)
+            if ret:
+                good_subjects.append(subject)
 
             # task = task.lower()
             # meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
             # meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
-
+    print('Good subjects:')
+    print(good_subjects)
+    print('Bad subjects:')
+    print(list(set(args.subject) - set(good_subjects)))
 
 def post_analysis(args):
     import matplotlib.pyplot as plt
