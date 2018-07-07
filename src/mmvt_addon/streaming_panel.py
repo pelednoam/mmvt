@@ -278,13 +278,10 @@ def udp_reader(udp_queue, while_termination_func, **kargs):
 
             if np.allclose(next_val, 0):
                 continue
-            if prev_val is None:
-                prev_val = next_val.copy()
-            elif np.allclose(next_val.ravel(), prev_val.ravel()):
+            if prev_val is not None and np.allclose(next_val.ravel(), prev_val.ravel()):
                 continue
             prev_val = next_val.copy()
-            print('New packet! {:.5f}s'.format(time.time() - now))
-            print(next_val)
+            print('New packet! ({:.5f}s): {}'.format(next_val, time.time() - now, next_val))
             now = time.time()
 
             # print(next_val[0])

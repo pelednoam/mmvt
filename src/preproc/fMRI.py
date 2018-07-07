@@ -256,14 +256,39 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
         else:
             clusters_labels['values'].extend(clusters_labels_hemi)
 
-    name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('.{hemi}', '').replace(
+    new_atlas_name = utils.namebase(surf_full_input_fname).replace('_{hemi}', '').replace('.{hemi}', '').replace(
         'fmri_', '').replace('{hemi}.', '').replace('{hemi}_', '')
     if task != '':
-        name = '{}_{}'.format(name, task)
+        new_atlas_name = '{}_{}'.format(new_atlas_name, task)
     clusters_labels_output_fname = op.join(
-        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}.pkl'.format(name, atlas))
+        MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}.pkl'.format(new_atlas_name, atlas))
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
+
+    clusters_fol = utils.make_dir(
+        op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}'.format(new_atlas_name, atlas)))
+    for cluster_ind, cluster in enumerate(clusters_labels['values']):
+        cluster = utils.Bag(cluster)
+        # cluster: vertices, intersects, name, coordinates, max, hemi, size
+        cluster_label = mne.Label(
+            cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
+        cluster_name = '{}_{:.2f}_{}-{}.label'.format(
+            cluster.name.replace('-{}'.format(cluster_label.hemi), ''), cluster.max, cluster.size, cluster_label.hemi)
+        cluster_label.save(op.join(clusters_fol, cluster_name))
+
+    if len(clusters) > 0:
+        ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, clusters_fol)
+        if ret:
+            annot_files_template = op.join(
+                SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', new_atlas_name))
+            for hemi in utils.HEMIS:
+                annot_fname = annot_files_template.format(hemi=hemi)
+                dest_annot_fname = op.join(clusters_fol, utils.namebase_with_ext(annot_fname))
+                if not op.isfile(dest_annot_fname):
+                    shutil.copy(annot_fname, dest_annot_fname)
+        from src.preproc import anatomy as anat
+        anat.calc_labeles_contours(subject, new_atlas_name, overwrite=True, verbose=False)
+
     return op.isfile(clusters_labels_output_fname)
 
 

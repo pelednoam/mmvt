@@ -556,7 +556,8 @@ def elecs_draw(self, context):
     layout = self.layout
     box = layout.box()
     if ElecsPanel.electrodes_labeling_file_exist and len(ElecsPanel.labling_files) > 1:
-        layout.prop(context.scene, "electrodes_labeling_files", text="")
+        box.prop(context.scene, "electrodes_labeling_files", text="")
+    box.label(text='Model: {}'.format(context.scene.electrodes_labeling_files.split('_')[1]))
     row = box.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
@@ -572,11 +573,12 @@ def elecs_draw(self, context):
         for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
             mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
         for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
-            mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+            if cortical_prob >= 0.01:
+                mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
 
-        box = layout.box()
-        box.prop(context.scene, "electrodes_hemis", text="")
-        box.prop(context.scene, "electrodes_hemi_labels", text="")
+        # box = layout.box()
+        # box.prop(context.scene, "electrodes_hemis", text="")
+        # box.prop(context.scene, "electrodes_hemi_labels", text="")
 
     if bpy.context.scene.electrodes_more_settings:
         layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")

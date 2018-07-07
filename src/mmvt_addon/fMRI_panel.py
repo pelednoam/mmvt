@@ -542,27 +542,6 @@ def fMRI_draw(self, context):
     row.label(text='Sort: ')
     row.prop(context.scene, 'fmri_how_to_sort', expand=True)
 
-    row = layout.row(align=True)
-    # row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
-    # row.operator(CalcClusters.bl_idname, text="Recalculate clusters", icon='GROUP_VERTEX')
-    layout.prop(context.scene, 'fmri_show_filtering', text='Refine clusters')
-    if bpy.context.scene.fmri_show_filtering:
-        # row.operator(RefinefMRIClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
-        col = layout.box().column()
-        col.prop(context.scene, 'fmri_cluster_val_threshold', text='clusters t-val threshold')
-        col.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
-        col.prop(context.scene, 'fmri_clustering_filter', text='starts with')
-        row = col.row(align=True)
-        row.prop(context.scene, 'fmri_clustering_filter_lh', text='Left hemisphere')
-        row.prop(context.scene, 'fmri_clustering_filter_rh', text='Right hemisphere')
-        # layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
-    # layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
-    row = layout.row(align=True)
-    row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
-    row.prop(context.scene, 'fmri_cluster_contours_color', text="")
-    layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
-
-    # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     if not fMRIPanel.cluster_labels is None and len(fMRIPanel.cluster_labels) > 0 and \
             not fMRIPanel.dont_show_clusters_info:
         if 'size' not in fMRIPanel.cluster_labels:
@@ -577,6 +556,28 @@ def fMRI_draw(self, context):
             mu.add_box_line(col, inter_labels['name'], '{:.0%}'.format(inter_labels['num'] / float(blob_size)), 0.8)
         if labels_num_to_show < len(fMRIPanel.cluster_labels['intersects']):
             layout.label(text='Out of {} labels'.format(len(fMRIPanel.cluster_labels['intersects'])))
+
+    # row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
+    # row.operator(CalcClusters.bl_idname, text="Recalculate clusters", icon='GROUP_VERTEX')
+    layout.prop(context.scene, 'fmri_show_filtering', text='Refine clusters')
+    if bpy.context.scene.fmri_show_filtering:
+        # row.operator(RefinefMRIClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
+        col = layout.box().column()
+        col.prop(context.scene, 'fmri_cluster_val_threshold', text='clusters t-val threshold')
+        col.prop(context.scene, 'fmri_cluster_size_threshold', text='clusters size threshold')
+        col.prop(context.scene, 'fmri_clustering_filter', text='starts with')
+        row = col.row(align=True)
+        row.prop(context.scene, 'fmri_clustering_filter_lh', text='Left hemisphere')
+        row.prop(context.scene, 'fmri_clustering_filter_rh', text='Right hemisphere')
+        # layout.operator(FilterfMRIBlobs.bl_idname, text="Filter blobs", icon='FILTER')
+    # layout.prop(context.scene, 'plot_current_cluster', text="Plot current cluster")
+    if bpy.context.scene.fmri_more_settings:
+        row = layout.row(align=True)
+        row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
+        row.prop(context.scene, 'fmri_cluster_contours_color', text="")
+        layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
+
+    # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     # row = layout.row(align=True)
     layout.operator(PlotAllBlobs.bl_idname, text="Plot all blobs", icon='POTATO')
     # if _addon().is_pial(): # or _addon().get_inflated_ratio() == 1:
@@ -588,10 +589,11 @@ def fMRI_draw(self, context):
     #     layout.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
     #     layout.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
     # layout.operator(FindfMRIFilesMinMax.bl_idname, text="Calc minmax for all files", icon='IPO')
-    if mu.is_freesurfer_exist:
+    if mu.is_freesurfer_exist and bpy.context.scene.fmri_more_settings:
         layout.operator(LoadVolumefMRIFile.bl_idname, text="Load volume fMRI file", icon='LOAD_FACTORY').filepath = \
             op.join(mu.get_user_fol(), 'fmri', '*.*')
     layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+    layout.prop(context.scene, 'fmri_more_settings', text='More settings')
 
 
 def clear():
@@ -742,6 +744,7 @@ try:
     bpy.types.Scene.fmri_clustering_filter = bpy.props.StringProperty(update=fmri_clusters_update)
     bpy.types.Scene.fmri_clustering_filter_lh = bpy.props.BoolProperty(default=True, update=fmri_clusters_update)
     bpy.types.Scene.fmri_clustering_filter_rh = bpy.props.BoolProperty(default=True, update=fmri_clusters_update)
+    bpy.types.Scene.fmri_more_settings = bpy.props.BoolProperty(default=False)
 except:
     pass
 
@@ -814,6 +817,7 @@ def init(addon):
     bpy.context.scene.fmri_what_to_plot = 'blob'
     bpy.context.scene.fmri_how_to_sort = 'tval'
     bpy.context.scene.plot_current_cluster = True
+    bpy.context.scene.fmri_more_settings = False
 
     update_clusters()
     fMRIPanel.blobs_activity, _ = calc_blobs_activity(

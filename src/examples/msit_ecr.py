@@ -2,6 +2,7 @@ import os.path as op
 import numpy as np
 from itertools import product
 import mne
+import glob
 from src.utils import utils
 from src.utils import labels_utils as lu
 from src.preproc import anatomy as anat
@@ -184,4 +185,10 @@ if __name__ == '__main__':
                         default='/autofs/space/lilli_001/users/DARPA-Recons/{subject}')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
-    locals()[args.function](args)
+
+    if args.subject[0] == 'all':
+        args.subject = [d for d in glob.glob(op.join(args.meg_dir, '*')) if op.isdir(d) and
+                        op.isfile(op.join(d, '{}_{}_Onset-epo.fif'.format(d, 'ECR'))) and
+                        op.isfile(op.join(d, '{}_{}_Onset-epo.fif'.format(d, 'MSIT')))]
+        print('{} subject were found with both tasks!'.format(args.subject))
+    # locals()[args.function](args)
