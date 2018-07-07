@@ -23,6 +23,7 @@ def prepare_files(args):
             if not op.isfile(local_fname):
                 remote_fname = op.join(args.meg_dir, subject, '{}_{}_Onset-epo.fif'.format(subject, task))
                 utils.make_link(remote_fname, local_fname)
+                print('Creating a local link to {}'.format(remote_fname))
 
 
 def anatomy_preproc(args, subject=''):
