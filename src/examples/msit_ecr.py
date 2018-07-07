@@ -114,7 +114,7 @@ def get_empty_fnames(subject, tasks, args):
 #         meg.call_main(args)
 
 
-def meg_preproc(args):
+def meg_preproc(args, overwrite=False):
     inv_method, em = 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
@@ -134,6 +134,12 @@ def meg_preproc(args):
         for task in args.tasks:
             if task not in cors:
                 print('{} no in get_empty_fnames!'.format(task))
+                continue
+            output_fname = op.join(
+                MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_minmax.npz'.format(
+                    task.lower(), atlas, inv_method, em))
+            if op.isfile(output_fname) and not overwrite:
+                print('{} already exist!'.format(output_fname))
                 continue
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
