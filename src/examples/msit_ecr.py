@@ -33,7 +33,10 @@ def prepare_files(args):
                 print('Creating a local link to {}'.format(remote_raw_fname))
                 utils.make_link(remote_raw_fname, local_raw_fname)
         ret[subject] = ret[subject] and op.isfile(local_epo_fname) and op.isfile(local_raw_fname)
-    print(ret)
+    print('Good subjects:')
+    print([s for s, r in ret.items() if r])
+    print('Bad subjects:')
+    print([s for s, r in ret.items() if not r])
 
 
 def anatomy_preproc(args, subject=''):
