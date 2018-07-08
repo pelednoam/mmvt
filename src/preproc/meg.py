@@ -3127,12 +3127,12 @@ def calc_labels_diff(labels_data1_fname, labels_data2_fname, output_fname, inver
     return utils.both_hemi_files_exist(output_fname) and op.isfile(min_max_output_fname)
 
 
-def calc_labels_func(subject, task, atlas, em, func=None, tmin=None, tmax=None, times=None, time_dim=1,
+def calc_labels_func(subject, task, atlas, inv_method, em, func=None, tmin=None, tmax=None, times=None, time_dim=1,
                      labels_data_output_name='', precentiles=(1, 99), func_name='', norm_data=True, overwrite=False):
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
     labels_data_template_fname = op.join(
-        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}{}.npz'.format(
-            task.lower(), atlas, em, 'norm_' if norm_data else '', '{hemi}'))
+        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_{}{}.npz'.format(
+            task.lower(), atlas, inv_method, em, 'norm_' if norm_data else '', '{hemi}'))
     labels_data = {hemi:utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi))) for hemi in utils.HEMIS}
     if func is None:
         func = utils.wrapped_partial(np.mean, axis=1)
@@ -3177,11 +3177,11 @@ def calc_labels_func(subject, task, atlas, em, func=None, tmin=None, tmax=None, 
 
 
 def calc_labels_power_bands(
-        subject, task, atlas, em, tmin, tmax, precentiles=(1, 99), func_name='power', norm_data=False,
+        subject, task, atlas, inv_method, em, tmin, tmax, precentiles=(1, 99), func_name='power', norm_data=False,
         bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
         overwrite=False):
     labels_data_template_fname = op.join(
-        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}.npz'.format(task, atlas, em, '{hemi}'))
+        MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_{}.npz'.format(task, atlas, inv_method, em, '{hemi}'))
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
     labels_data = {hemi: utils.Bag(np.load(labels_data_template_fname.format(hemi=hemi))) for hemi in utils.HEMIS}
     conds = labels_data['rh'].conditions

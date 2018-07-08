@@ -206,8 +206,8 @@ def post_meg_preproc(args):
                         task, atlas, inv_method, em, '{hemi}'))):
                 print('label data can\'t be found for {} {}'.format(subject, task))
                 continue
-            meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
+            meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
+            meg.calc_labels_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
 
 def post_analysis(args):
