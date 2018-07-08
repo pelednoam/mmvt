@@ -179,9 +179,6 @@ def meg_preproc(args, overwrite=False):
             ))
             meg.call_main(meg_args)
 
-            # task = task.lower()
-            # meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            # meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
     good_subjects = [s for s in subjects if
            op.isfile(op.join(MMVT_DIR, subject, 'meg',
                              'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
@@ -191,6 +188,26 @@ def meg_preproc(args, overwrite=False):
     print(good_subjects)
     print('Bad subjects:')
     print(list(set(subjects) - set(good_subjects)))
+
+
+def post_meg_preproc(args):
+    inv_method, em = 'MNE', 'mean_flip'
+    atlas = 'darpa_atlas'
+    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    times = (-2, 4)
+
+    subjects = args.subject
+    for subject in subjects:
+        args.subject = subject
+        for task in args.tasks:
+            task = task.lower()
+            if not utils.both_hemi_files_exist(
+                    op.join(MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_lh.npz'.format(
+                        task, atlas, inv_method, em, '{hemi}'))):
+                print('label data can\'t be found for {} {}'.format(subject, task))
+                continue
+            meg.calc_labels_func(subject, task, atlas, em, tmin=0, tmax=0.5, times=times, norm_data=False)
+            meg.calc_labels_power_bands(subject, task, atlas, em, tmin=times[0], tmax=times[1], overwrite=True)
 
 
 def post_analysis(args):
