@@ -211,7 +211,7 @@ def post_meg_preproc(args):
             meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
             meg.calc_labels_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
-        for fname in glob.glob(op.join(MMVT_DIR, subject, 'labels', 'labels_data', '*')):
+        for fname in [f for f in glob.glob(op.join(MMVT_DIR, subject, 'labels', 'labels_data', '*')) if op.isfile(f)]:
             shutil.copyfile(fname, op.join(res_fol, subject, utils.namebase_with_ext(fname)))
 
 
