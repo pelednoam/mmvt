@@ -1,7 +1,7 @@
 import os.path as op
 import numpy as np
 from itertools import product
-import mne
+import shutil
 import glob
 from src.utils import utils
 from src.utils import labels_utils as lu
@@ -197,7 +197,9 @@ def post_meg_preproc(args):
     times = (-2, 4)
 
     subjects = args.subject
+    res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     for subject in subjects:
+        utils.make_dir(op.join(res_fol, subject))
         args.subject = subject
         for task in args.tasks:
             task = task.lower()
@@ -209,6 +211,8 @@ def post_meg_preproc(args):
             meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
             meg.calc_labels_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
+        shutil.copytree(op.join(MMVT_DIR, subject, 'labels', 'labels_data'),
+                        op.join(res_fol, subject))
 
 def post_analysis(args):
     import matplotlib.pyplot as plt
