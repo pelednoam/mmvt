@@ -1960,6 +1960,11 @@ def get_hemi_from_fname(fname):
     return hemi
 
 
+def get_label_and_hemi_from_fname(fname):
+    _, _, label, hemi = get_hemi_delim_and_pos(fname)
+    return label, hemi
+
+
 def get_label_hemi_invariant_name(label_name):
     _, _, label_inv_name, _ = get_hemi_delim_and_pos(label_name)
     while label_inv_name != label_name:

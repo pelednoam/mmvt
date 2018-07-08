@@ -214,6 +214,14 @@ def select_electrode(current_electrode):
     # _addon().filter_electrode_func(bpy.context.scene.electrodes)
 
 
+def get_electrodes_pos():
+    electrode_names = get_electrodes_names()
+    electrodes_pos = np.zeros((len(electrode_names), 3))
+    for elc_ind, electrode_name in enumerate(electrode_names):
+        electrodes_pos[elc_ind] = bpy.data.objects[electrode_name].matrix_world.to_translation()
+    return electrodes_pos
+
+
 def electode_was_manually_selected(selected_electrode_name):
     bpy.context.scene.cursor_location = bpy.data.objects[selected_electrode_name].matrix_world.to_translation()
     tkreg_ras = bpy.context.scene.cursor_location * 10
