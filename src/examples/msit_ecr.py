@@ -199,16 +199,15 @@ def post_meg_preproc(args):
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     for subject in subjects:
-        if not all ([utils.both_hemi_files_exist(
-                op.join(MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_lh.npz'.format(
-                    task, atlas.lower(), inv_method, em, '{hemi}'))) for task in args.tasks]):
-            print('label data can\'t be found for {}'.format(subject))
-            continue
-
         utils.make_dir(op.join(res_fol, subject))
         args.subject = subject
         for task in args.tasks:
             task = task.lower()
+            if not utils.both_hemi_files_exist(
+                    op.join(MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_lh.npz'.format(
+                        task, atlas, inv_method, em, '{hemi}'))):
+                print('label data can\'t be found for {} {}'.format(subject, task))
+                continue
             meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
             meg.calc_labels_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
