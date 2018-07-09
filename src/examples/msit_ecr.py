@@ -199,7 +199,6 @@ def post_meg_preproc(args):
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     for subject in subjects:
-        utils.make_dir(op.join(res_fol, subject))
         args.subject = subject
         for task in args.tasks:
             task = task.lower()
@@ -208,6 +207,7 @@ def post_meg_preproc(args):
                         task, atlas, inv_method, em, '{hemi}'))):
                 print('label data can\'t be found for {} {}'.format(subject, task))
                 continue
+            utils.make_dir(op.join(res_fol, subject))
             meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
             meg.calc_labels_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 

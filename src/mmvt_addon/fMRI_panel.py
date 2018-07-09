@@ -352,22 +352,28 @@ def unfilter_clusters():
 
 def fmri_electrodes_intersection():
     from scipy.spatial.distance import cdist
-    electrodes_in_cluster = {}
+    electrodes_in_clusters = {}
     cloesest_electrodes = []
     electrodes_names = _addon().electrodes.get_electrodes_names()
-    electrodes_pos = _addon().electrodes.get_electrodes_pos()
+    # electrodes_pos = _addon().electrodes.get_electrodes_pos()
+    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    # key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
+    key = clusters_labels_file
+
     for cluster in fMRIPanel.clusters_labels_filtered:
-        label, hemi = mu.get_label_and_hemi_from_fname(cluster.name)
-        curr_cluster_name = '{}_{:.2f}_{}-{}'.format(label, cluster.max, cluster.size, hemi)
+        electrodes_in_cluster = find_electrodes_in_cluster(cluster)
+        if len(electrodes_in_cluster) > 0:
+            electrodes_in_clusters['{}_{:.2f}'.format(cluster.name, cluster.max)] = electrodes_in_cluster
+
+        # label, hemi = mu.get_label_and_hemi_from_fname(cluster.name)
+        # curr_cluster_name = '{}_{:.2f}_{}-{}'.format(label, cluster.max, cluster.size, hemi)
         # electrodes_in_cluster = find_electrodes_in_cluster(cluster_name)
-        # if len(electrodes_in_cluster) > 0:
-        #     electrodes_in_cluster[cluster_name] = electrodes_in_cluster
         # cluster_pos = mu.get_vert_co(cluster.max_vert, cluster.hemi)
-        dists = cdist(cluster.coordinates, electrodes_pos * 10)
-        closest_elec_ind = np.argmin(dists, axis=1)[0]
-        closest_elec_dist = np.min(dists, axis=1)[0]
-        cloesest_electrodes.append((closest_elec_dist, curr_cluster_name, electrodes_names[closest_elec_ind]))
-    print(cloesest_electrodes)
+        # dists = cdist(cluster.coordinates, electrodes_pos * 10)
+        # closest_elec_ind = np.argmin(dists, axis=1)[0]
+        # closest_elec_dist = np.min(dists, axis=1)[0]
+        # cloesest_electrodes.append((closest_elec_dist, curr_cluster_name, electrodes_names[closest_elec_ind]))
+    print(electrodes_in_clusters.keys())
 
 
 def find_electrodes_close_to_cluster():
@@ -383,38 +389,38 @@ def find_electrodes_close_to_cluster():
     closest_elec_dist = np.min(dists, axis=1)[0]
     closest_elec_name = electrodes_names[closest_elec_ind]
     print((closest_elec_name, closest_elec_dist))
-    for elc_name in electrodes_names:
-        bpy.data.objects[elc_name].hide = elc_name != closest_elec_name
+    # for elc_name in electrodes_names:
+    #     bpy.data.objects[elc_name].hide = elc_name != closest_elec_name
 
 
-def find_electrodes_in_cluster():
+def find_electrodes_in_cluster(fmri_cluster=None):
     ela_model = _addon().electrodes.get_ela_model()
     if ela_model is None:
         return
     electrodes = _addon().electrodes.get_electrodes_names()
     if len(electrodes) == 0:
         return
-    fmri_cluster = fMRIPanel.cluster_labels #bpy.context.scene.fmri_clusters
-    fmri_roi, fmri_roi_hemi = mu.get_label_and_hemi_from_fname(fmri_cluster.name)
+    if fmri_cluster is None:
+        fmri_cluster = fMRIPanel.cluster_labels
     fmri_cluster_electrodes = []
-    for elec_name in electrodes:
-        loc = ela_model.get(elec_name, None)
-        if loc is None:
-            # print('No ela model for {}!'.format(elec_name))
-            continue
-        elec_rois = loc['cortical_rois']
-        for elc_roi_full_name in elec_rois:
-            elc_roi, elc_roi_hemi = mu.get_label_and_hemi_from_fname(elc_roi_full_name)
-            # elc_roi = elc_roi_full_name.split('_')[0]
-            # elc_roi_hemi = mu.get_hemi_from_fname(elc_roi_full_name)
-            if elc_roi == fmri_roi and elc_roi_hemi == fmri_roi_hemi:
-                fmri_cluster_electrodes.append(elec_name)
-                break
-        # print(fmri_roi, fmri_roi_hemi, roi, roi_hemi)
+    for fmri_roi_dict in fmri_cluster.intersects:
+        fmri_roi, fmri_roi_hemi = mu.get_label_and_hemi_from_fname(fmri_roi_dict['name'])
+        verts_intersects_num = fmri_roi_dict['num']
+        for elec_name in electrodes:
+            loc = ela_model.get(elec_name, None)
+            if loc is None:
+                # print('No ela model for {}!'.format(elec_name))
+                continue
+            elec_rois = loc['cortical_rois']
+            for elc_roi_full_name in elec_rois:
+                elc_roi, elc_roi_hemi = mu.get_label_and_hemi_from_fname(elc_roi_full_name)
+                if elc_roi == fmri_roi and elc_roi_hemi == fmri_roi_hemi:
+                    fmri_cluster_electrodes.append(elec_name)
+                    break
     # for elc_name in electrodes:
     #     bpy.data.objects[elc_name].hide = elc_name not in fmri_cluster_electrodes
 
-    print(fmri_cluster_electrodes)
+    # print(fmri_cluster_electrodes)
     return fmri_cluster_electrodes
 
 
@@ -894,7 +900,7 @@ def init(addon):
     bpy.context.scene.plot_fmri_cluster_per_click = False
     fMRIPanel.dont_show_clusters_info = True
     # addon.clear_cortex()
-    # fmri_electrodes_intersection()
+    fmri_electrodes_intersection()
     register()
     fMRIPanel.init = True
     # print('fMRI panel initialization completed successfully!')
