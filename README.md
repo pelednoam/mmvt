@@ -1,7 +1,7 @@
 <img src=https://user-images.githubusercontent.com/35853195/41723611-85a1a356-7539-11e8-9bd9-95e068085d24.png align="right"/>
 
 
-## Multi-Modality Visualization ToolD
+## Multi-Modality Visualization Tool
 
 The visualization and exploration of neuroimaging data are important for the analysis of anatomical and functional images and statistical parametric maps. While two-dimensional orthogonal views of neuroimaging data are used to display activity and statistical analysis, real three-dimensional (3D) depictions are helpful for showing the spatial distribution of a functional network, as well as its temporal evolution. For our best knowledge, currently, there is no neuroimaging 3D tool which can visualize both MEG, fMRI and invasive electrodes (ECOG, depth electrodes, DBS, etc.). Here we present the Multi-Modality Visualization Tool (MMVT). The tool was built for researchers who wish to have a better understanding of their neuroimaging anatomical and functional data. The true power of the tool is by visualizing and analyzing data from multi-modalities. MMVT is built as two separated modules: The first is implemented as an add-on in 'Blender”, an open-source 3D visualization software. The add-on is an interactive graphical interface which enables to visualize functional and statistical data (MEG and/or fMRI) on the cortex and subcortical surfaces, invasive electrodes activity and etc. The tool can also be used for a better 3D visualization of the anatomical data and the invasive electrodes locations. The other module is a standalone software, for importing and preprocessing. The users can select the data they want to import to Blender and how they want to process it.
 
