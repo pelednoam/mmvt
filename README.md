@@ -41,7 +41,7 @@ The users can also reprocess raw data using wrappers for FaFast and MNE-python (
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
 
 ## Installation
-Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Installation).
+Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Linux-and-Mac-Installation).
 
 The tool itself can run on windows, mac and linux.
 In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only on linux/mac). Beside of that, you can use the tool also on windows.
