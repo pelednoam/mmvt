@@ -137,6 +137,8 @@ def export_electrodes(group_hemi_default='G'):
     from collections import Counter
     output_fol = op.join(mu.get_user_fol(), 'electrodes')
     subject = mu.get_user()
+
+    delete_noise_electrodes()
     if len(DellPanel.groups) > 0:
         groups = DellPanel.groups
     else:
@@ -169,7 +171,17 @@ def export_electrodes(group_hemi_default='G'):
                 wr.writerow([elcs_new_names[ind], *['{:.2f}'.format(loc) for loc in DellPanel.pos[elc_ind]]])
             if group_hemi in groups_inds:
                 groups_inds[group_hemi] += 1
+
+    _addon().electrodes.init(_addon(), False)
     print('The electrodes were exported to {}'.format(csv_fname))
+
+
+def delete_noise_electrodes():
+    bpy.ops.object.select_all(action='DESELECT')
+    noise_elctrodes = [DellPanel.names[elc_ind] for elc_ind in DellPanel.noise]
+    for noise_elc in noise_elctrodes:
+        bpy.data.objects[noise_elc].select = True
+    bpy.ops.object.delete()
 
 
 def mark_electrode_lead_as_noise():
@@ -505,10 +517,11 @@ def next_ct_electrode():
         select_new_electrode(next_elc_name)
 
 
-def find_select_electrode_group():
+def find_select_electrode_group(selected_elc=''):
     in_group_ind, group = -1, []
-    if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
+    if selected_elc == '' and len(bpy.context.selected_objects) == 1:
         selected_elc = bpy.context.selected_objects[0].name
+    if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
         elc_ind = DellPanel.names.index(selected_elc)
         groups_mask = [(elc_ind in g) for g in DellPanel.groups]
         if sum(groups_mask) == 1:
@@ -578,11 +591,12 @@ def clear_groups():
 def dell_ct_electrode_was_selected(elc_name):
     if not DellPanel.init:
         return
-    group, in_group_ind = find_select_electrode_group()
+    group, in_group_ind = find_select_electrode_group(elc_name)
     group = [DellPanel.names[g] for g in group]
     # DellPanel.current_log = [(elc, g) for (elc, g) in DellPanel.log if set(g) == set(group)]
     DellPanel.update_position = False
-    # tkreg_ras = bpy.data.objects[elc_name].location * 10
+    tkreg_ras = _addon().electrodes.get_electrode_pos(elc_name) * 10# bpy.data.objects[elc_name].location * 10
+    _addon().where_am_i.set_tkreg_ras(tkreg_ras)
     # tkreg_ras2 = _addon().get_tkreg_ras()
     ct_vox = _addon().get_ct_voxel()
     bpy.context.scene.dell_move_x = ct_vox[0]# bpy.data.objects[elc_name].location[0]
@@ -669,8 +683,8 @@ def dell_draw_presentation(self, context):
         # layout.prop(context.scene, 'dell_ct_min_elcs_for_lead', text="Min electrodes per lead")
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
-                            icon='WORLD_DATA')
-            layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
+                            icon='PARTICLE_DATA')
+            # layout.operator(FindElectrodeLead.bl_idname, text="Find lead between selected electrodes", icon='PARTICLE_DATA')
         if not bpy.context.scene.dell_all_groups_were_found:
             layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
             layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
@@ -788,6 +802,7 @@ def dell_draw(self, context):
                 layout.operator(SaveCTElectrodesFigures.bl_idname, text="Save CT figures", icon='OUTLINER_OB_FORCE_FIELD')
             layout.operator(MarkElectrodeLeadAsNoise.bl_idname, text="Mark electrode's lead as noise",
                             icon='PANEL_CLOSE')
+        layout.operator(ProjectElectrodesOnLeads.bl_idname, text="Project electrodes on leads", icon='SURFACE_DATA')
         if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
             layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
                             icon='WORLD_DATA')
@@ -1335,7 +1350,7 @@ def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_na
                 DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
             init_groups()
         bpy.context.scene.dell_ct_error_radius = 2.5
-        bpy.context.scene.dell_ct_min_elcs_for_lead = 4
+        bpy.context.scene.dell_ct_min_elcs_for_lead = 6
         bpy.context.scene.dell_ct_max_dist_between_electrodes = 15
         bpy.context.scene.dell_ct_min_distance = 1.5
         bpy.context.scene.dell_brain_mask_sigma = 1
@@ -1369,7 +1384,12 @@ def init_ct(ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='
         print("Dell: Can't find the ct!")
         # return False
     # subjects_dir = su.get_subjects_dir()
+    mu.make_dir(op.join(mu.get_user_fol(), 'mri'))
     brain_mask_fname = op.join(mu.get_user_fol(), 'mri', brain_mask_name)
+    if not op.isfile(brain_mask_fname):
+        brain_mask_fname_subjects = op.join(mu.get_subjects_dir(), mu.get_user(), 'mri', brain_mask_name)
+        if op.isfile(brain_mask_fname_subjects):
+            shutil.copyfile(brain_mask_fname_subjects, brain_mask_fname)
     if op.isfile(brain_mask_fname):
         DellPanel.brain = nib.load(brain_mask_fname)
         DellPanel.brain_mask = DellPanel.brain.get_data()

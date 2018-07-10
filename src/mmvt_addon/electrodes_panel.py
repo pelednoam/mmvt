@@ -152,8 +152,8 @@ def _electrodes_update():
     ElecsPanel.current_electrode = current_electrode = bpy.context.scene.electrodes
     bpy.context.scene.current_lead = ElecsPanel.groups[current_electrode]
     update_cursor()
-    color_electrodes(current_electrode, prev_elect)
-    electrodes_selection_coloring()
+    # color_electrodes(current_electrode, prev_elect)
+    # electrodes_selection_coloring()
     if not ElecsPanel.lookup is None:
         loc = ElecsPanel.lookup.get(current_electrode, None)
         if loc is None:
@@ -222,6 +222,10 @@ def get_electrodes_pos():
     return electrodes_pos
 
 
+def get_electrode_pos(electrode_name):
+    return bpy.data.objects[electrode_name].matrix_world.to_translation()
+
+
 def electode_was_manually_selected(selected_electrode_name):
     bpy.context.scene.cursor_location = bpy.data.objects[selected_electrode_name].matrix_world.to_translation()
     tkreg_ras = bpy.context.scene.cursor_location * 10
@@ -254,10 +258,10 @@ def color_electrodes(current_electrode, prev_electrode):
             _addon().clear_cortex([prev_electrode_hemi])
     else:
         _addon().clear_cortex()
-    color = bpy.context.scene.electrodes_color
-    _addon().object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
-    if prev_electrode != current_electrode:
-        _addon().object_coloring(bpy.data.objects[prev_electrode], (1, 1, 1, 1))
+    # color = bpy.context.scene.electrodes_color
+    # _addon().object_coloring(bpy.data.objects[current_electrode], tuple(color)) #cu.name_to_rgb('green'))
+    # if prev_electrode != current_electrode:
+    #     _addon().object_coloring(bpy.data.objects[prev_electrode], (1, 1, 1, 1))
 
 
 def is_current_electrode_marked():
@@ -569,7 +573,8 @@ def elecs_draw(self, context):
     box = layout.box()
     if ElecsPanel.electrodes_labeling_file_exist and len(ElecsPanel.labling_files) > 1:
         box.prop(context.scene, "electrodes_labeling_files", text="")
-    box.label(text='Model: {}'.format(context.scene.electrodes_labeling_files.split('_')[1]))
+    if context.scene.electrodes_labeling_files:
+        box.label(text='Model: {}'.format(context.scene.electrodes_labeling_files.split('_')[1]))
     row = box.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
     row.prop(context.scene, "leads", text="")
@@ -700,7 +705,8 @@ def next_electrode():
     else:
         next_elc = lead_electrodes[0]
     bpy.context.scene.electrodes = next_elc
-    _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
+    bpy.data.objects[ElecsPanel.prev_elect].select = False
+    # _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
     # bpy.data.objects[next_elc].select = True
     # _addon().curves_sep_update()
 
@@ -724,7 +730,8 @@ def prev_electrode():
     else:
         prev_elc = lead_electrodes[-1]
     bpy.context.scene.electrodes = prev_elc
-    _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
+    bpy.data.objects[ElecsPanel.prev_elect].select = False
+    # _addon().de_select_electrode_and_sensor(ElecsPanel.prev_elect)
     # bpy.data.objects[prev_elc].select = True
     # _addon().curves_sep_update()
 
@@ -1013,8 +1020,9 @@ def find_elecrode_labeling_files():
         try:
             d = mu.load(labling_file)
             electrodes_names = set([e['name'] for e in d])
-            if len(electrodes_names - blender_electrodes_names) == 0:
-                files.append(labling_file)
+            # todo: find what is the problem... (mg96)
+            # if len(electrodes_names - blender_electrodes_names) == 0:
+            files.append(labling_file)
         except:
             print('Error reading {}'.format(labling_file))
             continue

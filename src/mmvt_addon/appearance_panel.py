@@ -83,6 +83,7 @@ def showing_eeg():
 
 def show_hide_electrodes(do_show):
     bpy.context.scene.layers[_addon().ELECTRODES_LAYER] = do_show
+    # mu.show_hide_hierarchy(do_show, 'Deep_electrodes', select=False)
     if do_show:
         bpy.context.scene.show_only_lead = False
 

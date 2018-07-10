@@ -321,8 +321,10 @@ def select_hierarchy(obj, val=True, select_parent=True):
 
 
 def create_material(name, diffuseColors, transparency, copy_material=True):
-    curMat = bpy.context.active_object.active_material
-    if copy_material or 'MyColor' not in curMat.node_tree.nodes:
+    curMat = None
+    if bpy.context.active_object is not None:
+        curMat = bpy.context.active_object.active_material
+    if curMat is None or copy_material or 'MyColor' not in curMat.node_tree.nodes:
         #curMat = bpy.data.materials['OrigPatchesMat'].copy()
         curMat = bpy.data.materials['OrigPatchMatTwoCols'].copy()
         curMat.name = name
