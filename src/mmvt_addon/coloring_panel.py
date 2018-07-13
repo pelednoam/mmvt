@@ -2746,7 +2746,7 @@ def init_eeg_sensors():
         bpy.context.scene.eeg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('eeg_sensors')
 
-    eeg_helmet = bpy.data.objects['eeg_helmet']
+    eeg_helmet = bpy.data.objects.get('eeg_helmet')
     if eeg_helmet is not None:
         from scipy.spatial.distance import cdist
         eeg_sensors_loc = np.array(
