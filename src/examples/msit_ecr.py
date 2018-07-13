@@ -162,8 +162,8 @@ def meg_preproc(args, overwrite=False):
                 t_min=times[0], t_max=times[1],
                 read_events_from_file=False, stim_channels='STI001',
                 use_empty_room_for_noise_cov=True,
-                calc_source_band_induced_power=False,
-                calc_inducde_power_per_label=False,
+                calc_source_band_induced_mean_power=False,
+                calc_inducde_mean_power_per_label=False,
                 bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
                 con_method='coh',
                 con_mode='cwt_morlet',
@@ -209,7 +209,7 @@ def post_meg_preproc(args):
                 continue
             utils.make_dir(op.join(res_fol, subject))
             meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
+            meg.calc_labels_mean_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
         for fname in [f for f in glob.glob(op.join(MMVT_DIR, subject, 'labels', 'labels_data', '*')) if op.isfile(f)]:
             shutil.copyfile(fname, op.join(res_fol, subject, utils.namebase_with_ext(fname)))
@@ -217,18 +217,103 @@ def post_meg_preproc(args):
 
 def post_analysis(args):
     import matplotlib.pyplot as plt
-    tasks = ['MSIT', 'ECR']
+    from collections import defaultdict
+    atlas = 'darpa_atlas'
+    res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-    for subject, task, band in product(args.subject, tasks, bands.keys()):
-        power_fol = op.join(MMVT_DIR, subject, 'labels', 'labels_data')
-        d = utils.Bag(np.load(op.join(power_fol, '{}_power_{}.npz'.format(task.lower(), band))))
-        for label_name, label_data in zip(d.names, d.data):
-            hemi = lu.get_label_hemi(label_name)
-            plt.figure()
-            plt.axhline(label_data * 1e5, color='r', linestyle='--')
-            plt.show()
-            plt.close()
-            print('asdf')
+    data_dic = np.load(op.join(res_fol, 'data_dictionary.npz'))
+    meta_data = data_dic['noam_dict'].tolist()
+    # brain_overall_res_fname = op.join(res_fol, 'brain_overall_res.npz')
+    subjects1 = set(meta_data[0]['MSIT'].keys())
+    subjects2 = set(meta_data[1]['MSIT'].keys())
+    subjects_with_data = defaultdict(list)
+    mean_evo = {group_id:defaultdict(list) for group_id in range(2)}
+    mean_power = {group_id: {} for group_id in range(2)}
+    power = {group_id: {} for group_id in range(2)}
+    for group_id in range(2):
+        for task in args.tasks:
+            mean_power[group_id][task] = defaultdict(list)
+            power[group_id][task] = {band: None for band in bands.keys()}
+        for subject in meta_data[group_id]['MSIT'].keys():
+            if not op.isdir(op.join(res_fol, subject)):
+                print('No folder data for {}'.format(subject))
+                continue
+            for task in args.tasks:
+                mean_fname = op.join(res_fol, subject, '{}_{}_mean.npz'.format(task.lower(), atlas))
+                if op.isfile(mean_fname):
+                    d = utils.Bag(np.load(mean_fname))
+                    mean_evo[group_id][task].append(d.data.mean())
+                for band in bands.keys():
+                    if power[group_id][task][band] is None:
+                        power[group_id][task][band] = defaultdict(list)
+                    mean_power_fname = op.join(res_fol, subject, '{}_power_{}.npz'.format(task.lower(), band))
+                    if op.isfile(mean_power_fname):
+                        d = utils.Bag(np.load(mean_power_fname))
+                        mean_power[group_id][task][band].append(d.data.mean())
+                        for label_id, label in enumerate(d.names):
+                            power[group_id][task][band][label].append(d.data[label_id])
+
+    for group_id in range(2):
+        x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
+        # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+        ttest(x[0], x[1])
+
+    for band in bands.keys():
+        # fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+        for group_id in range(2): #, ax in zip(range(2), [ax1, ax2]):
+            subjects_with_data[group_id] = np.array(subjects_with_data[group_id])
+            print()
+            x = [np.array(mean_power[group_id][task][band]) for task in args.tasks]
+            x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+            # ttest(x[0], x[1], title='group {} band {}'.format(group_id, band))
+
+            for label_id, label in enumerate(d.names):
+                x = [np.array(power[group_id][task][band][label]) for task in args.tasks]
+                x = [_x[_x < np.percentile(_x, 95)] for _x in x]
+                ttest(x[0], x[1], alpha=0.01, title='group {} band {} label {}'.format(group_id, band, label))
+        # f, (ax1, ax2) = plt.subplots(2, 1)
+            # ax1.hist(x[0])
+            # ax2.hist(x[1])
+            # plt.show()
+            # ax.set_title('group {}'.format(group_id))
+            # ax.bar(np.arange(2), [np.mean(mean_power[group_id][task][band]) for task in args.tasks])
+            # ax.set_xticklabels(args.tasks, rotation=30)
+        # fig.suptitle('{} mean_power'.format(band))
+        # plt.show()
+
+
+def ttest(x1, x2, two_tailed_test=True, alpha=0.05, is_greater=True, title=''):
+    import scipy.stats
+    t, pval = scipy.stats.ttest_ind(x1, x2, equal_var=True)
+    sig = is_significant(pval, t, two_tailed_test, alpha, is_greater)
+    welch_t, welch_pval = scipy.stats.ttest_ind(x1, x2, equal_var=False)
+    welch_sig = is_significant(pval, t, two_tailed_test, alpha, is_greater)
+    if sig or welch_sig:
+        print('{}: {:.2f}+-{:.2f}, {:.2f}+-{:.2f}'.format(title, np.mean(x1), np.std(x1), np.mean(x2), np.std(x2)))
+        print('test: pval: {:.4f} sig: {}. welch: pval: {:.4f} sig: {}'.format(pval, sig, welch_pval, welch_sig))
+
+
+def is_significant(pval, t, two_tailed_test, alpha=0.05, is_greater=True):
+    if two_tailed_test:
+        return pval < alpha
+    else:
+        if is_greater:
+            return pval / 2 < alpha and t > 0
+        else:
+            return pval / 2 < alpha and t < 0
+
+    # for subject, task, band in product(args.subject, tasks, bands.keys()):
+    #     mean_power_fol = op.join(MMVT_DIR, subject, 'labels', 'labels_data')
+    #     d = utils.Bag(np.load(op.join(mean_power_fol, '{}_mean_power_{}.npz'.format(task.lower(), band))))
+    #     for label_name, label_data in zip(d.names, d.data):
+    #         hemi = lu.get_label_hemi(label_name)
+    #         plt.figure()
+    #         plt.axhline(label_data * 1e5, color='r', linestyle='--')
+    #         plt.show()
+    #         plt.close()
+    #         print('asdf')
+    #
+
 
 
 if __name__ == '__main__':

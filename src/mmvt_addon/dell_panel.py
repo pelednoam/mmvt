@@ -689,9 +689,9 @@ def dell_draw_presentation(self, context):
             layout.operator(FindRandomLead.bl_idname, text="Find a group", icon='POSE_HLT')
             layout.operator(FindAllLeads.bl_idname, text="Find all groups", icon='LAMP_SUN')
         layout.operator(ProjectElectrodesOnLeads.bl_idname, text="Project electrodes on leads", icon='SURFACE_DATA')
-        if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
-            layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
-                            icon='WORLD_DATA')
+        # if len(bpy.context.selected_objects) == 2 and all(bpy.context.selected_objects[k].name in DellPanel.names for k in range(2)):
+        #     layout.operator(CreateNewElectrodeBetween.bl_idname, text="Create new electrode between",
+        #                     icon='WORLD_DATA')
         layout.prop(context.scene, 'ct_mark_noise', text='Show noise')
         if len(DellPanel.groups) > 0:
             layout.label(text='#Groups found: {}'.format(len(DellPanel.groups)))

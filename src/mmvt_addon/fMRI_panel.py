@@ -388,6 +388,8 @@ def find_electrodes_close_to_cluster():
     if len(electrodes) == 0:
         return
     cluster = fMRIPanel.cluster_labels
+    if len(cluster) == 0:
+        return
     dists = cdist(cluster.coordinates * 0.1, electrodes_pos)
     closest_elec_ind = np.argmin(dists, axis=1)[0]
     closest_elec_dist = np.min(dists, axis=1)[0]
