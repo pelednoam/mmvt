@@ -945,7 +945,7 @@ def init(addon):
     bpy.context.scene.plot_fmri_cluster_per_click = False
     fMRIPanel.dont_show_clusters_info = False
     # addon.clear_cortex()
-    fmri_electrodes_intersection()
+    # fmri_electrodes_intersection()
     register()
     fMRIPanel.init = True
     # print('fMRI panel initialization completed successfully!')

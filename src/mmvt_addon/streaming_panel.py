@@ -531,7 +531,7 @@ class StreamingPanel(bpy.types.Panel):
 
 
 def init(addon):
-    cm_fname = op.join(mu.file_fol(), 'color_maps', 'BuPu-YlOrRd.npy')
+    # cm_fname = op.join(mu.file_fol(), 'color_maps', 'BuPu-YlOrRd.npy')
     # if not op.isfile(cm_fname):
     #     print("Streaming: Can't load without the cm file {}".format(cm_fname))
     #     return
@@ -544,7 +544,7 @@ def init(addon):
     StreamingPanel.first_time = True
     StreamingPanel.electrodes_data = None
     StreamingPanel.data_max, StreamingPanel.data_min = 0, 0
-
+    StreamingPanel.cm = _addon().colorbar.get_cm()
     StreamingPanel.stim_exist = 'STIM' in _addon().settings.sections()
     if StreamingPanel.stim_exist:
         StreamingPanel.config = _addon().settings['STIM']
@@ -574,7 +574,6 @@ def init(addon):
     bpy.context.scene.stim_length = 50
     bpy.context.scene.streaming_fcruves_are_init = False
     register()
-    StreamingPanel.cm = np.load(cm_fname)
     # StreamingPanel.fixed_data = fixed_data()
     StreamingPanel.electrodes_objs_names = [l.name for l in bpy.data.objects['Deep_electrodes'].children]
     bpy.context.scene.streaming_electrodes_num = len(StreamingPanel.electrodes_objs_names)
