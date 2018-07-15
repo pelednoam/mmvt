@@ -204,6 +204,21 @@ def morph_fmri(args):
             op.join(MMVT_DIR, morph_to, 'fmri', nii_template.format(hemi=hemi)))
 
 
+def project_and_calc_clusters(args):
+    if not op.isdir(args.root_fol):
+        print('You should first set args.root_fol!')
+        return False
+    nii_files = [f for f in glob.glob(op.join(args.root_fol, '*'))
+                 if op.isfile(f) and utils.file_type(f) in ('nii', 'nii.gz', 'mgz')]
+    for fname in nii_files:
+        args = fmri.read_cmd_args(dict(
+            subject=args.subject,
+            function='project_volume_to_surface,find_clusters',
+            fmri_file_template=fname
+        ))
+        pu.run_on_subjects(args, fmri.main)
+
+
 def get_subjects_files(args):
     ''' -f get_subjects_files -s "file:/homes/5/npeled/space1/Documents/memory_task/subjects.txt" '''
     subjects = pu.decode_subjects(args.subject)
@@ -238,5 +253,6 @@ if __name__ == '__main__':
     parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,
                         default='/space/thibault/1/users/npeled/subjects/{subject}')
     parser.add_argument('-f', '--function', help='function name', required=True)
+    parser.add_argument('-r', '--root_fol', help='root folder', required=False, default='')
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](args)
