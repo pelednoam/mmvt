@@ -1930,6 +1930,10 @@ def get_args_list(val):
 def get_hemi_delim_and_pos(label_name):
     delim, pos, label, label_hemi = '', '', label_name, ''
     for hemi in ['rh', 'lh']:
+        if label_name == hemi:
+            delim, pos, label = '', '', ''
+            label_hemi = hemi
+            break
         if label_name.startswith('{}-'.format(hemi)):
             delim, pos, label = '-', 'start', label_name[3:]
             label_hemi = hemi

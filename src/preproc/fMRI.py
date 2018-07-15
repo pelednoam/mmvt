@@ -727,8 +727,9 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     if target_subject == '':
         target_subject = subject
     utils.make_dir(op.join(MMVT_DIR, subject, 'freeview'))
-    volume_fname, surf_output_fname, npy_surf_fname = get_volume_and_surf_fnames(
-        subject, volume_fname_template, target_subject, remote_fmri_dir)
+    volume_fname = get_volume_fname(
+        subject, volume_fname_template, remote_fmri_dir)
+    surf_output_fname, npy_surf_fname = get_surf_fnames(subject, volume_fname, target_subject)
     if volume_fname == '':
         return False, ''
     if not utils.both_hemi_files_exist(npy_surf_fname) or overwrite_surf_data:
@@ -740,8 +741,26 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     return utils.both_hemi_files_exist(npy_surf_fname) and op.isfile(freeview_volume_fname), npy_surf_fname
 
 
-def get_volume_and_surf_fnames(subject, volume_fname_template, target_subject='', remote_fmri_dir=''):
-    remote_fmri_dir = op.join(FMRI_DIR, subject) if remote_fmri_dir == '' else remote_fmri_dir
+def morph_volume_to_t1(subject, volume_fname_template, task='', remote_fmri_dir=''):
+    fmri_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
+    volume_fname = get_volume_fname(subject, volume_fname_template, remote_fmri_dir, task)
+    if not op.isfile(volume_fname):
+        print('Can\'t find the volume file!')
+        return False
+    subject_t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+    if not op.isfile(subject_t1_fname):
+        print('Can\'t find the subject\'s T1!')
+        return False
+    output_fname = op.join(fmri_fol, 'vol_{}'.format(utils.namebase_with_ext(volume_fname)))
+    fu.vol2vol(subject, volume_fname, subject_t1_fname, output_fname)
+    return op.isfile(output_fname)
+
+
+def get_volume_fname(subject, volume_fname_template, remote_fmri_dir='', task=''):
+    if task == '':
+        remote_fmri_dir = op.join(FMRI_DIR, subject) if not op.isdir(remote_fmri_dir) else remote_fmri_dir
+    else:
+        remote_fmri_dir = op.join(FMRI_DIR, task, subject) if not op.isdir(remote_fmri_dir) else remote_fmri_dir
     volume_fname_template = volume_fname_template if volume_fname_template != '' else '*'
     full_input_fname_template = op.join(remote_fmri_dir, volume_fname_template)
     full_input_fname_template = full_input_fname_template.replace('{format}', '*')
@@ -751,20 +770,24 @@ def get_volume_and_surf_fnames(subject, volume_fname_template, target_subject=''
                                            search_func=find_volume_files_from_template)
     if volume_fname is None:
         print("Can't find the input file! {}".format(full_input_fname_template))
-        return '', '', ''
+        return ''
 
-    utils.make_dir(op.join(FMRI_DIR, subject))
-    local_fname = op.join(FMRI_DIR, subject, utils.namebase_with_ext(volume_fname))
-    if not op.isfile(local_fname):
-        shutil.copy(volume_fname, local_fname)
-    volume_fname = local_fname
+    if FMRI_DIR not in volume_fname:
+        fol = utils.make_dir(op.join(FMRI_DIR, subject)) if task == '' else utils.make_dir(op.join(FMRI_DIR, task, subject))
+        local_fname = op.join(fol, utils.namebase_with_ext(volume_fname))
+        if not op.isfile(local_fname) and local_fname != volume_fname:
+            shutil.copy(volume_fname, local_fname)
+        volume_fname = local_fname
+    return volume_fname
 
+
+def get_surf_fnames(subject, volume_fname, target_subject=''):
     target_subject_prefix = '_{}'.format(target_subject) if subject != target_subject else ''
     surf_output_fname = op.join(utils.get_parent_fol(volume_fname), '{}{}_{}.mgz'.format(
         utils.namebase(volume_fname), target_subject_prefix, '{hemi}'))
     npy_surf_fname = op.join(MMVT_DIR, subject, 'fmri',
                              'fmri_{}.npy'.format(utils.namebase(surf_output_fname.format(hemi='{hemi}'))))
-    return volume_fname, surf_output_fname, npy_surf_fname
+    return surf_output_fname, npy_surf_fname
 
 
 def calc_meg_activity_for_functional_rois(subject, meg_subject, atlas, task, contrast_name, contrast, inverse_method):
@@ -1155,6 +1178,9 @@ def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy
     if len(files) == 0:
         print('Adding * to the end of the template_fname')
         files = find_files('{}*'.format(template_fname))
+    if len(files) == 0:
+        print('Search recursive')
+        files = find_files(op.join(utils.get_parent_fol(template_fname), '**', utils.namebase_with_ext(template_fname)))
     print('find_template_files: {}, template: {}'.format(files, template_fname))
     return files
 
@@ -1212,7 +1238,15 @@ def find_volume_files(files):
 
 
 def find_volume_files_from_template(template_fname):
-    return find_volume_files(find_template_files(template_fname))
+    file_types = [ft for ft in ('mgz', 'nii.gz', 'nii') if ft != utils.file_type(template_fname)]
+    files = find_volume_files(find_template_files(template_fname))
+    if len(files) == 0:
+        for ft in file_types:
+            files = find_volume_files(find_template_files(utils.replace_file_type(template_fname, ft)))
+            files = [f for f in files if lu.find_hemi_from_full_fname(f) == '']
+            if len(files) > 0:
+                return files
+    return files
 
 
 def get_fmri_fname(subject, fmri_file_template, no_files_were_found_func=lambda:'', only_volumes=False,
@@ -1753,9 +1787,15 @@ def main(subject, remote_subject_dir, args, flags):
         flags['project_volume_to_surface'] = project_volume_to_surface(
             subject, args.fmri_file_template, overwrite_surf_data=args.overwrite_surf_data, target_subject=args.target_subject,
             is_pet=args.is_pet, remote_fmri_dir=remote_fmri_dir, mmvt_args=args)
-        flags['project_volume_to_surface'], surf_output_fname = pu.check_func_output(flags['project_volume_to_surface'])
-        fmri_contrast_file_template, args = calc_also_minmax(
-            flags['project_volume_to_surface'], surf_output_fname, args)
+        if not isinstance(flags['project_volume_to_surface'], bool):
+            flags['project_volume_to_surface'], surf_output_fname = pu.check_func_output(flags['project_volume_to_surface'])
+            fmri_contrast_file_template, args = calc_also_minmax(
+                flags['project_volume_to_surface'], surf_output_fname, args)
+
+
+    if utils.should_run(args, 'morph_volume_to_t1'):
+        flags['morph_volume_to_t1'] = morph_volume_to_t1(subject, args.fmri_file_template, args.task, remote_fmri_dir)
+
 
     if utils.should_run(args, 'load_surf_files'):
         flags['load_surf_files'], output_fname_template = load_surf_files(
@@ -1863,7 +1903,7 @@ def read_cmd_args(argv=None):
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-c', '--contrast', help='contrast map', required=False, default='')
     parser.add_argument('-n', '--contrast_name', help='contrast map', required=False, default='')
-    parser.add_argument('-t', '--task', help='task', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('-t', '--task', help='task', required=False, default='')#, type=au.str_arr_type)
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
     parser.add_argument('--fsfast', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)

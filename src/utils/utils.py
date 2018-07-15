@@ -1808,6 +1808,10 @@ def read_list_from_file(fname, line_func=None, input_format='r'):
     return arr
 
 
+def replace_file_type(fname, new_type):
+    return op.join(get_parent_fol(fname), '{}.{}'.format(namebase(fname), new_type))
+
+
 def write_list_to_file(list, fname):
     with open(fname, 'w') as f:
         for val in list:

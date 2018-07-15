@@ -399,6 +399,10 @@ def fix_labels_names(labels_names, hemi, delim='-', pos='end'):
 def get_hemi_delim_and_pos(label_name):
     delim, pos, label, label_hemi = '', '', label_name, ''
     for hemi in ['rh', 'lh']:
+        if label_name == hemi:
+            delim, pos, label = '', '', ''
+            label_hemi = hemi
+            break
         if label_name.startswith('{}-'.format(hemi)):
             delim, pos, label = '-', 'start', label_name[3:]
             label_hemi = hemi
@@ -496,6 +500,16 @@ def build_label_name(delim, pos, label, hemi):
 
 def get_hemi_from_name(label_name):
     _, _, _, hemi = get_hemi_delim_and_pos(label_name)
+    return hemi
+
+
+def find_hemi_from_full_fname(fname):
+    folder = utils.namebase(fname)
+    hemi = get_hemi_from_name(folder)
+    while hemi == '' and folder != '':
+        fname = utils.get_parent_fol(fname)
+        folder = fname.split(op.sep)[-1]
+        hemi = get_hemi_from_name(folder)
     return hemi
 
 
