@@ -295,14 +295,18 @@ def load_current_fmri_clusters_labels_file():
 
 
 def get_contrast_fname(constrast_name, hemi):
+    if len(constrast_name.split('_')) == 1:
+        constrast_name_template = constrast_name
+    else:
+        constrast_name_template = '_'.join(constrast_name.split('_')[:-1])
     contrast_fnames = glob.glob(op.join(mu.get_user_fol(), 'fmri', 'fmri_{}*{}.npy'.format(
-        constrast_name.split('_')[0], hemi)))
+        constrast_name_template, hemi)))
     if len(contrast_fnames) == 0:
-        print("fmri_clusters_labels_files_update: Couldn't find  any clusters data! ({})".format(constrast_name))
+        print("fmri_clusters_labels_files_update: Couldn't find  any clusters data! ({})".format(constrast_name_template))
         return ''
     else:
         if len(contrast_fnames) > 1:
-            print("fmri_clusters_labels_files_update: Too many clusters data! ({})".format(constrast_name))
+            print("fmri_clusters_labels_files_update: Too many clusters data! ({})".format(constrast_name_template))
             print(contrast_fnames)
         return contrast_fnames[0]
 
