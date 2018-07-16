@@ -118,9 +118,11 @@ def create_cm(cm_name, new_cm_name='', invert_cm1=False, invert_cm2=False, cm1_m
 if __name__ == '__main__':
     # create_cm('YlOrRd')
     # create_cm('RdOrYl')
+    create_cm('PuBu')
+    create_cm('BuPu')
     # create_cm('gray')
     # create_cm('jet')
     # create_cm('hot')
     # create_cm('tab10')
     # create_cm('gist_earth-YlOrRd', cm1_minmax=(0.1, 0.8))# , invert_cm1=True)
-    create_cm('viridis-YlOrRd')
+    # create_cm('viridis-YlOrRd')

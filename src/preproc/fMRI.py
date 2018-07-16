@@ -232,10 +232,13 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
     #     input_fol = op.join(MMVT_DIR, subject, 'fmri')
     # input_fname = op.join(input_fol, 'fmri_{}_{}_{}.npy'.format(task, contrast_name, '{hemi}'))
 
-    surf_full_input_fname = op.join(MMVT_DIR, subject, 'fmri', utils.namebase_with_ext(surf_template_fname))
+    surf_template_fname = utils.namebase_with_ext(surf_template_fname)
+    if lu.get_hemi_from_name(surf_template_fname) == '':
+        surf_template_fname = 'fmri_{}_{}.npy'.format(utils.namebase(surf_template_fname), '{hemi}')
+    surf_full_input_fname = op.join(MMVT_DIR, subject, 'fmri', surf_template_fname)
     surf_full_input_fnames = find_hemi_files_from_template(surf_full_input_fname)
     if len(surf_full_input_fnames) == 0:
-        surf_full_input_fname = op.join(MMVT_DIR, subject, 'fmri', '*{}*'.format(utils.namebase_with_ext(surf_template_fname)))
+        surf_full_input_fname = op.join(MMVT_DIR, subject, 'fmri', '*{}*'.format(surf_template_fname))
         surf_full_input_fnames = find_hemi_files_from_template(surf_full_input_fname)
         if len(surf_full_input_fnames) == 0:
             print('No hemi files were found from the template {}'.format(surf_full_input_fname))

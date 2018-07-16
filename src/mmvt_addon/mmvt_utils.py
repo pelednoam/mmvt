@@ -1557,7 +1557,7 @@ def get_data_max_min(data, norm_by_percentile=False, norm_percs=None, data_per_h
         else:
             data_max = np.nanmax(data)
             data_min = np.nanmin(data)
-    if symmetric:
+    if symmetric and data_min != 0 and data_max != 0 and np.sign(data_min) != np.sign(data_max):
         data_minmax = get_max_abs(data_max, data_min)
         data_max, data_min = data_minmax, -data_minmax
     return data_max, data_min

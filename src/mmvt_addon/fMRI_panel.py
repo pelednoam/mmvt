@@ -118,6 +118,7 @@ def plot_blob(cluster_labels, faces_verts, is_inflated=None, use_abs=None):
     if fMRIPanel.blobs_activity is None:
         fMRIPanel.blobs_activity, _ = calc_blobs_activity(
             fMRIPanel.constrast, fMRIPanel.clusters_labels_filtered, fMRIPanel.colors_in_hemis)
+    # colors_ratio = 256 / (data_max - data_min)
     data_min, colors_ratio = calc_colors_ratio(fMRIPanel.blobs_activity)
     threshold = bpy.context.scene.fmri_clustering_threshold
     cur_obj = bpy.data.objects[hemi]
@@ -271,21 +272,26 @@ def load_fmri_cluster(file_name):
 
 def load_current_fmri_clusters_labels_file():
     constrast_name = bpy.context.scene.fmri_clusters_labels_files
+    minmax_fname = op.join(mu.get_user_fol(), 'fmri', '{}_minmax.pkl'.format('_'.join(constrast_name.split('_')[:-1])))
+    minmax_exist = op.isfile(minmax_fname)
+    # if minmax_exist and not _addon().colorbar_values_are_locked():
+    #     min_val, max_val = mu.load(minmax_fname)
+    #     _addon().set_colorbar_max_min(max_val, min_val)
     fMRIPanel.constrast = {}
     for hemi in mu.HEMIS:
         contrast_fname = get_contrast_fname(constrast_name, hemi)
-        # contrast_fname = op.join(mu.get_user_fol(), 'fmri', 'fmri_{}_{}.npy'.format(constrast_name, hemi))
-        # contrast_fnames = glob.glob(op.join(mu.get_user_fol(), 'fmri', 'fmri_{}*_{}.npy'.format(
-        #     constrast_name.split('_')[0], hemi)))
-        # if len(contrast_fnames) == 0:
-        #     print("fmri_clusters_labels_files_update: Couldn't find  any clusters data! ({})".format(contrast_fname))
-        # else:
-        #     if len(contrast_fnames) > 1:
-        #         print("fmri_clusters_labels_files_update: Too many clusters data! ({})".format(contrast_fname))
-        #     contrast_fname = contrast_fnames[0]
         if contrast_fname != '':
             print('Loading {}'.format(contrast_fname))
             fMRIPanel.constrast[hemi] = np.load(contrast_fname)
+    if not minmax_exist:
+        data = None
+        for hemi in mu.HEMIS:
+            x_ravel = fMRIPanel.constrast[hemi]
+            data = x_ravel if data is None else np.hstack((x_ravel, data))
+        norm_percs = (bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max)
+        min_val, max_val = mu.calc_min_max(data, norm_percs=norm_percs)
+        _addon().colorbar.set_colorbar_max_min(max_val, min_val, force_update=True)
+        mu.save((min_val, max_val), minmax_fname)
 
 
 def get_contrast_fname(constrast_name, hemi):
@@ -297,6 +303,7 @@ def get_contrast_fname(constrast_name, hemi):
     else:
         if len(contrast_fnames) > 1:
             print("fmri_clusters_labels_files_update: Too many clusters data! ({})".format(constrast_name))
+            print(contrast_fnames)
         return contrast_fnames[0]
 
 
@@ -309,7 +316,6 @@ def fmri_clusters_labels_parcs_update(self, context):
 
 def fmri_clusters_labels_files_update(self, context):
     load_current_fmri_clusters_labels_file()
-
     parcs = get_parcs_files(mu.get_user_fol(), bpy.context.scene.fmri_clusters_labels_files)
     clusters_labels_parcs = [(c, c, '', ind) for ind, c in enumerate(parcs)]
     bpy.types.Scene.fmri_clusters_labels_parcs = bpy.props.EnumProperty(
@@ -319,6 +325,8 @@ def fmri_clusters_labels_files_update(self, context):
     if fMRIPanel.init:
         clear()
         update_clusters()
+        fMRIPanel.blobs_activity, _ = calc_blobs_activity(
+            fMRIPanel.constrast, fMRIPanel.clusters_labels_filtered, fMRIPanel.colors_in_hemis)
 
 
 def fmri_how_to_sort_update(self, context):
@@ -528,7 +536,6 @@ def _cluster_name(x, sort_mode):
         return '{}_{:.2f}'.format(x['name'], x['max'])
     elif sort_mode == 'size':
         return '{}_{:.2f}'.format(x['name'], x['size'])
-
 
 
 def get_clusters_files(user_fol=''):
@@ -917,6 +924,7 @@ def init(addon):
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
         items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
+    bpy.context.scene.fmri_blobs_norm_by_percentile = True
     bpy.context.scene.plot_fmri_cluster_contours = False
     bpy.context.scene.fmri_only_clusters_with_electrodes = False
 

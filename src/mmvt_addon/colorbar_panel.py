@@ -4,7 +4,7 @@ import glob
 import numpy as np
 import mmvt_utils as mu
 import colors_utils as cu
-
+import shutil
 
 # PERC_FORMATS = {0:'{:.0f}', 1:'{:.1f}', 2:'{:.2f}', 3:'{:.3f}', 4:'{:.4f}', 5:'{:.5f}'}
 PERC_FORMATS = {p:'{:.' + str(p) + 'f}' for p in range(15)}
@@ -41,10 +41,13 @@ def set_colorbar_default_cm():
     if not bpy.context.scene.coloring_use_abs:
         data_min = bpy.context.scene.colorbar_min = bpy.context.scene.coloring_lower_threshold
     if not (data_min == 0 and data_max == 0) and not colorbar_values_are_locked():
-        if data_min == 0 or np.sign(data_min) == np.sign(data_max):
-            set_colormap(ColorbarPanel.default_cm[0])
+        if data_min == 0 or data_max == 0 or np.sign(data_min) == np.sign(data_max):
+            if data_max > data_min >= 0:
+                set_colormap(ColorbarPanel.default_cm[0])
+            else:
+                set_colormap(ColorbarPanel.default_cm[1])
         else:
-            set_colormap(ColorbarPanel.default_cm[1])
+            set_colormap(ColorbarPanel.default_cm[2])
 
 
 def get_cm():
@@ -397,7 +400,7 @@ class ColorbarPanel(bpy.types.Panel):
     cm = None
     maps_names = []
     should_not_lock_values = False
-    default_cm = ('YlOrRd', 'BuPu-YlOrRd')
+    default_cm = ('RdOrYl', 'PuBu', 'BuPu-YlOrRd') # ''YlOrRd'
 
     def draw(self, context):
         if ColorbarPanel.init:
@@ -409,9 +412,19 @@ def init(addon):
         print("No full_colorbar object, Can't load the colorbar panel")
         return
     ColorbarPanel.addon = addon
-    colorbar_files_template = op.join(mu.get_parent_fol(mu.get_user_fol()), 'color_maps', '*.npy')
+    colorbar_files_fol = op.join(mu.get_parent_fol(mu.get_user_fol()), 'color_maps')
+    colorbar_files_code_fol = op.join(mu.get_resources_dir(), 'color_maps')
+    colorbar_files_template = op.join(colorbar_files_fol, '*.npy')
+    colorbar_files_code_template = op.join(colorbar_files_code_fol, '*.npy')
     # colorbar_files_template = op.join(mu.file_fol(), 'color_maps', '*.npy')
     colorbar_files = glob.glob(colorbar_files_template)
+    colorbar_code_files = glob.glob(colorbar_files_code_template)
+    extra_files = list(set([mu.namebase_with_ext(f) for f in colorbar_code_files]) -
+                       set([mu.namebase_with_ext(f) for f in colorbar_files]))
+    for extra_file in extra_files:
+        print('Coping missing cb file: {}'.format(mu.namebase_with_ext(extra_file)))
+        shutil.copyfile(op.join(colorbar_files_code_fol, extra_file),
+                        op.join(colorbar_files_fol, mu.namebase_with_ext(extra_file)))
     if len(colorbar_files) == 0:
         print("No colorbar files ({}), Can't load the colorbar panel".format(colorbar_files_template))
         return None
