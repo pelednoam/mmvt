@@ -53,8 +53,7 @@ In the preprocessing pipeline there are several calls to [FreeSurfer](https://su
 * Press the "Update MMVT" button at the top of the panel.
 
 **Windows**:
-* In the Git CMD terminal type the letters: cd hit space and write the path to the mmvt_code folder. 
-  Example: cd c:\Users\Jhon\Desktop\mmvt_root\mmvt_code
+* In the Git CMD terminal chage the directory to the mmvt_code folder (example: cd c:\Users\Jhon\mmvt_root\mmvt_code)
 * Type: git pull
 
 ## Template brain and data
