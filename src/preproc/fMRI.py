@@ -585,9 +585,10 @@ def plot_points(subject, verts, pts=None, colors=None, fig_name='', ax=None):
         plt.close()
 
 
-def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
+def load_surf_files(subject, surf_template_fname, task='', overwrite_surf_data=False):
     utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
-    surf_full_output_fname = op.join(FMRI_DIR, subject, surf_template_fname).replace('{subject}', subject)
+    fol = op.join(FMRI_DIR, task, subject) if task != '' else op.join(FMRI_DIR, subject)
+    surf_full_output_fname = op.join(fol, surf_template_fname).replace('{subject}', subject)
     surf_full_output_fnames = find_hemi_files_from_template(surf_full_output_fname)
     if len(surf_full_output_fnames) == 0:
         surf_full_output_fname = op.join(MMVT_DIR, subject, 'fmri', surf_template_fname)
@@ -596,10 +597,14 @@ def load_surf_files(subject, surf_template_fname, overwrite_surf_data=False):
             print('No hemi files were found from the template {}'.format(surf_full_output_fname))
             return False, ''
     surf_full_output_fname = surf_full_output_fnames[0]
-    delim, _, label, _ = lu.get_hemi_delim_and_pos(utils.namebase(surf_full_output_fname).format(hemi='rh'))
-    surf_full_output_name = lu.build_label_name(delim, 'end', label, '{hemi}')
-    new_surf_full_output_fname = op.join(utils.get_parent_fol(surf_full_output_fname), '{}.{}'.format(
-        surf_full_output_name, utils.file_type(surf_full_output_fname)))
+    if '{hemi}' not in utils.namebase(surf_full_output_fname):
+        new_surf_full_output_fname = op.join(utils.get_parent_fol(surf_full_output_fname), '{}_{}.{}'.format(utils.namebase(
+            surf_full_output_fname), '{hemi}', utils.file_type(surf_full_output_fname)))
+    else:
+        delim, _, label, _ = lu.get_hemi_delim_and_pos(utils.namebase(surf_full_output_fname).format(hemi='rh'))
+        surf_full_output_name = lu.build_label_name(delim, 'end', label, '{hemi}')
+        new_surf_full_output_fname = op.join(utils.get_parent_fol(surf_full_output_fname), '{}.{}'.format(
+            surf_full_output_name, utils.file_type(surf_full_output_fname)))
     output_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'fmri_{}'.format(op.basename(
         new_surf_full_output_fname)))
     npy_output_fname_template = '{}.npy'.format(op.splitext(output_fname_template)[0])
@@ -1183,26 +1188,26 @@ def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy
         files = find_files('{}*'.format(template_fname))
     if len(files) == 0:
         print('Search recursive')
-        files = find_files(op.join(utils.get_parent_fol(template_fname), '**', utils.namebase_with_ext(template_fname)))
+        files = find_files(op.join(utils.get_parent_fol(template_fname), '**', utils.namebase(template_fname)))
     print('find_template_files: {}, template: {}'.format(files, template_fname))
     return files
 
 
-def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy')):
+def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy'), convert_to_mgz=True):
     try:
         if isinstance(file_types, str):
             file_types = [file_types]
         # if '{subject}' in template_fname:
         #     template_fname = template_fname.replace('{subject}', subject)
         template_files = find_template_files(template_fname.replace('{hemi}', '?h'), file_types)
-        return find_hemi_files(template_files)
+        return find_hemi_files(template_files, convert_to_mgz)
     except:
         print('Error in find_hemi_files_from_template: {}'.format(template_fname))
         print(traceback.format_exc())
         return []
 
 
-def find_hemi_files(files):
+def find_hemi_files(files, convert_to_mgz=True):
     if len(files) < 2:
         print('len(files) should be >= 2!')
         print(files)
@@ -1210,16 +1215,31 @@ def find_hemi_files(files):
     file_types = set([utils.file_type(f) for f in files])
     if 'npy' in file_types:
         files = get_unique_files_into_npy(files)
-    elif len(set(['nii', 'nii.gz', 'mgz', 'mgh']) & file_types) > 0:
+    elif len(set(['nii', 'nii.gz', 'mgz', 'mgh']) & file_types) > 0 and convert_to_mgz:
         files = get_unique_files_into_mgz(files)
+    else:
+        ftypes = set([utils.file_type(f) for f in files])
+        if len(ftypes) > 1:
+            print('More than one file type was found:')
+            for ind, ft in enumerate(file_types):
+                print('{}) {}'.format(ind + 1, ft))
+            ret = input('Please choose: ')
+            ft = file_types[ret - 1]
+            files = [f for f in files if utils.file_type(f) == ft]
     hemis_files = []
-    rh_files = [f for f in files if lu.get_hemi_from_name(utils.namebase(f)) == 'rh'] #  '_rh' in utils.namebase(f) or '.rh' in utils.namebase(f)]
-    parent_fol = utils.get_parent_fol(rh_files[0])
+    rh_files = [f for f in files if lu.find_hemi_from_full_fname(f) == 'rh']
+    lh_files = [f for f in files if lu.find_hemi_from_full_fname(f) == 'lh']
     for rh_file in rh_files:
-        lh_file = lu.get_other_hemi_label_name(utils.namebase(rh_file)) # rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
-        lh_file = op.join(parent_fol, '{}.{}'.format(lh_file, utils.file_type(rh_file)))
-        if op.isfile(lh_file):
-            hemis_files.append(rh_file.replace('rh', '{hemi}'))
+        temp_file = rh_file.replace('rh', '{hemi}')
+        if temp_file.format(hemi='lh') in lh_files:
+            hemis_files.append(temp_file)
+
+    # parent_fol = utils.get_parent_fol(rh_files[0])
+    # for rh_file in rh_files:
+    #     lh_file = lu.get_other_hemi_label_name(utils.namebase(rh_file)) # rh_file.replace('_rh', '_lh').replace('.rh', '.lh')
+    #     lh_file = op.join(parent_fol, '{}.{}'.format(lh_file, utils.file_type(rh_file)))
+    #     if op.isfile(lh_file):
+    #         hemis_files.append(rh_file.replace('rh', '{hemi}'))
     print('find_hemi_files return {}'.format(hemis_files))
     return hemis_files
 
@@ -1795,13 +1815,12 @@ def main(subject, remote_subject_dir, args, flags):
             fmri_contrast_file_template, args = calc_also_minmax(
                 flags['project_volume_to_surface'], surf_output_fname, args)
 
-
     if utils.should_run(args, 'morph_volume_to_t1'):
         flags['morph_volume_to_t1'] = morph_volume_to_t1(subject, args.fmri_file_template, args.task, remote_fmri_dir)
 
     if utils.should_run(args, 'load_surf_files'):
         flags['load_surf_files'], output_fname_template = load_surf_files(
-            subject, args.fmri_file_template, args.overwrite_surf_data)
+            subject, args.fmri_file_template, args.task, args.overwrite_surf_data)
         fmri_contrast_file_template, args = calc_also_minmax(flags['load_surf_files'], output_fname_template, args)
 
     if 'calc_files_diff' in args.function:
