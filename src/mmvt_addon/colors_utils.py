@@ -42,12 +42,21 @@ def get_distinct_colors_hs(colors_num=0):
 
 
 def get_distinct_colors(colors_num=0):
+    # http://jsfiddle.net/tomfx/CKV65/
     if colors_num == 2:
         return cycle((np.array([kelly_colors_dic[col] for col in ['grayish_yellow', 'strong_violet']]) / 255.0).tolist())
     if colors_num <= len(boynton_colors) and colors_num != 0:
-        return cycle((np.array([name_to_rgb(c) for c in boynton_colors])).tolist())
+        return get_distinct_colors_boynton()
     else:
-        return cycle((np.array(list(kelly_colors.values())) / 255.0).tolist())
+        return get_distinct_colors_kelly()
+
+
+def get_distinct_colors_kelly():
+    return cycle((np.array(list(kelly_colors.values())) / 255.0).tolist())
+
+
+def get_distinct_colors_boynton():
+    return cycle((np.array([name_to_rgb(c) for c in boynton_colors])).tolist())
 
 
 def get_distinct_colors_names(colors_num=0):

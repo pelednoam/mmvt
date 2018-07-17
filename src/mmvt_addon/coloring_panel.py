@@ -1169,9 +1169,19 @@ def color_manually():
     coloring_objects, coloring_labels = False, False
     # labels_delim, labels_pos, _, _ = mu.get_hemi_delim_and_pos(bpy.data.objects['Cortex-lh'].children[0].name)
     coloring_name = '{}.csv'.format(bpy.context.scene.coloring_files)
+    lines = list(mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)))
     no_colors_lines_num = sum(
-        [1 for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)) if len(line) == 1])
-    rand_colors = itertools.cycle(mu.get_distinct_colors(no_colors_lines_num))
+        [1 for line in lines if len(line) == 1 and not line[0].startswith('#') and not line[0].startswith('atlas=')])
+    if lines[0][0].startswith('colors='):
+        colors_type = lines[0][0].split('=')[-1]
+        if colors_type == 'kelly':
+            rand_colors = cu.get_distinct_colors_kelly()
+        elif colors_type == 'boynton':
+            rand_colors = cu.get_distinct_colors_boynton()
+        else:
+            rand_colors = itertools.cycle(mu.get_distinct_colors(no_colors_lines_num))
+    else:
+        rand_colors = itertools.cycle(mu.get_distinct_colors(no_colors_lines_num))
     subs_names = [o.name for o in bpy.data.objects['Subcortical_structures'].children]
     cortex_labels_names = [o.name for o in bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children]
     other_atals_labels = defaultdict(list)
@@ -1184,7 +1194,7 @@ def color_manually():
         coloring_objects = True
         atlas = ''
     # atlas_labels_rh, atlas_labels_lh = {}, {}
-    for line in mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
+    for line in lines: #mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
         if len(line) == 0 or line[0][0] == '#':
             continue
         object_added = False
@@ -2160,15 +2170,19 @@ def plot_label(label, color=''):
         _plot_labels()
 
 
-def _plot_labels(labels_plotted_tuple=None, faces_verts=None):
+def _plot_labels(labels_plotted_tuple=None, faces_verts=None, choose_rand_colors=False):
     if labels_plotted_tuple is None:
         labels_plotted_tuple = ColoringMakerPanel.labels_plotted
     if faces_verts is None:
         faces_verts = ColoringMakerPanel.faces_verts
     hemi_verts_num = {hemi: faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
     data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
-    for label, color in labels_plotted_tuple:
+    colors_num = len(labels_plotted_tuple)
+    rand_colors = mu.get_distinct_colors(colors_num) if choose_rand_colors else [''] * colors_num
+    for (label, color), rand_color in zip(labels_plotted_tuple, rand_colors):
         label.vertices = label.vertices[label.vertices < hemi_verts_num[label.hemi]]
+        if choose_rand_colors:
+            color = rand_color
         data[label.hemi][label.vertices] = [1, *color]
     for hemi in mu.HEMIS:
         color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
