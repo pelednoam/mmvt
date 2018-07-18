@@ -157,7 +157,7 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
             stc_t_smooth = stc_t
         else:
             vertices_to = mne.grade_to_vertices(subject, None, subjects_dir=subjects_dir)
-            n_jobs = n_jobs #if mu.IS_LINUX else 1 # Stupid OSX and Windows #$%#@$
+            n_jobs = n_jobs if mu.IS_LINUX else 1 # Stupid OSX and Windows #$%#@$
             morph_name = '{0}-{0}-morph.fif'.format(subject)
             morph_map_fname = op.join(mu.get_parent_fol(mu.get_user_fol()), 'morph_maps', morph_name)
             morph_map_resources_fname = op.join(mu.get_resources_dir, 'morph_maps', morph_name)

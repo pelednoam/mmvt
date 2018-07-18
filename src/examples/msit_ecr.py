@@ -234,7 +234,7 @@ def post_analysis(args):
         for task in args.tasks:
             mean_power[group_id][task] = defaultdict(list)
             power[group_id][task] = {band: None for band in bands.keys()}
-        for subject in meta_data[group_id]['MSIT'].keys():
+        for subject in meta_data[group_id]['ECR'].keys():
             if not op.isdir(op.join(res_fol, subject)):
                 print('No folder data for {}'.format(subject))
                 continue
