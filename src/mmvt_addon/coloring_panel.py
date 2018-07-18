@@ -160,7 +160,7 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
             n_jobs = n_jobs if mu.IS_LINUX else 1 # Stupid OSX and Windows #$%#@$
             morph_name = '{0}-{0}-morph.fif'.format(subject)
             morph_map_fname = op.join(mu.get_parent_fol(mu.get_user_fol()), 'morph_maps', morph_name)
-            morph_map_resources_fname = op.join(mu.get_resources_dir, 'morph_maps', morph_name)
+            morph_map_resources_fname = op.join(mu.get_resources_dir(), 'morph_maps', morph_name)
             if not op.isfile(morph_map_fname) and op.isfile(morph_map_resources_fname):
                 shutil.copyfile(morph_map_resources_fname, morph_map_fname)
             stc_t_smooth = mne.morph_data(
