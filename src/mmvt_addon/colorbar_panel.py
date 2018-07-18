@@ -412,7 +412,7 @@ def init(addon):
         print("No full_colorbar object, Can't load the colorbar panel")
         return
     ColorbarPanel.addon = addon
-    colorbar_files_fol = op.join(mu.get_parent_fol(mu.get_user_fol()), 'color_maps')
+    colorbar_files_fol = mu.make_dir(op.join(mu.get_parent_fol(mu.get_user_fol()), 'color_maps'))
     colorbar_files_code_fol = op.join(mu.get_resources_dir(), 'color_maps')
     colorbar_files_template = op.join(colorbar_files_fol, '*.npy')
     colorbar_files_code_template = op.join(colorbar_files_code_fol, '*.npy')
@@ -428,6 +428,7 @@ def init(addon):
     if len(colorbar_files) == 0:
         print("No colorbar files ({}), Can't load the colorbar panel".format(colorbar_files_template))
         return None
+    colorbar_files = glob.glob(colorbar_files_template)
     files_names = [mu.namebase(fname) for fname in colorbar_files] # .replace('_', '-')
     ColorbarPanel.maps_names = files_names
     colorbar_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]

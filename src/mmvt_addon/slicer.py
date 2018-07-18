@@ -46,9 +46,9 @@ def init(mmvt, modality, modality_data=None, colormap=None, subject='', mmvt_dir
     if colormap is None:
         if op.isfile(op.join(mmvt_dir, 'color_maps', 'gray.npy')):
             colormap_fname = op.join(mmvt_dir, 'color_maps', 'gray.npy')
-            print("Can't find The gray colormap!")
         else:
             colormap_fname = glob.glob(op.join(mmvt_dir, 'color_maps', '*.npy'))[0]
+            print("Can't find The gray colormap!")
         colormap = np.load(colormap_fname)
     affine = np.array(modality_data.affine, float)
     data = modality_data.data

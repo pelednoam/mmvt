@@ -1609,9 +1609,10 @@ def _fmri_files_update(fmri_file_name):
 
     vol_fnames = [mu.namebase(f) for f in
                   glob.glob(op.join(mu.get_user_fol(), 'fmri', 'vol_{}.*'.format(bpy.context.scene.fmri_files)))]
-    items = [(c, c, '', ind) for ind, c in enumerate(vol_fnames)]
-    bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=items)
-    bpy.context.scene.fmri_vol_files = vol_fnames[0]
+    if len(vol_fnames) > 0:
+        items = [(c, c, '', ind) for ind, c in enumerate(vol_fnames)]
+        bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=items)
+        bpy.context.scene.fmri_vol_files = vol_fnames[0]
     return True
 
 

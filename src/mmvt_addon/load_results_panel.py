@@ -176,6 +176,7 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
     if debug:
         print('load_surf_files: other_hemi_fname: {}'.format(other_hemi_fname))
     # todo: if the other hemi file doens't exist, just create an empty one
+    output_fname_template = ''
     if op.isfile(other_hemi_fname):
         local_other_hemi_fname = build_local_fname(other_hemi_fname, user_fol)
         if nii_fol != op.join(user_fol, 'fmri'):
@@ -193,7 +194,6 @@ def load_surf_files(nii_fname, run_fmri_preproc=True, user_fol='', debug=True):
             mu.run_mmvt_func(
                 'src.preproc.fMRI', 'load_surf_files', flags='--fmri_file_template "{}"'.format(fmri_file_template))
             # todo: find what should be the output_fname_template
-            output_fname_template = ''
     else:
         print("Couldn't find the other hemi file! ({})".format(other_hemi_fname))
     return output_fname_template #, hemi, other_hemi
