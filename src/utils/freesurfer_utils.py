@@ -257,17 +257,23 @@ def read_scalar_data(filepath, **kargs):
     return scalar_data
 
 
-def transform_mni_to_subject(subject, subjects_dir, volue_fol, volume_fname='sig.mgz',
-        subject_contrast_file_name='sig_subject.mgz', print_only=False, **kargs):
-    mni305_sig_file = os.path.join(volue_fol, volume_fname)
-    subject_sig_file = os.path.join(volue_fol, subject_contrast_file_name)
+# def transform_mni_to_subject(subject, subjects_dir, volume_fol, volume_fname='sig.mgz',
+#         subject_contrast_file_name='sig_subject.mgz', print_only=False, **kargs):
+#     mni305_sig_file = os.path.join(volume_fol, volume_fname)
+#     subject_sig_file = os.path.join(volume_fol, subject_contrast_file_name)
+#     rs = utils.partial_run_script(locals(), print_only=print_only)
+#     rs(mni305_to_subject_reg)
+#     rs(mni305_to_subject)
+    # subject_fol = op.join(subjects_dir, subject, 'mmvt')
+    # utils.make_dir(subject_fol)
+    # shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject)),
+    #             op.join(subject_fol, 'mn305_to_{}.dat'.format(subject)))
+
+
+def transform_mni_to_subject(subject, subjects_dir, mni305_sig_file, subject_sig_file, print_only=False, **kargs):
     rs = utils.partial_run_script(locals(), print_only=print_only)
     rs(mni305_to_subject_reg)
     rs(mni305_to_subject)
-    subject_fol = op.join(subjects_dir, subject, 'mmvt')
-    utils.make_dir(subject_fol)
-    shutil.move(op.join(utils.get_parent_fol(), 'mn305_to_{}.dat'.format(subject)),
-                op.join(subject_fol, 'mn305_to_{}.dat'.format(subject)))
 
 
 @utils.tryit(None)

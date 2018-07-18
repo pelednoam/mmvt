@@ -749,7 +749,7 @@ def project_volume_to_surface(subject, volume_fname_template, overwrite_surf_dat
     return utils.both_hemi_files_exist(npy_surf_fname) and op.isfile(freeview_volume_fname), npy_surf_fname
 
 
-def morph_volume_to_t1(subject, volume_fname_template, task='', remote_fmri_dir=''):
+def morph_volume_to_subject(subject, volume_fname_template, task='', remote_fmri_dir=''):
     fmri_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'fmri'))
     volume_fname = get_volume_fname(subject, volume_fname_template, remote_fmri_dir, task)
     if not op.isfile(volume_fname):
@@ -761,6 +761,7 @@ def morph_volume_to_t1(subject, volume_fname_template, task='', remote_fmri_dir=
         return False
     output_fname = op.join(fmri_fol, 'vol_{}'.format(utils.namebase_with_ext(volume_fname)))
     fu.vol2vol(subject, volume_fname, subject_t1_fname, output_fname)
+    # fu.transform_mni_to_subject(subject, SUBJECTS_DIR, volume_fname, output_fname)
     return op.isfile(output_fname)
 
 
@@ -1207,7 +1208,7 @@ def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', '
         return []
 
 
-def find_hemi_files(files, convert_to_mgz=True):
+def find_hemi_files(files, convert_to_mgz=True, only_one_file_type=True):
     if len(files) < 2:
         print('len(files) should be >= 2!')
         print(files)
@@ -1217,7 +1218,7 @@ def find_hemi_files(files, convert_to_mgz=True):
         files = get_unique_files_into_npy(files)
     elif len(set(['nii', 'nii.gz', 'mgz', 'mgh']) & file_types) > 0 and convert_to_mgz:
         files = get_unique_files_into_mgz(files)
-    else:
+    elif only_one_file_type:
         ftypes = set([utils.file_type(f) for f in files])
         if len(ftypes) > 1:
             print('More than one file type was found:')
@@ -1247,20 +1248,27 @@ def find_hemi_files(files, convert_to_mgz=True):
 def find_volume_files(files):
     # if convert_to_mgz:
     #     files = get_unique_files_into_mgz(files)
-    def hemi_in_fname(fname):
-        return ('_rh' in fname or '_lh' in fname or
-                '.rh' in fname or '.lh' in fname or
-                '-rh' in fname or '-lh' in fname or
-                'rh_' in fname or 'lh_' in fname or
-                'rh.' in fname or 'lh.' in fname or
-                'rh-' in fname or 'lh-' in fname)
-    volume_files = [f for f in files if not hemi_in_fname(utils.namebase_with_ext(f))]
-    if len(files) > 0 and len(volume_files) == 0:
-        print('find_volume_files: No volume files were found! hemi was found in all the given files! {}'.format(files))
-    return volume_files
+    hemi_template_files = find_hemi_files(files, convert_to_mgz=False, only_one_file_type=False)
+    hemi_files = []
+    for hemi_template_file in hemi_template_files:
+        for hemi in utils.HEMIS:
+            hemi_files.append(hemi_template_file.format(hemi=hemi))
+    return list(set(files) - set(hemi_files))
+
+    # def hemi_in_fname(fname):
+    #     return ('_rh' in fname or '_lh' in fname or
+    #             '.rh' in fname or '.lh' in fname or
+    #             '-rh' in fname or '-lh' in fname or
+    #             'rh_' in fname or 'lh_' in fname or
+    #             'rh.' in fname or 'lh.' in fname or
+    #             'rh-' in fname or 'lh-' in fname)
+    # volume_files = [f for f in files if not hemi_in_fname(utils.namebase_with_ext(f))]
+    # if len(files) > 0 and len(volume_files) == 0:
+    #     print('find_volume_files: No volume files were found! hemi was found in all the given files! {}'.format(files))
+    # return volume_files
 
 
-def find_volume_files_from_template(template_fname):
+def find_volume_files_from_template(template_fname, pick_mgz_if_possible=True):
     file_types = [ft for ft in ('mgz', 'nii.gz', 'nii') if ft != utils.file_type(template_fname)]
     files = find_volume_files(find_template_files(template_fname))
     if len(files) == 0:
@@ -1269,6 +1277,9 @@ def find_volume_files_from_template(template_fname):
             files = [f for f in files if lu.find_hemi_from_full_fname(f) == '']
             if len(files) > 0:
                 return files
+    mgz_files = [f for f in files if utils.file_type(f) == 'mgz']
+    if pick_mgz_if_possible and len(mgz_files) > 0:
+        files = mgz_files
     return files
 
 
@@ -1815,8 +1826,9 @@ def main(subject, remote_subject_dir, args, flags):
             fmri_contrast_file_template, args = calc_also_minmax(
                 flags['project_volume_to_surface'], surf_output_fname, args)
 
-    if utils.should_run(args, 'morph_volume_to_t1'):
-        flags['morph_volume_to_t1'] = morph_volume_to_t1(subject, args.fmri_file_template, args.task, remote_fmri_dir)
+    if utils.should_run(args, 'morph_volume_to_subject'):
+        flags['morph_volume_to_subject'] = morph_volume_to_subject(
+            subject, args.fmri_file_template, args.task, remote_fmri_dir)
 
     if utils.should_run(args, 'load_surf_files'):
         flags['load_surf_files'], output_fname_template = load_surf_files(
