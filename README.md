@@ -1,4 +1,4 @@
-<img src=https://user-images.githubusercontent.com/35853195/41723611-85a1a356-7539-11e8-9bd9-95e068085d24.png align="right"/>
+<img src=https://user-images.githubusercontent.com/35853195/42889397-52f9c75e-8a78-11e8-9da8-86ccc3a30a80.png align="right" hight=120 width=120/>
 
 
 ## Multi-Modality Visualization Tool
@@ -41,7 +41,9 @@ The users can also reprocess raw data using wrappers for FaFast and MNE-python (
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
 
 ## Installation
-Please go through the installation in this wiki [page](https://github.com/pelednoam/mmvt/wiki/Linux-and-OSX-Installation).
+**Windows** [full guide](https://github.com/pelednoam/mmvt/wiki/Windows-installation-full-guide)
+
+**Linux** [full guide](https://github.com/pelednoam/mmvt/wiki/Linux-and-OSX-Installation)
 
 The tool itself can run on windows, mac and linux.
 In the preprocessing pipeline there are several calls to [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/) (runs only on linux/mac). Beside of that, you can use the tool also on windows.
