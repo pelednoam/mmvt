@@ -20,6 +20,8 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
                       ask_before=False):
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+    if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
+        return True
     output_fname = op.join(ct_fol, output_name)
     if op.isfile(output_fname):
         if not overwrite:
@@ -28,6 +30,8 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
             os.remove(output_fname)
     if op.isfile(op.join(SUBJECTS_DIR, subject, 'ct', 'ct.nii.gz')):
         ct_files = [op.join(SUBJECTS_DIR, subject, 'ct', 'ct.nii.gz')]
+    elif op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'ct.nii.gz')):
+        ct_files = [op.join(SUBJECTS_DIR, subject, 'mri', 'ct.nii.gz')]
     else:
         if not op.isdir(ct_raw_input_fol):
             print('{} does not exist!'.format(ct_fol))
@@ -58,6 +62,8 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         shutil.copy(op.join(SUBJECTS_DIR, subject, 'ct', ct_name), op.join(MMVT_DIR, subject, 'ct', ct_name))
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+    if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
+        return True
     if ct_name == '':
         ct_name = 'ct_org.mgz'
     if nnv_ct_name == '':
@@ -192,13 +198,11 @@ def isotropization(subject, ct_fname, ct_fol, new_image_fname='', isotropization
 
 
 def main(subject, remote_subject_dir, args, flags):
+
     if utils.should_run(args, 'convert_ct_to_mgz'):
         flags['convert_ct_to_mgz'] = convert_ct_to_mgz(
             subject, args.ct_raw_input_fol, args.ct_fol, args.ct_org_name, args.overwrite, args.print_only,
             args.ask_before)
-
-    if 'isotropization' in args.function:
-        flags['isotropization'] = isotropization(subject, args.ct_org_name, args.ct_fol)
 
     if utils.should_run(args, 'register_to_mr'):
         flags['register_to_mr'] = register_to_mr(
@@ -218,6 +222,9 @@ def main(subject, remote_subject_dir, args, flags):
             args.output_fol, args.clustering_method, args.max_iters, args.cylinder_error_radius,
             args.min_elcs_for_lead, args.max_dist_between_electrodes, args.min_cylinders_ang, args.ct_thresholds,
             args.min_joined_items_num, args.min_distance_beteen_electrodes, args.overwrite, args.debug)
+
+    if 'isotropization' in args.function:
+        flags['isotropization'] = isotropization(subject, args.ct_org_name, args.ct_fol)
 
     if 'save_electrode_ct_pics' in args.function:
         flags['save_electrode_ct_pics'] = save_electrode_ct_pics(
