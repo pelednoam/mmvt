@@ -41,7 +41,9 @@ The users can also reprocess raw data using wrappers for FaFast and MNE-python (
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341371/4d3505de-58c2-11e6-8bae-91165c573a07.gif "MEG-fMRI-electrodes example") -->
 
 ## Features
+
 A list of features can be found [here](https://github.com/pelednoam/mmvt/wiki/MMVT-features)
+
 The features can be seen [here](https://www.youtube.com/watch?v=vPD4DorhMgA&t=9s)
 
 ## Installation
@@ -57,7 +59,7 @@ In the preprocessing pipeline there are several calls to [FreeSurfer](https://su
 ## Template brain and data
 We've imported [colin27](http://www.bic.mni.mcgill.ca/ServicesAtlases/Colin27Highres) into MMVT, and included data we morphed from a patient. The data includes recording from EEG, MEG, fMRI, and sEEG for the [MSIT](https://www.nature.com/articles/nprot.2006.48) task. The data can be downloaded from [here](https://www.dropbox.com/s/hpt5t9gt8migna8/colin27.zip?dl=0) (1GB). Extract the zip file in the mmvt_blend folder which was created in your mmvt_root folder. Then, open Blender, close the splash screen and open (File->open) colin's blend file (colin27_laus125.blend).
 
-* To learn more about the tool you can find several self-explanatory tasks for Colin27 data [here](https://tinyurl.com/yd2axzsg) (feel free the add comments).
+* To learn more about the tool you can find several self-explanatory tasks for Colin27 data [here](https://github.com/pelednoam/mmvt/wiki/Colin27-exercise).
    - Step by step answers for the tasks can be found [here](https://docs.google.com/document/d/1FD2vA_eSbGMsZIxZs_8wAstyNN5QMYIxkV35jaj2qyM/edit?usp=sharing)
 
 
