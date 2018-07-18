@@ -573,7 +573,7 @@ def elecs_draw(self, context):
     box = layout.box()
     if ElecsPanel.electrodes_labeling_file_exist and len(ElecsPanel.labling_files) > 1:
         box.prop(context.scene, "electrodes_labeling_files", text="")
-    if context.scene.electrodes_labeling_files:
+    if ElecsPanel.electrodes_labeling_file_exist and len(ElecsPanel.labling_files) > 0:
         box.label(text='Model: {}'.format(context.scene.electrodes_labeling_files.split('_')[1]))
     row = box.row(align=True)
     row.operator(PrevLead.bl_idname, text="", icon='PREV_KEYFRAME')
@@ -848,6 +848,7 @@ bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=
 bpy.types.Scene.electrodes_hemis = bpy.props.EnumProperty(
     items=[('left', 'lh', '', 1), ('right', 'rh', '', 2)], update=electrodes_hemis_update)
 bpy.types.Scene.electrodes_hemi_labels = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(items=[])
 
 
 class ElecsPanel(bpy.types.Panel):

@@ -6,6 +6,11 @@ import glob
 from itertools import product
 
 try:
+    import nibabel as nib
+except:
+    print('No nibabel')
+
+try:
     import bpy
     import mmvt_utils as mu
     from coloring_panel import calc_colors
@@ -16,7 +21,7 @@ except:
     IN_BLENDER = False
 
 
-def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
+def init(mmvt, modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     if subject == '':
         subject = mu.get_user()
     if mmvt_dir == '':
@@ -66,14 +71,23 @@ def init(modality, modality_data=None, colormap=None, subject='', mmvt_dir=''):
     pial_vol_mask = np.load(pial_vol_mask_fname) if op.isfile(pial_vol_mask_fname) else None
     dural_vol_mask_fname = op.join(mmvt_dir, subject, 'freeview', 'dural_vol_mask.npy')
     dural_vol_mask = np.load(dural_vol_mask_fname) if op.isfile(dural_vol_mask_fname) else None
+    fmri_vol_fnames = glob.glob(op.join(mu.get_user_fol(), 'fmri', '{}.*'.format(mmvt.coloring.get_fmri_vol_fname())))
+    fmri_vol = None
+    if len(fmri_vol_fnames) > 0:
+        fmri_vol_fname = fmri_vol_fnames[0]
+        if mu.file_type(fmri_vol_fname) in ('mgz', 'nii', 'nii.gz'):
+            fmri_vol = nib.load(fmri_vol_fname).get_data()
+        elif mu.file_type(fmri_vol_fname) == 'npy':
+            fmri_vol = np.load(fmri_vol_fname)
+
     self = mu.Bag(dict(
         data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r, colors_ratio=colors_ratio,
         colormap=colormap, coordinates=[], modality=modality, extras=extras, pial_vol_mask=pial_vol_mask,
-        dural_vol_mask=dural_vol_mask))
+        dural_vol_mask=dural_vol_mask, fmri_vol=fmri_vol))
     return self
 
 
-def create_slices(xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True ,
+def create_slices(mmvt, xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True,
                   zoom_around_voxel=False, zoom_voxels_num=30, smooth=False, clim=None, mark_voxel=True):
     self = mu.Bag({})
     if isinstance(modalities, str):
@@ -83,7 +97,7 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
     #     modalities.append('mri')
     for modality in modalities:
         if state is None or modality not in state:
-            self[modality] = init(modality, modality_data, colormap)
+            self[modality] = init(mmvt, modality, modality_data, colormap)
         else:
             self[modality] = state[modality]
     mri = state['mri']
@@ -136,6 +150,13 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             else:
                 dural_vol_mask_data = None
 
+            if s.fmri_vol is not None:
+                fmri_vol_data = get_image_data(
+                    s.fmri_vol, s.order, s.flips, ii, s.coordinates, cross, zoom_around_voxel, zoom_voxels_num,
+                    smooth)
+            else:
+                fmri_vol_data = None
+
             # todo: Should do that step in the state init
             if modality == 'ct':
                 d[np.where(d == 0)] = -200
@@ -146,8 +167,8 @@ def create_slices(xyz, state=None, modalities='mri', modality_data=None, colorma
             else:
                 clim, colors_ratio = s.clim, s.colors_ratio
             pixels[modality] = calc_slice_pixels(
-                d, sizes, max_sizes, clim, colors_ratio, s.colormap, zoom_around_voxel, zoom_voxels_num, mark_voxel,
-                pial_vol_mask_data, dural_vol_mask_data)
+                mmvt, d, sizes, max_sizes, clim, colors_ratio, s.colormap, zoom_around_voxel, zoom_voxels_num, mark_voxel,
+                pial_vol_mask_data, dural_vol_mask_data, fmri_vol_data)
         # image = create_image(d, sizes, max_sizes, s.clim, s.colors_ratio, prespective, s.colormap,
         #                      int(cross_horiz[ii][0, 1]), int(cross_vert[ii][0, 0]),
         #                      state[modality].extras[ii])
@@ -224,8 +245,8 @@ def get_image_data(image_data, order, flips, ii, pos, cross=None, zoom_around_vo
     return data
 
 
-def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom_around_voxel, pixels_zoom,
-                      mark_voxel=True, pial_vol_mask_data=None, dural_vol_mask_data=None):
+def calc_slice_pixels(mmvt, data, sizes, max_sizes, clim, colors_ratio, colormap, zoom_around_voxel, pixels_zoom,
+                      mark_voxel=True, pial_vol_mask_data=None, dural_vol_mask_data=None, fmri_vol_data=None):
     colors = calc_colors(data, clim[0], colors_ratio, colormap)
 
     extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
@@ -245,6 +266,13 @@ def calc_slice_pixels(data, sizes, max_sizes, clim, colors_ratio, colormap, zoom
         colors[np.where(pial_vol_mask_data)] = tuple(bpy.context.scene.slices_show_pial_color)
     if dural_vol_mask_data is not None:
         colors[np.where(dural_vol_mask_data)] = tuple(bpy.context.scene.slices_show_dural_color)
+    if fmri_vol_data is not None:
+        if mmvt.coloring.get_use_abs_threshold():
+            fmri_inds = np.where(np.abs(fmri_vol_data) > bpy.context.scene.coloring_lower_threshold)
+        else:
+            fmri_inds = np.where(fmri_vol_data) > bpy.context.scene.coloring_lower_threshold
+        if len(fmri_inds[0]) > 0:
+            colors[fmri_inds] = mmvt.coloring.calc_colors(fmri_vol_data[fmri_inds])
 
     pixels = np.ones((colors.shape[0], colors.shape[1], 4))
     pixels[:, :, :3] = colors
@@ -279,7 +307,7 @@ def create_image(pixels, max_sizes, prespective):
         return None
 
 
-def on_click(ii, xy, state, modality='mri'):
+def on_click(mmvt, ii, xy, state, modality='mri'):
     # if 'mri' in state:
     #     org_modality = modality
     #     modality = 'mri'
@@ -304,11 +332,11 @@ def on_click(ii, xy, state, modality='mri'):
     idxs = [idxs[ind] for ind in trans]
     # print(idxs)
     # print('Create new slices after click {} changed {},{}'.format(idxs, xax, yax))
-    create_slices(idxs, state, modality) # np.dot(state.affine, idxs)[:3]
+    create_slices(mmvt, idxs, state, modality) # np.dot(state.affine, idxs)[:3]
     return idxs
 
 
-def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxel=20, fig_fname='', elc_name=''):
+def plot_slices(mmvt, xyz, state, modality='mri', interactive=True, pixels_around_voxel=20, fig_fname='', elc_name=''):
     import matplotlib.pyplot as plt
     from matplotlib.widgets import Slider
     from scipy.ndimage import zoom
@@ -338,7 +366,7 @@ def plot_slices(xyz, state, modality='mri', interactive=True, pixels_around_voxe
     fig.suptitle('{} {} ({:.2f})'.format(elc_name if elc_name != '' else 'Voxel', tuple(xyz), s.data[tuple(xyz)]))
     x_vox = np.zeros_like(s.data)
     x_vox[tuple(xyz)] = 255
-    images = create_slices(xyz, state, modalities=modality, plot_cross=False)
+    images = create_slices(mmvt, xyz, state, modalities=modality, plot_cross=False)
     for img_num, ((pers, data), ax) in enumerate(zip(images.items(), axs.ravel())):
         x_vox_slice = get_image_data(x_vox, s.order, s.flips, img_num, s.coordinates)
         # y, x = np.argwhere(x_vox_slice)[0]

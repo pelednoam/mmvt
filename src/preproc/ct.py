@@ -153,8 +153,8 @@ def save_electrode_ct_pics(subject, voxel, elc_name='', pixels_around_voxel=30, 
     if states is None:
         states = {}
         for modality in ['mri', 'ct']:
-            states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
-    slicer.plot_slices(voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname, elc_name=elc_name)
+            states[modality] = slicer.init(None, modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
+    slicer.plot_slices(None, voxel, states, 'ct', interactive, pixels_around_voxel, fig_fname=fig_fname, elc_name=elc_name)
     if fig_fname != '':
         return op.isfile(fig_fname)
     else:
@@ -164,7 +164,7 @@ def save_electrode_ct_pics(subject, voxel, elc_name='', pixels_around_voxel=30, 
 def save_electrodes_group_ct_pics(subject, voxels, group_name='', electrodes_names='', pixels_around_voxel=30):
     states = {}
     for modality in ['mri', 'ct']:
-        states[modality] = slicer.init(modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
+        states[modality] = slicer.init(None, modality=modality, subject=subject, mmvt_dir=MMVT_DIR)
     if electrodes_names == '':
         electrodes_names = [''] * len(voxels)
     elif group_name == '':

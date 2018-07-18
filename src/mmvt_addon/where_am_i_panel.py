@@ -558,7 +558,7 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
 def create_slices_from_vox_coordinates(xyz, modality, zoom_around_voxel=False, zoom_voxels_num=30, smooth=False,
                                        clim=None, plot_cross=True, mark_voxel=True):
     images = slicer.create_slices(
-        xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel, zoom_voxels_num=zoom_voxels_num,
+        _addon(), xyz, WhereAmIPanel.slicer_state, modality, zoom_around_voxel=zoom_around_voxel, zoom_voxels_num=zoom_voxels_num,
         smooth=smooth, clim=clim, plot_cross=plot_cross, mark_voxel=mark_voxel)
     update_slices(modality=modality, ratio=1, images=images)
     #todo: really slow...
@@ -593,7 +593,7 @@ def slices_were_clicked(active_image, pos):
     print('Image {} was click in {}'.format(active_image.name, pos))
     # print(active_image.name, pos)
     image_ind = images_names.index(active_image.name.lower())
-    new_pos_vox = slicer.on_click(image_ind, pos, WhereAmIPanel.slicer_state, modality)
+    new_pos_vox = slicer.on_click(_addon(), image_ind, pos, WhereAmIPanel.slicer_state, modality)
     if modality == 'ct':
         new_pial_ras = apply_trans(_ct_trans().vox2ras, np.array([new_pos_vox]))[0]
         new_pos_vox = apply_trans(t1_trans().ras2vox, np.array([new_pial_ras]))[0]
@@ -626,7 +626,7 @@ def pos_to_current_inflation(pos):
 
 def set_slicer_state(modality):
     if WhereAmIPanel.slicer_state is None or modality not in WhereAmIPanel.slicer_state:
-        WhereAmIPanel.slicer_state[modality] = slicer.init(modality)
+        WhereAmIPanel.slicer_state[modality] = slicer.init(_addon(), modality)
 
 
 def get_slicer_state(modality):
@@ -932,7 +932,7 @@ def init(addon):
             start_slicer_server()
         else:
             WhereAmIPanel.slicer_state = mu.Bag({})
-            WhereAmIPanel.slicer_state['mri'] = slicer.init('mri')
+            WhereAmIPanel.slicer_state['mri'] = slicer.init(_addon(), 'mri')
             create_slices(None, bpy.context.scene.cursor_location)
         save_slices_cursor_pos()
         register()

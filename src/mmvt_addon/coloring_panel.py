@@ -229,6 +229,10 @@ def set_use_abs_threshold(val):
     bpy.context.scene.coloring_use_abs = val
 
 
+def get_use_abs_threshold():
+    return bpy.context.scene.coloring_use_abs
+
+
 def can_color_obj(obj):
     cur_mat = obj.active_material
     return 'RGB' in cur_mat.node_tree.nodes
@@ -974,12 +978,15 @@ def get_obj_color_data(obj, color, val=1):
     return data
 
 
-def calc_colors(vert_values, data_min, colors_ratio, cm=None):
+def calc_colors(vert_values, min_data=None, colors_ratio=None, cm=None):
     if cm is None:
         cm = _addon().get_cm()
     if cm is None:
         return np.zeros((len(vert_values), 3))
-    return mu.calc_colors_from_cm(vert_values, data_min, colors_ratio, cm)
+    if min_data or colors_ratio is None:
+        max_data, min_data = _addon().colorbar.get_colorbar_max_min()
+        colors_ratio = 256 / (max_data - min_data)
+    return mu.calc_colors_from_cm(vert_values, min_data, colors_ratio, cm)
 
 
 def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
@@ -1195,6 +1202,8 @@ def color_manually():
         atlas = ''
     # atlas_labels_rh, atlas_labels_lh = {}, {}
     for line in lines: #mu.csv_file_reader(op.join(subject_fol, 'coloring', coloring_name)):
+        if line[0].startswith('colors='):
+            continue
         if len(line) == 0 or line[0][0] == '#':
             continue
         object_added = False
@@ -1597,7 +1606,17 @@ def _fmri_files_update(fmri_file_name):
     if not _addon().colorbar_values_are_locked():
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_title('fMRI')
+
+    vol_fnames = [mu.namebase(f) for f in
+                  glob.glob(op.join(mu.get_user_fol(), 'fmri', 'vol_{}.*'.format(bpy.context.scene.fmri_files)))]
+    items = [(c, c, '', ind) for ind, c in enumerate(vol_fnames)]
+    bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=items)
+    bpy.context.scene.fmri_vol_files = vol_fnames[0]
     return True
+
+
+def get_fmri_vol_fname():
+    return bpy.context.scene.fmri_vol_files
 
 
 def fmri_files_update(self, context):
@@ -2483,6 +2502,8 @@ bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=
 bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.show_labels_plotted = bpy.props.BoolProperty(default=True, description="Show labels list")
 bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
+bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=[])
+
 # bpy.types.Scene.set_current_time = bpy.props.IntProperty(name="Current time:", min=0,
 #                                                          max=bpy.data.scenes['Scene'].frame_preview_end,
 #                                                          update=set_current_time_update)
