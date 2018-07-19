@@ -541,7 +541,7 @@ def create_slices(modality=None, pos=None, zoom_around_voxel=None, zoom_voxels_n
             print('python -m src.setup -f copy_resources_files')
         return
 
-    if modality == 'mri':
+    if modality in ('mri', 't1_ct'):
         x, y, z = np.rint(apply_trans(t1_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int) if not pos_in_vox else pos
     elif modality == 't2':
         x, y, z = np.rint(apply_trans(t2_trans().ras_tkr2vox, np.array([pos]))[0]).astype(int) if not pos_in_vox else pos

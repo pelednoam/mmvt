@@ -109,7 +109,35 @@ def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz', overwrite=False):
     return op.isfile(output_fname)
 
 
-def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz', overwrite=False):
+def merge_t1_with_ct(subject, ct_threshold=None, ct_name='ct_reg_to_mr.mgz', overwrite=True):
+    output_fname = op.join(MMVT_DIR, subject, 'ct', 't1_ct.mgz')
+    if op.isfile(output_fname) and not overwrite:
+        return True
+    t1 = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz'))
+    t1_data = t1.get_data()
+    ct_data = nib.load(op.join(MMVT_DIR, subject, 'ct', ct_name)).get_data()
+    if ct_threshold is None:
+        ct_threshold = np.percentile(ct_data, 99)
+    ct_trans = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'ct', 'ct_trans.npz')))
+    t1_trans = utils.Bag(np.load(op.join(MMVT_DIR, subject, 't1_trans.npz')))
+    ct_indices = np.where(ct_data > ct_threshold)
+    ct_voxels = np.array(ct_indices).T
+    ct_ras_coordinates = apply_trans(ct_trans.vox2ras, ct_voxels)
+    t1_voxels = np.rint(apply_trans(t1_trans.ras2vox, ct_ras_coordinates)).astype(int)
+    t1_data[(t1_voxels.T[0], t1_voxels.T[1], t1_voxels.T[2])] = 0 #ct_data[(ct_voxels.T[0], ct_voxels.T[1], ct_voxels.T[2])]
+    img = nib.Nifti1Image(t1_data, t1.affine)
+    nib.save(img, output_fname)
+    save_images_data_and_header(subject, ct_name=output_fname, output_name='t1_ct_data', overwrite=True)
+    np.savez(op.join(MMVT_DIR, subject, 'ct', 't1_ct_trans.npz'), ras_tkr2vox=t1_trans.ras_tkr2vox,
+             vox2ras_tkr=t1_trans.vox2ras_tkr, vox2ras=t1_trans.vox2ras, ras2vox=t1_trans.ras2vox)
+    return op.isfile(output_fname)
+
+
+def apply_trans(trans, points):
+    return np.array([np.dot(trans, np.append(p, 1))[:3] for p in points])
+
+
+def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz', output_name='ct_data', overwrite=False):
     ret = True
     data, header = ctu.get_data_and_header(subject, MMVT_DIR, SUBJECTS_DIR, ct_name)
     if data is None or header is None:
@@ -117,7 +145,7 @@ def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz', overwrite=F
     affine = header.affine
     precentiles = np.percentile(data, (1, 99))
     colors_ratio = 256 / (precentiles[1] - precentiles[0])
-    output_fname = op.join(MMVT_DIR, subject, 'ct', 'ct_data.npz')
+    output_fname = op.join(MMVT_DIR, subject, 'ct', '{}.npz'.format(output_name))
     if not op.isfile(output_fname) or overwrite:
         print('save_images_data_and_header: saving to {}'.format(output_fname))
         np.savez(output_fname, data=data, affine=affine, precentiles=precentiles, colors_ratio=colors_ratio)
@@ -214,7 +242,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(
-            subject, args.register_ct_name, args.overwrite)
+            subject, args.register_ct_name, 'ct_data', args.overwrite)
 
     if 'find_electrodes' in args.function:
         flags['find_electrodes'] = find_electrodes(
@@ -233,6 +261,9 @@ def main(subject, remote_subject_dir, args, flags):
     if 'save_electrodes_group_ct_pics' in args.function:
         flags['save_electrodes_group_ct_pics'] = save_electrodes_group_ct_pics(
             subject, args.voxels, args.group_name, args.electrodes_names, args.pixels_around_voxel)
+
+    if 'merge_t1_with_ct' in args.function:
+        flags['merge_t1_with_ct'] = merge_t1_with_ct(subject)
 
     return flags
 

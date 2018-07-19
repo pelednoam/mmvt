@@ -9,14 +9,15 @@ def _addon():
 
 def slices_modality_update(self, context):
     _addon().set_slicer_state(bpy.context.scene.slices_modality)
+    bpy.context.scene.slices_modality_mix = 1
     if bpy.context.scene.slices_modality == 'mri':
         _addon().set_t1_value()
     elif bpy.context.scene.slices_modality == 'ct':
-        bpy.context.scene.slices_modality_mix = 1
         _addon().set_ct_intensity()
     elif bpy.context.scene.slices_modality == 't2':
-        bpy.context.scene.slices_modality_mix = 1
         _addon().set_t2_value()
+    # elif bpy.context.scene.slices_modality == 't1_ct':
+    #     _addon().set_t1_ct_value()
     if _addon().get_slicer_state(bpy.context.scene.slices_modality) is not None:
         clim = (bpy.context.scene.slices_x_min, bpy.context.scene.slices_x_max)
         _addon().create_slices(
@@ -610,6 +611,10 @@ def init(addon):
             items_ind += 1
             SlicerPanel.ct_exist = True
             items.append(('ct', 'CT', '', items_ind))
+        if op.isfile(op.join(mu.get_user_fol(), 'ct', 't1_ct.mgz')):
+            items_ind += 1
+            SlicerPanel.t1_ct_exist = True
+            items.append(('t1_ct', 'T1&CT', '', items_ind))
         bpy.types.Scene.slices_modality = bpy.props.EnumProperty(items=items, update=slices_modality_update)
     pial_vol_mask_fname = op.join(mu.get_user_fol(), 'freeview', 'pial_vol_mask.npy')
     dural_vol_mask_fname = op.join(mu.get_user_fol(), 'freeview', 'dural_vol_mask.npy')

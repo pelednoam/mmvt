@@ -32,7 +32,9 @@ def init(mmvt, modality, modality_data=None, colormap=None, subject='', mmvt_dir
         elif modality == 't2':
             fname = op.join(mmvt_dir, subject, 'freeview', 't2_data.npz')
         elif modality == 'ct':
-            fname = op.join(mmvt_dir, subject, 'ct', 'ct_data.npz'.format(modality))
+            fname = op.join(mmvt_dir, subject, 'ct', 'ct_data.npz')
+        elif modality == 't1_ct':
+            fname = op.join(mmvt_dir, subject, 'ct', 't1_ct_data.npz')
         if op.isfile(fname):
             modality_data = mu.Bag(np.load(fname))
         else:
