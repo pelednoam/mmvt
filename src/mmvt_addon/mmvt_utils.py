@@ -2019,7 +2019,7 @@ def get_hemi_from_full_fname(fname):
     hemis_fnames = {org_hemi: full_fname, other_hemi(org_hemi): other_hemi_fname}
     # else:
     #     hemis_fnames = {'rh':'', 'lh':''}
-    return hemi, hemis_fnames
+    return org_hemi, hemis_fnames
 
 
 def get_label_for_full_fname(fname, delim='-'):
@@ -2076,7 +2076,7 @@ def get_other_hemi_label_name(label_name):
         return other_hemi_fname
 
 
-def get_template_hemi_label_name(label_name, wild_char=False, wanted_pos=None):
+def get_template_hemi_label_name(label_name, wild_char=False, wanted_pos=''):
     # add_file_type = False
     ft = file_type(label_name)
     delim, pos, label, hemi = get_hemi_delim_and_pos(label_name[:-len(ft) - 1])
