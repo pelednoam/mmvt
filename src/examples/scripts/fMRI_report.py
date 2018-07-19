@@ -32,12 +32,19 @@ def run(mmvt, cb_min=None, cb_max=None, threshold=None, overwrite=True):
     mmvt.render.set_resolution_percentage(50)
 
     # Get the report necessary files. If exist, move them to a backup folder
-    report_files = [op.join(new_output_fol, f) for f in mmvt.get_report_files()]
+    report_files = [op.join(new_output_fol, f) for f in mmvt.reports.get_report_files()]
     if overwrite:
         if any(op.isfile(f) for f in report_files):
             mmvt.utils.make_dir(op.join(new_output_fol, 'backup'))
         for f in report_files:
             mmvt.utils.move_file(f, op.join(new_output_fol, 'backup'))
+    report_files_file_types = list(set([mmvt.utils.file_type(f) for f in report_files]))
+    if len(report_files_file_types) == 1:
+        org_file_format = mmvt.render.get_figure_format()
+        mmvt.render.set_figure_format(report_files_file_types[0])
+    else:
+        print('All the report files should have the same file type!')
+        return
 
     # Set the colorbar
     mmvt.colorbar.set_colorbar_min_max(cb_min, cb_max)
@@ -90,4 +97,5 @@ def run(mmvt, cb_min=None, cb_max=None, threshold=None, overwrite=True):
         mmvt.show_hide.show_subcorticals()
     else:
         mmvt.show_hide.show_subcorticals()
+    mmvt.render.set_figure_format(org_file_format)
     mmvt.utils.center_view()

@@ -42,7 +42,17 @@ def combine_two_colormaps(cm1_name, cm2_name, new_cm_name='', invert_cm1=False, 
 
 
 def create_linear_segmented_colormap(cm_name, n=256):
-    colors = plt.cm.__dict__[cm_name](np.linspace(0, 1, n))
+    if cm_name in plt.cm.__dict__:
+        colors = plt.cm.__dict__[cm_name](np.linspace(0, 1, n))
+    else: # try the inverse cm_name (pubu - bupu)
+        if len(cm_name) == 4:
+            inverse_cm_name = '{}{}'.format(cm_name[2:4], cm_name[0:2])
+        elif len(cm_name) == 6:
+            inverse_cm_name = '{}{}{}'.format(cm_name[4:6], cm_name[2:4], cm_name[0:2])
+        if inverse_cm_name in plt.cm.__dict__:
+            colors = plt.cm.__dict__[inverse_cm_name](np.linspace(1, 0, n))
+        else:
+            raise Exception('Can\'t find the colormap {}!'.format(cm_name))
     colors_map = mcolors.LinearSegmentedColormap.from_list(cm_name, colors)
     return colors_map
 
@@ -70,6 +80,12 @@ def check_cm_mat(cm_mat):
 
 
 def get_cm_obj(cm_name, new_cm_name='', invert_cm1=False, invert_cm2=False,  cm1_minmax=(0, 1), cm2_minmax=(0, 1)):
+    # special cases:
+    if cm_name == 'BuPu-YlOrRd':
+        return create_BuPu_YlOrRd_cm()
+    elif cm_name == 'PuBu-RdOrYl':
+        return create_PuBu_RdOrYl_cm()
+
     if '-' in cm_name:
         cm1_name, cm2_name = cm_name.split('-')
         if new_cm_name == '':

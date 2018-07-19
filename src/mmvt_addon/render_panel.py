@@ -656,7 +656,7 @@ def get_figure_format():
 
 
 def set_figure_format(val):
-    bpy.context.scene.render.image_settings.file_format = val
+    bpy.context.scene.render.image_settings.file_format = val.upper()
 
 
 def get_output_path():
