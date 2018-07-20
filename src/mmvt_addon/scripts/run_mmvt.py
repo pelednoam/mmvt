@@ -10,7 +10,7 @@ except:
     import scripts_utils as su
 
 
-def run(subject='', atlas='', run_in_background=False, debug=None, raise_exp=True):
+def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=True):
     args = None
     if sys.argv[0] == __file__:
         args = read_args(raise_exp=raise_exp)

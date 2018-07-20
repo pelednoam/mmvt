@@ -161,6 +161,10 @@ class PizcoPanel(bpy.types.Panel):
     init = False
     q_in, q_out = Queue(), Queue()
 
+    @classmethod
+    def poll(cls, context):
+        return True # Hide when False
+
     def draw(self, context):
         if PizcoPanel.init:
             pizco_draw(self, context)
