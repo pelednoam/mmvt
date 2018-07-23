@@ -29,7 +29,7 @@ The users can also reprocess raw data using wrappers for FaFast and MNE-python (
  
  <a href="https://www.youtube.com/watch?v=vPD4DorhMgA&t=9s" target="_blank"> <img src="https://img.youtube.com/vi/yBba7f12GmQ/0.jpg" alt= "mmvt demo"> </a>
 * Resting State fMRI & Cortical labels correlation:
-![Example](https://cloud.githubusercontent.com/assets/1643819/24374566/5ce2dce4-1303-11e7-9b3a-c23448e5114e.gif){:target="_blank"}
+![Example](https://cloud.githubusercontent.com/assets/1643819/24374566/5ce2dce4-1303-11e7-9b3a-c23448e5114e.gif)
 * Spatial and temporal ttest result of MEG activation:
 ![Example](https://cloud.githubusercontent.com/assets/1643819/17341466/c1ac0548-58c2-11e6-9736-a85163f80521.gif)
 <!-- * MEG & Electrodes & Coherence
@@ -42,7 +42,7 @@ The users can also reprocess raw data using wrappers for FaFast and MNE-python (
 
 ## Features
 
-A list of features can be found [here](https://github.com/pelednoam/mmvt/wiki/MMVT-features)
+A list of features can be found [here](https://github.com/pelednoam/mmvt/wiki/MMVT-features){:target="_blank"}
 
 The features can be seen [here](https://www.youtube.com/watch?v=vPD4DorhMgA&t=9s)
 
