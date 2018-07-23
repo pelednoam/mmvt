@@ -1960,31 +1960,32 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
               overwrite=False, n_jobs=6):
     ret = True
     for ind, cond in enumerate(events.keys()):
-        output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
-        # output_fname = op.join(SUBJECT_MEG_FOLDER, cond).replace(SUBJECT, morph_to_subject)
+        input_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh')
+        if not op.isfile(input_fname):
+            stcs_files = list(set([f[:-len('-rh.stc')] for f in glob.glob(op.join(SUBJECT_MEG_FOLDER, '*.stc'))]))
+            stcs_files += list(
+                set([f[:-len('-rh.stc')] for f in glob.glob(op.join(MMVT_DIR, subject, 'meg', '*.stc'))]))
+            stc_fname = utils.select_one_file(stcs_files)
+            input_fname = '{}-rh.stc'.format(stc_fname)
+            output_fname = stc_fname.replace(subject, morph_to_subject)
+        else:
+            output_fname = STC_HEMI_SAVE.format(cond=cond, method=inverse_method).replace(SUBJECT, morph_to_subject)
+        if not op.isfile(input_fname):
+            print("Can't find {}!".format(input_fname))
+            continue
         if utils.both_hemi_files_exist('{}-{}.stc'.format(output_fname, '{hemi}')) and not overwrite:
             continue
         utils.make_dir(utils.get_parent_fol(output_fname))
-        _morph_stc(subject, morph_to_subject, STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh'),
-                   output_fname, grade=grade, smooth=smoothing_iterations, n_jobs=n_jobs)
+        stc = mne.read_source_estimate(stc_fname)
+        stc_morphed = mne.morph_data(
+            subject, morph_to_subject, stc, grade=grade, smooth=smoothing_iterations, n_jobs=n_jobs)
+        stc_morphed.save(output_fname)
+        print('Morphed stc file was saves in {}'.format(output_fname))
         ret = ret and utils.both_hemi_files_exist(output_fname)
     diff_template = op.join(SUBJECT_MEG_FOLDER, '{cond}-{hemi}.stc').replace(SUBJECT, morph_to_subject)
     calc_stc_diff_both_hemis(events, diff_template, inverse_method, overwrite)
     return ret
 
-
-def _morph_stc(from_subject, to_subject, stc_fname, output_fname, grade=5, smooth=None, n_jobs=6):
-    if not op.isfile(stc_fname):
-        stcs_files = list(set([f[:-len('-rh.stc')] for f in glob.glob(op.join(SUBJECT_MEG_FOLDER, '*.stc'))]))
-        stc_fname = utils.select_one_file(stcs_files)
-        stc_fname = '{}-rh.stc'.format(stc_fname)
-    if op.isfile(stc_fname):
-        stc = mne.read_source_estimate(stc_fname)
-        stc_morphed = mne.morph_data(from_subject, to_subject, stc, grade=grade, smooth=smooth, n_jobs=n_jobs)
-        stc_morphed.save(output_fname)
-        print('Morphed stc file was saves in {}'.format(output_fname))
-    else:
-        print("Can't find {}!".format(stc_fname))
 
 
 # @utils.timeit
@@ -2307,11 +2308,13 @@ def get_stc_conds(events, inverse_method, stc_hemi_template):
     for cond in events.keys():
         stc_fname = stc_hemi_template.format(cond=cond, method=inverse_method, hemi=hemi)
         if not op.isfile(stc_fname):
-            print("Can't find the stc file! {}".format(stc_fname))
             template = op.join(SUBJECT_MEG_FOLDER, '*-{}.stc'.format(hemi))
-            stc_fname = utils.select_one_file(stcs, template=template, files_desc='STC', print_title=True)
-            if not op.isfile(stc_fname):
-                return None
+            stc_fname = utils.select_one_file(glob.glob(template), template=template, files_desc='STC', print_title=True)
+        if not op.isfile(stc_fname):
+            template = op.join(MMVT_DIR, SUBJECT, 'meg', '*-{}.stc'.format(hemi))
+            stc_fname = utils.select_one_file(glob.glob(template), template=template, files_desc='STC', print_title=True)
+        if not op.isfile(stc_fname):
+            return None
         stcs[cond] = mne.read_source_estimate(stc_fname)
     return stcs
 
@@ -2992,7 +2995,8 @@ def calc_labels_avg_per_condition_wrapper(
         if stcs_conds is None or len(stcs_conds) == 0:
             stcs_conds = get_stc_conds(conditions, inverse_method, args.stc_hemi_template)
             if stcs_conds is None:
-                return False
+                flags['calc_labels_avg_per_condition'] = False
+                return flags
         factor = 6 if modality == 'eeg' else 12  # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
         for hemi_ind, hemi in enumerate(HEMIS):
             flags['calc_labels_avg_per_condition_{}'.format(hemi)] = calc_labels_avg_per_condition(

@@ -1,6 +1,7 @@
 import bpy
 import os.path as op
 import mmvt_utils as mu
+import traceback
 
 
 def _addon():
@@ -163,6 +164,8 @@ def slice_brain(cut_pos=None, save_image=False):
         bpy.context.object.name = '{}_plane'.format(cut_type)
         bpy.context.object.rotation_euler = optional_rots[option_ind]
         bpy.ops.mesh.uv_texture_add()
+        bpy.context.object.active_material = bpy.data.materials['{}_plane_mat'.format(cut_type)]
+
     else:
         bpy.data.objects['{}_plane'.format(cut_type)].hide = False
         bpy.data.objects['{}_plane'.format(cut_type)].hide_render = False
@@ -175,14 +178,16 @@ def slice_brain(cut_pos=None, save_image=False):
     cur_plane_obj = bpy.data.objects['{}_plane'.format(cut_type)]
     cur_plane_obj.location = tuple(cut_pos)
     # images_path = '{}_{}.png'.format(bpy.context.scene.slices_modality, cut_type)
-    images_path = '{}.{}'.format(cut_type, _addon().get_figure_format())
+    images_path = '{}.{}'.format(cut_type, _addon().get_figure_format().upper())
     # slice_image_path = glob.glob('{}*{}*'.format(images_path, cut_type))
     try:
         slice_image = bpy.data.images[images_path]
         print(slice_image)
         cur_plane_obj.data.uv_textures['UVMap'].data[0].image = slice_image
+        bpy.data.materials['{}_plane_mat'.format(cut_type)].node_tree.nodes['Image Texture'].image = bpy.data.images[
+            '{}.JPEG'.format(cut_type)]
     except:
-        pass
+        print(traceback.format_exc())
 
     if bpy.data.objects.get('masking_cube') is None:
         bpy.ops.mesh.primitive_cube_add(radius=10)

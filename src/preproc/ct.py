@@ -120,11 +120,17 @@ def merge_t1_with_ct(subject, ct_threshold=None, ct_name='ct_reg_to_mr.mgz', ove
         ct_threshold = np.percentile(ct_data, 99)
     ct_trans = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'ct', 'ct_trans.npz')))
     t1_trans = utils.Bag(np.load(op.join(MMVT_DIR, subject, 't1_trans.npz')))
+    print('Finding all voxels above {}'.format(ct_threshold))
     ct_indices = np.where(ct_data > ct_threshold)
     ct_voxels = np.array(ct_indices).T
     ct_ras_coordinates = apply_trans(ct_trans.vox2ras, ct_voxels)
     t1_voxels = np.rint(apply_trans(t1_trans.ras2vox, ct_ras_coordinates)).astype(int)
-    t1_data[(t1_voxels.T[0], t1_voxels.T[1], t1_voxels.T[2])] = 0 #ct_data[(ct_voxels.T[0], ct_voxels.T[1], ct_voxels.T[2])]
+    t1_data[(t1_voxels.T[0], t1_voxels.T[1], t1_voxels.T[2])] = ct_data[(ct_voxels.T[0], ct_voxels.T[1], ct_voxels.T[2])]
+
+    t1_ct_mask = np.zeros(t1_data.shape, dtype=np.int8)
+    t1_ct_mask[(t1_voxels.T[0], t1_voxels.T[1], t1_voxels.T[2])] = 1
+    np.save(op.join(MMVT_DIR, subject, 'ct', 't1_ct_mask.npy'), t1_ct_mask)
+
     img = nib.Nifti1Image(t1_data, t1.affine)
     nib.save(img, output_fname)
     save_images_data_and_header(subject, ct_name=output_fname, output_name='t1_ct_data', overwrite=True)
@@ -263,7 +269,7 @@ def main(subject, remote_subject_dir, args, flags):
             subject, args.voxels, args.group_name, args.electrodes_names, args.pixels_around_voxel)
 
     if 'merge_t1_with_ct' in args.function:
-        flags['merge_t1_with_ct'] = merge_t1_with_ct(subject)
+        flags['merge_t1_with_ct'] = merge_t1_with_ct(subject, args.ct_threshold)
 
     return flags
 
@@ -278,6 +284,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--register_ct_name', help='', required=False, default='ct_reg_to_mr.mgz')
     parser.add_argument('--negative_threshold', help='', required=False, default=-200, type=int)
     parser.add_argument('--register_cost_function', help='', required=False, default='nmi')
+    parser.add_argument('--ct_threshold', help='', required=False, type=float)
     parser.add_argument('--overwrite', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--print_only', help='', required=False, default=False, type=au.is_true)
     parser.add_argument('--ask_before', help='', required=False, default=False, type=au.is_true)
