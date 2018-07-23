@@ -489,7 +489,7 @@ def get_tr(fmri_fname, **kargs):
 
 @utils.check_for_freesurfer
 def mri_convert(org_fname, new_fname, overwrite=False, print_only=False, **kargs):
-    cmd = 'mri_convert {} {}'.format(org_fname, new_fname)
+    cmd = 'mri_convert "{}" "{}"'.format(org_fname, new_fname)
     if print_only:
         print(cmd)
         return
