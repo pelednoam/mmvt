@@ -42,7 +42,7 @@ The users can also reprocess raw data using wrappers for FaFast and MNE-python (
 
 ## Features
 
-A list of features can be found [here](https://github.com/pelednoam/mmvt/wiki/MMVT-features){:target="_blank"}
+A list of features can be found [here](https://github.com/pelednoam/mmvt/wiki/MMVT-features)
 
 The features can be seen [here](https://www.youtube.com/watch?v=vPD4DorhMgA&t=9s)
 
