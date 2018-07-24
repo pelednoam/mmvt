@@ -191,15 +191,16 @@ def slice_brain(cut_pos=None, save_image=False):
             '{}.JPEG'.format(cut_type)]
     except:
         print(traceback.format_exc())
+        print('can\'t show slice on rendering mode')
 
     if bpy.data.objects.get('masking_cube') is None:
         bpy.ops.mesh.primitive_cube_add(radius=10)
         bpy.context.object.name = 'masking_cube'
     cube_location = [0, 0, 0]
     if cut_pos[option_ind] > 0 or cut_type == 'axial':
-        cube_location[option_ind] = cut_pos[option_ind] + 9.99
+        cube_location[option_ind] = cut_pos[option_ind] + 9.98
     elif cut_pos[option_ind] < 0:
-        cube_location[option_ind] = cut_pos[option_ind] - 9.99
+        cube_location[option_ind] = cut_pos[option_ind] - 9.98
     bpy.data.objects['masking_cube'].location = tuple(cube_location)
     bpy.data.objects['masking_cube'].hide = True
     bpy.data.objects['masking_cube'].hide_render = True
