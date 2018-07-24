@@ -169,7 +169,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         labels_data_fname = op.join(conn_fol, args.labels_data_name)
     else:
         labels_data_fname = utils.select_one_file(glob.glob(op.join(
-            conn_fol, '{}*labels_data*_{}_*_{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
+            conn_fol, '{}*labels_data*_{}_*{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
     if len(labels_data_fname) == 0:
         modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
@@ -234,6 +234,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             args.connectivity_modality, args.connectivity_method[0]))
     else:
         labels_subs_indices = []
+
+    if args.windows_num == 1 and data.ndim == 3:
+        data = np.mean(data, axis=2)
 
     # Check this code!!!
     if data.ndim == 3 and data.shape[2] == len(conditions):
@@ -445,7 +448,12 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         np.save(conn_mean_mat_fname, mean_conn)
     if not args.save_mmvt_connectivity:
         return True
-    conn = conn[:, :, :, np.newaxis]
+    if conn.ndim == 3:
+        conn = conn[:, :, :, np.newaxis]
+    elif conn.ndim == 2:
+        conn = conn[:, :, np.newaxis]
+    else:
+        raise Exception('Wrong number of dims!')
     d = save_connectivity(subject, conn, args.connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
                           con_vertices_fname)
     ret = op.isfile(output_fname)
@@ -979,6 +987,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
     parser.add_argument('--windows_length', help='', required=False, default=0, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
+    parser.add_argument('--windows_num', help='', required=False, default=1, type=int)
     parser.add_argument('--max_windows_num', help='', required=False, default=None, type=au.int_or_none)
     parser.add_argument('--tmin', help='', required=False, default=None, type=au.int_or_none)
     parser.add_argument('--tmax', help='', required=False, default=None, type=au.int_or_none)

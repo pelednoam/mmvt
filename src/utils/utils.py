@@ -2021,10 +2021,19 @@ def time_to_seconds(time_str, time_format='%H:%M:%S'):
     return seconds
 
 
+def top_n_indexes(arr, n):
+    # https://gist.github.com/tomerfiliba/3698403
+    try:
+        import bottleneck
+        idx = bottleneck.argpartition(arr, arr.size-n, axis=None)[-n:]
+    except:
+        idx = np.argpartition(arr, arr.size - n, axis=None)[-n:]
+    width = arr.shape[1]
+    return [divmod(i, width) for i in idx]
+
+
 def get_mmvt_code_root():
     curr_dir = op.dirname(os.path.realpath(__file__))
     return op.dirname(os.path.split(curr_dir)[0])
 
 
-if __name__ == '__main__':
-    print(file_modification_time('/home/npeled/code/procfast_indi'))

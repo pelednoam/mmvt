@@ -1,24 +1,39 @@
 import os.path as op
 import glob
+import numpy as np
 from src.utils import utils
+from src.preproc import anatomy as anat
 from src.preproc import meg
 from src.preproc import fMRI as fmri
-from src.preproc import connectivity as con
+from src.preproc import connectivity
+from src.utils import freesurfer_utils as fu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
+FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
 MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
-def get_empty_fnames(subject, args):
+def init_anatomy(args):
+    args = anat.read_cmd_args(dict(
+        subject=args.subject,
+        remote_subject_dir=args.remote_subject_dir,
+        exclude='create_new_subject_blend_file',
+        ignore_missing=True
+    ))
+    anat.call_main(args)
+
+
+def init_meg(subject):
     utils.make_dir(op.join(MEG_DIR, subject))
     utils.make_link(op.join(args.remote_subject_dir.format(subject=subject), 'bem'),
                     op.join(MEG_DIR, subject, 'bem'))
     utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(SUBJECTS_DIR, subject, 'bem'))
 
-    remote_meg_fol = args.remote_meg_dir.format(subject=subject)
-    csv_fname = op.join(remote_meg_fol, 'cfg.txt')
+
+def get_meg_empty_fnames(subject, remote_fol, args):
+    csv_fname = op.join(remote_fol, 'cfg.txt')
     if not op.isfile(csv_fname):
         print('No cfg file!')
         return '', '', ''
@@ -26,7 +41,7 @@ def get_empty_fnames(subject, args):
     for line in utils.csv_file_reader(csv_fname, ' '):
         if line[4].lower() == 'resting':
             day = line[2]
-            remote_rest_raw_fname = op.join(remote_meg_fol, line[0].zfill(3), line[-1])
+            remote_rest_raw_fname = op.join(remote_fol, line[0].zfill(3), line[-1])
             if not op.isfile(remote_rest_raw_fname):
                 raise Exception('rest file does not exist! {}'.format(remote_rest_raw_fname))
             local_rest_raw_fname = op.join(MEG_DIR, subject, '{}_resting_raw.fif'.format(subject))
@@ -42,7 +57,7 @@ def get_empty_fnames(subject, args):
             if op.isfile(empty_fname):
                 continue
             if line[2] == day:
-                remote_empty_fname = op.join(remote_meg_fol, line[0].zfill(3), line[-1])
+                remote_empty_fname = op.join(remote_fol, line[0].zfill(3), line[-1])
                 if not op.isfile(remote_empty_fname):
                     raise Exception('empty file does not exist! {}'.format(remote_empty_fname))
                 utils.make_link(remote_empty_fname, empty_fname)
@@ -54,17 +69,56 @@ def get_empty_fnames(subject, args):
     return local_rest_raw_fname, empty_fname, cor_fname
 
 
+def get_fMRI_rest_fol(subject, remote_root):
+    remote_fol = op.join(remote_root, '{}_01'.format(subject.upper()))
+    csv_fname = op.join(remote_fol, 'cfg.txt')
+    if not op.isfile(csv_fname):
+        print('No cfg file!')
+        return '', '', ''
+    num = None
+    for line in utils.csv_file_reader(csv_fname, '\t'):
+        if line[1].lower() == 'resting':
+            num = line[0]
+            break
+    if num is None:
+        raise Exception('Can\'t find rest in the cfg file for {}!'.format(subject))
+    subject_folders = glob.glob(op.join(remote_root, '{}_*'.format(subject.upper())))
+    rest_fols = []
+    for subject_fol in subject_folders:
+        rest_fols = glob.glob(op.join(subject_fol, '**', num.zfill(3)), recursive=True)
+        if len(rest_fols) == 1:
+            break
+    if len(rest_fols) == 0:
+        raise Exception('Can\'t find rest in the cfg file for {}!'.format(subject))
+    return rest_fols[0]
+
+
+def convert_rest_dicoms_to_mgz(subject, rest_fol):
+    output_fname = op.join(FMRI_DIR, subject, '{}_rest.mgz'.format(subject))
+    if op.isfile(output_fname):
+        return output_fname
+    dicom_files = glob.glob(op.join(rest_fol, 'MR*'))
+    dicom_files.sort(key=op.getmtime)
+    fu.mri_convert(dicom_files[0], output_fname)
+    if op.isfile(output_fname):
+        return output_fname
+    else:
+        raise Exception('Can\'t find {}!'.format(output_fname))
+
+
 def analyze_meg(args):
     subjects = args.subject
     for subject, mri_subject in zip(subjects, args.mri_subject):
-        local_rest_raw_fname, empty_fname, cor_fname = get_empty_fnames(subject, args)
+        init_meg(subject)
+        local_rest_raw_fname, empty_fname, cor_fname = get_meg_empty_fnames(
+            subject, args.remote_meg_dir.format(subject=subject.upper()), args)
         if not op.isfile(empty_fname) or not op.isfile(cor_fname):
             print('{}: Can\'t find empty, raw, or cor files!'.format(subject))
             continue
         args = meg.read_cmd_args(dict(
             subject=subject,
             mri_subject=mri_subject,
-            atlas='laus125',
+            atlas=args.atlas,
             function='rest_functions',
             task='rest',
             reject=True, # Should be True here, unless you are dealling with bad data...
@@ -89,51 +143,82 @@ def analyze_meg(args):
 
 
 def calc_meg_connectivity(args):
-    args = con.read_cmd_args(utils.Bag(
+    args = connectivity.read_cmd_args(utils.Bag(
         subject=args.subject,
         atlas='laus125',
         function='calc_lables_connectivity',
         connectivity_modality='meg',
         connectivity_method='pli',
-        windows_length=500,
-        windows_shift=100,
-        # sfreq=1000.0,
-        # fmin=10,
-        # fmax=100
-        # recalc_connectivity=True,
-        # max_windows_num=100,
+        windows_num=1,
+        # windows_length=500,
+        # windows_shift=100,
         recalc_connectivity=True,
         n_jobs=args.n_jobs
     ))
-    con.call_main(args)
+    connectivity.call_main(args)
 
 
 def analyze_rest_fmri(args):
-    args = fmri.read_cmd_args(dict(
-        subject=args.subject,
-        atlas=args.atlas,
-        function='clean_4d_data',
-        fmri_file_template='rest.nii*',
-        fsd='rest_linda'
-        # template_brain='fsaverage5',
-    ))
-    pu.run_on_subjects(args, fmri.main)
+    for subject in args.mri_subject:
+        remote_rest_fol = get_fMRI_rest_fol(subject, args.remote_fmri_dir)
+        local_rest_fname = convert_rest_dicoms_to_mgz(subject, remote_rest_fol)
+        if not op.isfile(local_rest_fname):
+            print('{}: Can\'t find {}!'.format(subject, local_rest_fname))
+            continue
+        args = fmri.read_cmd_args(dict(
+            subject=subject,
+            atlas=args.atlas,
+            remote_subject_dir=args.remote_subject_dir,
+            function='clean_4d_data',
+            fmri_file_template=local_rest_fname,
+        ))
+        fmri.call_main(args)
 
-    args = fmri.read_cmd_args(dict(
-        subject=args.subject,
-        atlas=args.atlas,
-        function='analyze_4d_data',
-        # fmri_file_template='fmcpr.up.sm6.{subject}.{hemi}.nii.gz',
-        fmri_file_template='{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_{hemi}.mgz',
-        # template_brain='fsaverage5',
-        # template_brain='fsaverage6',
-        # labels_extract_mode='mean,pca,pca_2,pca_4,pca_8',
-        labels_extract_mode='mean',
-        overwrite_labels_data=True
-    ))
-    pu.run_on_subjects(args, fmri.main)
+        args = fmri.read_cmd_args(dict(
+            subject=args.subject,
+            atlas=args.atlas,
+            function='analyze_4d_data',
+            fmri_file_template='rest.sm6.{subject}.{hemi}.mgz',
+            labels_extract_mode='mean',
+            overwrite_labels_data=False
+        ))
+        fmri.call_main(args)
+
+        args = connectivity.read_cmd_args(dict(
+            subject=args.subject,
+            atlas=args.atlas,
+            function='calc_lables_connectivity',
+            connectivity_modality='fmri',
+            connectivity_method='corr',
+            labels_extract_mode='mean',
+            identifier='',
+            save_mmvt_connectivity=True,
+            calc_subs_connectivity=False,
+            recalc_connectivity=True,
+            n_jobs=args.n_jobs
+        ))
+        connectivity.call_main(args)
 
 
+def merge_connectivity(args):
+    for subject in args.mri_subject:
+        meg_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npy')).squeeze())
+        fmri_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'fmri_static_corr.npy')).squeeze())
+        meg_to_k = utils.top_n_indexes(meg_con, args.top_k)
+        fmri_to_k = utils.top_n_indexes(fmri_con, args.top_k)
+        con_meg = np.zeros(meg_con.shape)
+        for meg_top in meg_to_k:
+            con_meg[meg_top] = meg_con[meg_top]
+        con_meg /= np.max(con_meg)
+        con_fmri = np.zeros(meg_con.shape)
+        for fmri_top in fmri_to_k:
+            con_fmri[fmri_top] = fmri_con[fmri_top]
+        con_fmri /= np.max(con_fmri)
+        con = con_fmri - con_meg
+        d = utils.load(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npz')))
+        connectivity.save_connectivity(
+            subject, con, '', connectivity.ROIS_TYPE, d.labels_names, d.conditions, output_fname, args,
+            con_vertices_fname)
 
 
 if __name__ == '__main__':
@@ -142,9 +227,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='subject name', required=False, default='')
+    parser.add_argument('-a', '--atlas', required=False, default='laus125')
     parser.add_argument('-f', '--function', help='function name', required=False, default='analyze_meg')
+    parser.add_argument('--top_k', required=False, default=10)
     parser.add_argument('--remote_meg_dir', required=False,
                         default='/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{subject}')
+    parser.add_argument('--remote_fmri_dir', required=False,
+                        default='/autofs/space/lilli_003/users/DARPA-TRANSFER/mri')
     parser.add_argument('--remote_subject_dir', required=False,
                         default='/autofs/space/lilli_001/users/DARPA-Recons/{subject}')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)

@@ -832,9 +832,9 @@ def copy_volumes(subject, contrast_file_template, contrast, volume_fol, volume_n
         shutil.copyfile(subject_volume_fname, blender_volume_fname)
 
 
-def analyze_4d_data(subject, atlas, input_fname_template, measures=['mean'], template_brain='', norm_percs=(1,99),
-                          overwrite=False, remote_fmri_dir='', do_plot=False, do_plot_all_vertices=False,
-                          excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
+def analyze_4d_data(subject, atlas, input_fname_template='rest.sm6.{subject}.{hemi}.mgz', measures=['mean'],
+                    template_brain='', norm_percs=(1,99), overwrite=False, remote_fmri_dir='', do_plot=False,
+                    do_plot_all_vertices=False, excludes=('corpuscallosum', 'unknown'), input_format='nii.gz'):
     files_exist = all([utils.both_hemi_files_exist(op.join(
         MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_{}.npz'.format(atlas, em, '{hemi}'))) for em in measures])
     minmax_fname_template = op.join(MMVT_DIR, subject, 'fmri', 'labels_data_{}_{}_minmax.pkl'.format(atlas, '{em}'))
@@ -1794,6 +1794,10 @@ def calc_also_minmax(ret_flag, fmri_contrast_file_template, args):
     if ret_flag and 'calc_fmri_min_max' not in args.function:
         args.function.append('calc_fmri_min_max')
     return fmri_contrast_file_template, args
+
+
+def call_main(args):
+    pu.run_on_subjects(args, main)
 
 
 def main(subject, remote_subject_dir, args, flags):
