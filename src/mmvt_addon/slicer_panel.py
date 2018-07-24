@@ -164,7 +164,10 @@ def slice_brain(cut_pos=None, save_image=False):
         bpy.context.object.name = '{}_plane'.format(cut_type)
         bpy.context.object.rotation_euler = optional_rots[option_ind]
         bpy.ops.mesh.uv_texture_add()
-        bpy.context.object.active_material = bpy.data.materials['{}_plane_mat'.format(cut_type)]
+        try:
+            bpy.context.object.active_material = bpy.data.materials['{}_plane_mat'.format(cut_type)]
+        except:
+            print('can\'t show slice on rendering mode')
 
     else:
         bpy.data.objects['{}_plane'.format(cut_type)].hide = False
