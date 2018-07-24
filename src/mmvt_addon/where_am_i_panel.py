@@ -44,6 +44,7 @@ def set_ct_intensity():
     if get_slicer_state('ct') is not None:
         x, y, z = bpy.context.scene.ct_voxel_x, bpy.context.scene.ct_voxel_y, bpy.context.scene.ct_voxel_z
         ct_data = _addon().get_slicer_state('ct').data
+        x, y, z = mu.in_mat(x, y, z, ct_data)
         bpy.context.scene.ct_intensity = ct_data[x, y, z]
     else:
         bpy.context.scene.ct_intensity = 0
@@ -53,6 +54,7 @@ def set_t1_value():
     if get_slicer_state('mri') is not None:
         x, y, z = bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z
         t1_data = _addon().get_slicer_state('mri').data
+        x, y, z = mu.in_mat(x, y, z, t1_data)
         bpy.context.scene.t1_value = t1_data[x, y, z]
     else:
         bpy.context.scene.t1_value = 0
@@ -62,6 +64,7 @@ def set_t2_value():
     if get_slicer_state('t2') is not None:
         x, y, z = bpy.context.scene.voxel_x, bpy.context.scene.voxel_y, bpy.context.scene.voxel_z
         t2_data = _addon().get_slicer_state('t2').data
+        x, y, z = mu.in_mat(x, y, z, t2_data)
         bpy.context.scene.t2_value = t2_data[x, y, z]
     else:
         bpy.context.scene.t2_value = 0
@@ -598,12 +601,15 @@ def slices_were_clicked(active_image, pos):
         new_pial_ras = apply_trans(_ct_trans().vox2ras, np.array([new_pos_vox]))[0]
         new_pos_vox = apply_trans(t1_trans().ras2vox, np.array([new_pial_ras]))[0]
     new_pos_pial = apply_trans(t1_trans().vox2ras_tkr, np.array([new_pos_vox]))[0]#.astype(np.int)[0]
-    # Find the closest vertex on the pial brain, and convert it to the current inflation
-    new_pos = pos_to_current_inflation(new_pos_pial) / 10
-    bpy.context.scene.cursor_location = new_pos
+    if _addon().appearance.cursor_is_snapped():
+        # Find the closest vertex on the pial brain, and convert it to the current inflation
+        new_pos_pial = pos_to_current_inflation(new_pos_pial) / 10
+    else:
+        new_pos_pial = new_pos_pial / 10
+    bpy.context.scene.cursor_location = new_pos_pial
     _addon().save_cursor_position()
     _addon().set_ct_intensity()
-    return new_pos
+    return new_pos_pial
     # print('image_found: {}'.format(image_found))
     # save_slices_cursor_pos()
 

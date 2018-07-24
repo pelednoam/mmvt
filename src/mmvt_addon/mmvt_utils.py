@@ -2700,6 +2700,19 @@ def is_freesurfer_exist():
     return os.environ.get('FREESURFER_HOME', '') != ''
 
 
+def in_range(val, min_val, max_val):
+    if min_val <= val <= max_val:
+        return val
+    elif val < min_val:
+        return min_val
+    elif val > max_val:
+        return max_val
+
+
+def in_mat(x, y, z, mat):
+    X, Y, Z = mat.shape
+    return in_range(x, 0, X - 1), in_range(y, 0, Y - 1), in_range(z, 0, Z - 1)
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:

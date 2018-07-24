@@ -535,8 +535,8 @@ class SelectionListener(bpy.types.Operator):
                 xyz = _addon().slices_were_clicked(active_image, pos)
                 bpy.context.scene.cursor_location = tuple(xyz)
                 set_cursor_pos()
-                _addon().set_tkreg_ras(bpy.context.scene.cursor_location * 10, False)
                 if bpy.context.scene.cursor_is_snapped:  # and is_view_3d():
+                    _addon().set_tkreg_ras(bpy.context.scene.cursor_location * 10, False)
                     snap_cursor(True)
                     mu.rotate_view_to_vertice()
                 # if bpy.context.scene.slices_zoom > 1:
