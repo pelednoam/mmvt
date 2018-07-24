@@ -2,7 +2,8 @@ import os.path as op
 import glob
 from src.utils import utils
 from src.preproc import meg
-from src.preproc import fMRI
+from src.preproc import fMRI as fmri
+from src.preproc import connectivity as con
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -85,6 +86,53 @@ def analyze_meg(args):
             # baseline_max=0,
         ))
         meg.call_main(args)
+
+
+def calc_meg_connectivity(args):
+    args = con.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        atlas='laus125',
+        function='calc_lables_connectivity',
+        connectivity_modality='meg',
+        connectivity_method='pli',
+        windows_length=500,
+        windows_shift=100,
+        # sfreq=1000.0,
+        # fmin=10,
+        # fmax=100
+        # recalc_connectivity=True,
+        # max_windows_num=100,
+        recalc_connectivity=True,
+        n_jobs=args.n_jobs
+    ))
+    con.call_main(args)
+
+
+def analyze_rest_fmri(args):
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        atlas=args.atlas,
+        function='clean_4d_data',
+        fmri_file_template='rest.nii*',
+        fsd='rest_linda'
+        # template_brain='fsaverage5',
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
+    args = fmri.read_cmd_args(dict(
+        subject=args.subject,
+        atlas=args.atlas,
+        function='analyze_4d_data',
+        # fmri_file_template='fmcpr.up.sm6.{subject}.{hemi}.nii.gz',
+        fmri_file_template='{subject}_bld???_rest_reorient_skip_faln_mc_g1000000000_bpss_resid_{hemi}.mgz',
+        # template_brain='fsaverage5',
+        # template_brain='fsaverage6',
+        # labels_extract_mode='mean,pca,pca_2,pca_4,pca_8',
+        labels_extract_mode='mean',
+        overwrite_labels_data=True
+    ))
+    pu.run_on_subjects(args, fmri.main)
+
 
 
 

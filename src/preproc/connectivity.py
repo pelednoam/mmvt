@@ -169,7 +169,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         labels_data_fname = op.join(conn_fol, args.labels_data_name)
     else:
         labels_data_fname = utils.select_one_file(glob.glob(op.join(
-            conn_fol, '{}*labels_data*_{}_{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
+            conn_fol, '{}*labels_data*_{}_*_{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
     if len(labels_data_fname) == 0:
         modalities_fols_dic = dict(meg=MEG_DIR, fmri=FMRI_DIR, electrodes=ELECTRODES_DIR)
         conn_fol = op.join(modalities_fols_dic[args.connectivity_modality], subject)
@@ -461,10 +461,11 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
 def pli(data, channels_num, window_length):
     try:
         from scipy.signal import hilbert
-        # nch = data.shape[0]
+        if data.shape[0] != channels_num:
+            data = data.T
         data_hil = hilbert(data)
-        if data_hil.shape != (channels_num, window_length):
-            raise Exception('PLI: Wrong dimentions!')
+        # if data_hil.shape != (channels_num, window_length):
+        #     raise Exception('PLI: Wrong dimentions!')
         m = np.zeros((channels_num, channels_num))
         for i in range(channels_num):
             for j in range(channels_num):

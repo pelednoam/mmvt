@@ -2457,6 +2457,7 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
             labels_data_template, im, task, atlas, em, hemi)
         print('Saving to {}'.format(labels_output_fname))
         utils.make_dir(utils.get_parent_fol(labels_output_fname))
+        # If labels_data is per ephoch: labels_num x time x conds_num x epoches_num
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
