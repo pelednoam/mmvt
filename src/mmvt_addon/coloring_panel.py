@@ -2859,7 +2859,7 @@ def init_static_conn():
     if op.isfile(conn_labels_names_fname):
         ColoringMakerPanel.connectivity_labels = np.load(conn_labels_names_fname)
     static_conn_files = glob.glob(op.join(user_fol, 'connectivity', '*mean*.npy')) + \
-                        glob.glob(op.join(user_fol, 'connectivity', '*statics*.npy'))
+                        glob.glob(op.join(user_fol, 'connectivity', '*static*.npy'))
     if len(static_conn_files) > 0:
         files_names = [mu.namebase(fname) for fname in static_conn_files]
         files_names = [name for name in files_names if 'backup' not in name]

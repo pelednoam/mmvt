@@ -658,6 +658,8 @@ def calc_connectivity(data, labels, hemis, args):
     #                         norm_by_percentile=True, norm_percs=(1, 99), symetric_colors=True):
     # import time
     M = data.shape[0]
+    if data.ndim == 2:
+        data = data[:, :, np.newaxis]
     W = data.shape[2] if 'windows' not in args or args.windows == 0 else args.windows
     L = int((M * M + M) / 2 - M)
     con_indices = np.zeros((L, 2))

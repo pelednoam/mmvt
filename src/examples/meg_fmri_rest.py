@@ -202,24 +202,38 @@ def analyze_rest_fmri(args):
 
 def merge_connectivity(args):
     for subject in args.mri_subject:
+        output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'meg_fmri.npz')
         meg_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npy')).squeeze())
         fmri_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'fmri_static_corr.npy')).squeeze())
-        meg_to_k = utils.top_n_indexes(meg_con, args.top_k)
-        fmri_to_k = utils.top_n_indexes(fmri_con, args.top_k)
+        meg_con[np.triu_indices(meg_con.shape[0])] = 0
+        fmri_con[np.triu_indices(fmri_con.shape[0])] = 0
+        meg_top_k = utils.top_n_indexes(meg_con, args.top_k)
+        fmri_top_k = utils.top_n_indexes(fmri_con, args.top_k)
+        if len(set(fmri_top_k).intersection(set(meg_top_k))):
+            print('fmri and meg top k intersection!')
+            continue
         con_meg = np.zeros(meg_con.shape)
-        for meg_top in meg_to_k:
+        for meg_top in meg_top_k:
             con_meg[meg_top] = meg_con[meg_top]
         con_meg /= np.max(con_meg)
         con_fmri = np.zeros(meg_con.shape)
-        for fmri_top in fmri_to_k:
+        for fmri_top in fmri_top_k:
             con_fmri[fmri_top] = fmri_con[fmri_top]
         con_fmri /= np.max(con_fmri)
         con = con_fmri - con_meg
-        d = utils.load(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npz')))
+        if len(np.where(con)[0]) != args.top_k * 2:
+            print('Wrong number of values in the conn matrix!'.format(len(np.where(con)[0])))
+            continue
+        d = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npz')))
+        con_vertices_fname = op.join(MMVT_DIR, subject, 'connectivity', 'meg_fmri_vertices.pkl')
+        conn_args = connectivity.read_cmd_args(dict(subject=subject, atlas=args.atlas, norm_by_percentile=False))
         connectivity.save_connectivity(
-            subject, con, '', connectivity.ROIS_TYPE, d.labels_names, d.conditions, output_fname, args,
+            subject, con, 'cor-pli', connectivity.ROIS_TYPE, d.labels, d.conditions, output_fname, conn_args,
             con_vertices_fname)
 
+
+# def normalize_data(x, min_x):
+#     x -=
 
 if __name__ == '__main__':
     import argparse
