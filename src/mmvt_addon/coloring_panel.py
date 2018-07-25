@@ -523,7 +523,7 @@ def color_connections_labels_avg(override_current_mat=True):
 
 
 def color_connectivity_degree():
-    corr = ColoringMakerPanel.static_conn
+    corr = ColoringMakerPanel.static_conn.squeeze()
     if corr.ndim != 2:
         print('ColoringMakerPanel.static_conn has {} dim instead of 2!'.format(corr.ndim))
         return
@@ -549,6 +549,7 @@ def color_connectivity_degree():
 def static_conn_files_update(self, context):
     ColoringMakerPanel.static_conn = np.load(op.join(mu.get_user_fol(), 'connectivity', '{}.npy'.format(
         bpy.context.scene.static_conn_files)))
+    color_connectivity_degree()
 
 
 def update_connectivity_degree_threshold(self, context):
@@ -2432,16 +2433,16 @@ def draw(self, context):
         col = layout.box().column()
         col.operator(ColorConnections.bl_idname, text="Plot Connections", icon='POTATO')
         col.prop(context.scene, 'hide_connection_under_threshold', text='Hide connections under threshold')
-        if ColoringMakerPanel.conn_labels_avg_files_exit:
-            col.prop(context.scene, 'conn_labels_avg_files', text='')
-            col.operator(ColorConnectionsLabelsAvg.bl_idname, text="Plot Connections Labels Avg", icon='POTATO')
+        # if ColoringMakerPanel.conn_labels_avg_files_exit:
+        #     col.prop(context.scene, 'conn_labels_avg_files', text='')
+        #     col.operator(ColorConnectionsLabelsAvg.bl_idname, text="Plot Connections Labels Avg", icon='POTATO')
     if static_connectivity_exist:
         col = layout.box().column()
         col.prop(context.scene, 'static_conn_files', text='')
         col.prop(context.scene, 'connectivity_degree_threshold', text="Threshold")
         col.prop(context.scene, 'connectivity_degree_threshold_use_abs', text="Use connectivity absolute value")
         col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
-        col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
+        # col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
 
     if faces_verts_exist:
         if manually_color_files_exist:
