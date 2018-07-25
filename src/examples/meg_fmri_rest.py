@@ -202,38 +202,64 @@ def analyze_rest_fmri(args):
 
 def merge_connectivity(args):
     for subject in args.mri_subject:
-        output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'meg_fmri.npz')
+        output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'fmri-meg-hubs.npz')
         meg_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npy')).squeeze())
         fmri_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'fmri_static_corr.npy')).squeeze())
-        meg_con[np.triu_indices(meg_con.shape[0])] = 0
-        fmri_con[np.triu_indices(fmri_con.shape[0])] = 0
-        meg_top_k = utils.top_n_indexes(meg_con, args.top_k)
-        fmri_top_k = utils.top_n_indexes(fmri_con, args.top_k)
-        if len(set(fmri_top_k).intersection(set(meg_top_k))):
-            print('fmri and meg top k intersection!')
-            continue
-        con_meg = np.zeros(meg_con.shape)
-        for meg_top in meg_top_k:
-            con_meg[meg_top] = meg_con[meg_top]
-        con_meg /= np.max(con_meg)
-        con_fmri = np.zeros(meg_con.shape)
-        for fmri_top in fmri_top_k:
-            con_fmri[fmri_top] = fmri_con[fmri_top]
-        con_fmri /= np.max(con_fmri)
-        con = con_fmri - con_meg
-        if len(np.where(con)[0]) != args.top_k * 2:
-            print('Wrong number of values in the conn matrix!'.format(len(np.where(con)[0])))
-            continue
         d = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npz')))
-        con_vertices_fname = op.join(MMVT_DIR, subject, 'connectivity', 'meg_fmri_vertices.pkl')
+        if args.top_k == 0:
+            L = len(d.labels)
+            args.top_k = int(np.rint(L * (L - 1) / 200))
+        meg_con_sparse, meg_top_k = calc_con(meg_con, args.top_k)
+        fmri_con_sparse, fmri_top_k = calc_con(fmri_con, args.top_k)
+        # if len(set(fmri_top_k).intersection(set(meg_top_k))):
+        #     print('fmri and meg top k intersection!')
+        # con = con_fmri - con_meg
+        # if len(np.where(con)[0]) != args.top_k * 2:
+        #     print('Wrong number of values in the conn matrix!'.format(len(np.where(con)[0])))
+        #     continue
+        meg_hub, fmri_hub, int_hub = calc_hubs(meg_con_sparse, fmri_con_sparse)
+        hubs_con = create_con_with_only_hubs(meg_con_sparse, fmri_con_sparse, meg_hub, fmri_hub, int_hub)
+        con_vertices_fname = op.join(MMVT_DIR, subject, 'connectivity', 'fmri-meg-hubs_vertices.pkl')
         conn_args = connectivity.read_cmd_args(dict(subject=subject, atlas=args.atlas, norm_by_percentile=False))
         connectivity.save_connectivity(
-            subject, con, 'cor-pli', connectivity.ROIS_TYPE, d.labels, d.conditions, output_fname, conn_args,
+            subject, hubs_con, 'fmri-meg-hubs', connectivity.ROIS_TYPE, d.labels, d.conditions, output_fname, conn_args,
             con_vertices_fname)
 
 
-# def normalize_data(x, min_x):
-#     x -=
+def calc_con(con, top_k):
+    con[np.triu_indices(con.shape[0])] = 0
+    top_k = utils.top_n_indexes(con, top_k)
+    norm_con = np.zeros(con.shape)
+    for top in top_k:
+        norm_con[top] = con[top]
+    norm_con /= np.max(norm_con)
+    return norm_con, top_k
+
+
+def calc_hubs(con_meg, con_fmri):
+    meg_hub = np.argmax(np.sum(con_meg, 0))
+    fmri_hub = np.argmax(np.sum(con_fmri, 0))
+    intersects = np.intersect1d(np.array(np.where(con_fmri)).ravel(), np.array(np.where(con_meg)).ravel())
+    int_con = np.zeros(con_meg.shape)
+    for inter_ind in intersects:
+        int_con[:, inter_ind] = con_meg[:, inter_ind] + con_fmri[:, inter_ind]
+    int_hub = np.argmax(np.sum(int_con > 0, 0))
+    print('meg: {}, fmri: {}, both: {}'.format(meg_hub, fmri_hub, int_hub))
+    return meg_hub, fmri_hub, int_hub
+
+
+def create_con_with_only_hubs(con_meg, con_fmri, meg_hub, fmri_hub, int_hub):
+    new_con = np.zeros(con_meg.shape)
+    for hub in [meg_hub, fmri_hub, int_hub]:
+        meg_inds = np.where(con_meg[:, hub])[0]
+        fmri_inds = np.where(con_fmri[:, hub])[0]
+        int_inds = np.intersect1d(meg_inds, fmri_inds)
+        if len(int_inds) > 0:
+            print('Intersected connections!')
+            print(int_inds)
+        new_con[:, hub] = con_fmri[:, hub] - con_meg[:, hub]
+    return new_con
+
 
 if __name__ == '__main__':
     import argparse
@@ -243,7 +269,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mri_subject', help='subject name', required=False, default='')
     parser.add_argument('-a', '--atlas', required=False, default='laus125')
     parser.add_argument('-f', '--function', help='function name', required=False, default='analyze_meg')
-    parser.add_argument('--top_k', required=False, default=10)
+    parser.add_argument('--top_k', required=False, default=0, type=int)
     parser.add_argument('--remote_meg_dir', required=False,
                         default='/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{subject}')
     parser.add_argument('--remote_fmri_dir', required=False,
