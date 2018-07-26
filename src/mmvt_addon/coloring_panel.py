@@ -535,13 +535,25 @@ def color_connectivity_degree():
         degree_mat = np.sum(corr >= threshold, 0)
     data_max = max(degree_mat)
     colors_ratio = 256 / (data_max)
+    # _addon().fix_labels_material(labels)
     _addon().set_colorbar_max_min(data_max, 0)
     _addon().set_colormap('YlOrRd')
-    _addon().set_colorbar_title('fMRI connectivity degree')
-    # _addon().fix_labels_material(labels)
+    _addon().set_colorbar_title('Connectivity degree')
 
-    color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
-    _addon().show_rois()
+    if bpy.context.scene.color_rois_homogeneously:
+        color_objects_homogeneously(degree_mat, labels, ['rest'], 0, colors_ratio)
+        _addon().show_rois()
+    else:
+        hemis_labels, hemis_data = defaultdict(list), defaultdict(list)
+        for ind, (label_data, label_name) in enumerate(zip(degree_mat, labels)):
+            hemi = mu.get_hemi_from_fname(label_name)
+            hemis_labels[hemi].append(label_name)
+            hemis_data[hemi].append(label_data)
+        for hemi in mu.HEMIS:
+            labels_data = dict(data=hemis_data[hemi], names=hemis_labels[hemi])
+            labels_coloring_hemi(
+                labels_data, ColoringMakerPanel.faces_verts, hemi, threshold, 'avg', False, 0, data_max, cmap='YlOrRd')
+
     if bpy.context.scene.connectivity_degree_save_image:
         _addon().save_image()
 

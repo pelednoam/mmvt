@@ -154,13 +154,18 @@ def create_conncection_per_condition(d, layers_rods, indices, mask, windows_num,
         mu.time_to_go(now, run, N, runs_num_to_print=10)
         # p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
         # mu.cylinder_between(p1, p2, radius, layers_rods)
-        mu.create_material('{}_mat'.format(conn_name), con_color, 1)
+
         node1_obj, node2_obj = [bpy.data.objects['{}_vertice'.format(d.labels[k])] for k in [i, j]]
-        p1, p2 = d.locations[i, :] * 0.01, d.locations[j, :] * 0.01
-        mu.hook_curves(node1_obj, node2_obj, p1, p2)
+        mu.create_bezier_curve(node1_obj, node2_obj, layers_rods)
+        # p1, p2 = d.locations[i, :] * 0.01, d.locations[j, :] * 0.01
+        # mu.hook_curves(node1_obj, node2_obj, p1, p2)
         cur_obj = bpy.context.active_object
         cur_obj.name = conn_name
         cur_obj.parent = parent_obj
+
+        mu.create_material('{}_mat'.format(conn_name), con_color, 1)
+        cur_mat = bpy.data.materials['{}_mat'.format(conn_name)]
+        cur_obj.active_material = cur_mat
         # cur_obj.animation_data_clear()
         if windows_num == 1:
             continue
@@ -221,11 +226,9 @@ def update_vertices_location():
             con_obj = bpy.data.objects.get('{}-{}'.format(node1_name, node2_name))
             if con_obj is None:
                 continue
-            mu.delete_hierarchy(con_obj.name)
-            # print(con_obj.name)
-
-
-
+            curve = con_obj.data
+            curve.splines[0].bezier_points[0].co = bpy.data.objects['{}_vertice'.format(node1_name)].location
+            curve.splines[0].bezier_points[1].co = bpy.data.objects['{}_vertice'.format(node2_name)].location
 
 
 def vertices_selected(vertice_name):
@@ -426,11 +429,11 @@ def plot_connections(d, plot_time, threshold=None):
         stat_vals = [calc_stat_data(d.con_values[ind, t], STAT_DIFF) if d.con_values.ndim >= 2 else d.con_values[ind]
                      for ind in selected_indices]
         colors = _addon().calc_colors(np.array(stat_vals).squeeze(), data_min, colors_ratio)
-        colors = np.concatenate((colors, np.zeros((len(colors), 1))), 1)
+        # colors = np.concatenate((colors, np.zeros((len(colors), 1))), 1)
         _addon().show_hide_connections()
         if threshold is None:
             threshold = bpy.context.scene.coloring_lower_threshold
-        for ind, cur_obj in enumerate(selected_objects):
+        for ind, (cur_obj, obj_color) in enumerate(zip(selected_objects, colors)):
             if isinstance(cur_obj, str):
                 cur_obj = bpy.data.objects.get(cur_obj)
             if bpy.context.scene.hide_connection_under_threshold:
@@ -438,7 +441,8 @@ def plot_connections(d, plot_time, threshold=None):
                     cur_obj.hide = True
                     cur_obj.hide_render = True
             bpy.context.scene.objects.active = cur_obj
-            mu.create_material('{}_mat'.format(cur_obj.name), colors[ind], 1, False)
+            _addon().coloring.object_coloring(cur_obj, colors[ind])
+            # mu.create_material('{}_mat'.format(cur_obj.name), colors[ind], 1, False)
         if bpy.context.scene.hide_connection_under_threshold:
             filter_nodes()
         parent_obj_name = get_connections_parent_name()

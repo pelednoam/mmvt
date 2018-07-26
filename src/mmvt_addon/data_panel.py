@@ -512,7 +512,6 @@ def import_electrodes(input_file='', electrodes_layer=None, bipolar='', electrod
         create_electrode(elc_pos, elc_name, electrode_size, layers_array, parnet_name)
 
 
-
 @mu.tryit(None, False)
 def create_inflating_morphing():
     print('Creating inflation morphing')

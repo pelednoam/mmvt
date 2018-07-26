@@ -293,6 +293,20 @@ def cylinder_between(p1, p2, r, layers_array):
     bpy.ops.object.move_to_layer(layers=layers_array)
 
 
+def create_bezier_curve(obj1, obj2, layers_array, bevel_depth=0.1, resolution_u=1):
+    bpy.ops.curve.primitive_bezier_curve_add()
+    obj = bpy.context.active_object
+    obj.location = (0, 0, 0)
+    curve = obj.data
+    curve.dimensions = '3D'
+    curve.fill_mode = 'FULL'
+    curve.splines[0].bezier_points[0].co = obj1.location
+    curve.splines[0].bezier_points[1].co = obj2.location
+    curve.bevel_depth = bevel_depth
+    curve.resolution_u = resolution_u
+    bpy.ops.object.move_to_layer(layers=layers_array)
+
+
 def hook_curves(o1, o2, co1, co2, bevel_depth=0.1, resolution_u=5):
     # https://blender.stackexchange.com/questions/51745/moving-cylinders-into-specific-points
     # https://blender.stackexchange.com/questions/13484/using-python-to-create-a-curve-and-attach-its-endpoints-with-hooks-to-two-sphere?rq=1
@@ -302,7 +316,6 @@ def hook_curves(o1, o2, co1, co2, bevel_depth=0.1, resolution_u=5):
     dx = x2 - x1
     dy = y2 - y1
     dz = z2 - z1
-
 
     scn = bpy.context.scene
     curve = bpy.data.curves.new("link", 'CURVE')
@@ -2615,13 +2628,37 @@ def get_vert_co(vert_ind, hemi):
 
 
 def get_verts_co(vert_inds, hemis):
+    from mathutils import Vector
     hemis_mesh, objs = {}, {}
-    for hemi in HEMIS:
-        hemis_mesh[hemi], objs[hemi]  = get_hemi_mesh(hemi)
-    vertex_co = [hemis_mesh[hemi].vertices[vert_ind].co * objs[hemi].matrix_world
-                 for vert_ind, hemi in zip(vert_inds, hemis)]
-    for hemi in HEMIS:
-        bpy.data.meshes.remove(hemis_mesh[hemi])
+    vertex_co = []
+    surf_dict = {-1:'pial', 0:'inflated', 1:'flat'}
+    if bpy.context.scene.inflating in surf_dict.keys():
+        surf_type = surf_dict[bpy.context.scene.inflating]
+        for hemi in HEMIS:
+            objs[hemi] = bpy.data.objects['inflated_{}'.format(hemi)]
+            hemis_mesh[hemi] = objs[hemi].data.shape_keys.key_blocks[surf_type].data
+        for vert_ind, hemi in zip(vert_inds, hemis):
+            vertex_co.append(hemis_mesh[hemi][vert_ind].co * objs[hemi].matrix_world +
+                             Vector(tuple(np.array(objs[hemi].matrix_world)[:3, 3])))
+
+    # elif -1 < bpy.context.scene.inflating < 0:
+    #     hemis_pial_mesh, hemis_inflated_mesh = {}, {}
+    #     for hemi in HEMIS:
+    #         objs[hemi] = bpy.data.objects['inflated_{}'.format(hemi)]
+    #         hemis_pial_mesh[hemi] = objs[hemi].data.shape_keys.key_blocks['pial'].data
+    #         hemis_inflated_mesh[hemi] = objs[hemi].data.shape_keys.key_blocks['inflated'].data
+    #     for vert_ind, hemi in zip(vert_inds, hemis):
+    #         vertex_co.append((hemis_pial_mesh[hemi][vert_ind].co * objs[hemi].matrix_world * (1 + bpy.context.scene.inflating)) + \
+    #                          (hemis_inflated_mesh[hemi][vert_ind].co * objs[hemi].matrix_world * abs(bpy.context.scene.inflating)))
+    #
+
+    else:
+        for hemi in HEMIS:
+            hemis_mesh[hemi], objs[hemi] = get_hemi_mesh(hemi)
+        for vert_ind, hemi in zip(vert_inds, hemis):
+            vertex_co.append(hemis_mesh[hemi].vertices[vert_ind].co * objs[hemi].matrix_world)
+        for hemi in HEMIS:
+            bpy.data.meshes.remove(hemis_mesh[hemi])
     return vertex_co
 
 
