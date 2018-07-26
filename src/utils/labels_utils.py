@@ -652,6 +652,7 @@ def calc_center_of_mass(labels, ret_mat=False, find_vertice=False):
             raise Exception('find_vertice=True and no subject in labels!')
         verts_pos = utils.load_surf(labels[0].subject, MMVT_DIR, SUBJECTS_DIR)
     center_of_mass = np.zeros((len(labels), 3)) if ret_mat else {}
+    verts = np.zeros((len(labels)), dtype=int) if ret_mat else {}
     for ind, label in enumerate(labels):
         if find_vertice:
             vert = label.center_of_mass(restrict_vertices=True)
@@ -660,9 +661,14 @@ def calc_center_of_mass(labels, ret_mat=False, find_vertice=False):
             pos = np.mean(label.pos, 0)
         if ret_mat:
             center_of_mass[ind] = pos
+            verts[ind] = vert
         else:
             center_of_mass[label.name] = pos
-    return center_of_mass
+            verts[label.name] = vert
+    if find_vertice:
+        return center_of_mass, verts
+    else:
+        return center_of_mass
 
 
 def label_is_excluded(label_name, compiled_excludes):

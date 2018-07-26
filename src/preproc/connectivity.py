@@ -116,7 +116,8 @@ def calc_rois_matlab_connectivity(subject, args):
     sorted_labels_names = None
     if args.sorted_labels_names_field != '':
         sorted_labels_names = matu.matlab_cell_str_to_list(mat_file[args.sorted_labels_names_field])
-    d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, sorted_labels_names=sorted_labels_names)
+    d['labels'], d['locations'], d['verts'], d['hemis'] = calc_lables_info(
+        subject, args, sorted_labels_names=sorted_labels_names)
     (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(data, d['labels'], d['hemis'], args)
     # args.stat, args.conditions, args.windows, args.threshold,
@@ -594,7 +595,8 @@ def save_connectivity(subject, conn, connectivity_method, obj_type, labels_names
     # args.labels_exclude = []
     if labels is None or locations is None or hemis is None:
         if obj_type == ROIS_TYPE:
-            d['labels'], d['locations'], d['hemis'] = calc_lables_info(subject, args, False, labels_names)
+            d['labels'], d['locations'], d['verts'], d['hemis'] = calc_lables_info(
+                subject, args, False, labels_names)
         elif obj_type == ELECTRODES_TYPE:
             bipolar = '-' in labels_names[0]
             d['labels'], d['locations'] = get_electrodes_info(subject, bipolar)
@@ -647,10 +649,11 @@ def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_
         labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
         # Remove labels that are not in sorted_labels_names
         labels = [l for l in labels if l.name in sorted_labels_names]
-    locations = lu.calc_center_of_mass(labels, ret_mat=True, find_vertice=True) * 1000
+    locations, verts = lu.calc_center_of_mass(labels, ret_mat=True, find_vertice=True)
+    locations *= 1000
     hemis = ['rh' if l.hemi == 'rh' else 'lh' for l in labels]
     labels_names = [l.name for l in labels]
-    return labels_names, locations, hemis
+    return labels_names, locations, verts, hemis
 
 
 def calc_connectivity(data, labels, hemis, args):

@@ -293,6 +293,63 @@ def cylinder_between(p1, p2, r, layers_array):
     bpy.ops.object.move_to_layer(layers=layers_array)
 
 
+def hook_curves(o1, o2, co1, co2, bevel_depth=0.1, resolution_u=5):
+    # https://blender.stackexchange.com/questions/51745/moving-cylinders-into-specific-points
+    # https://blender.stackexchange.com/questions/13484/using-python-to-create-a-curve-and-attach-its-endpoints-with-hooks-to-two-sphere?rq=1
+    # https://blender.stackexchange.com/questions/43468/low-level-location-rotation-and-scale-for-sphere-cylinders/43631#43631
+    x1, y1, z1 = co1
+    x2, y2, z2 = co2
+    dx = x2 - x1
+    dy = y2 - y1
+    dz = z2 - z1
+
+
+    scn = bpy.context.scene
+    curve = bpy.data.curves.new("link", 'CURVE')
+    curve.dimensions = '3D'
+    curve.fill_mode = 'FULL'
+    curve.bevel_depth = bevel_depth
+
+    spline = curve.splines.new('BEZIER')
+    spline.resolution_u = resolution_u
+
+    spline.bezier_points.add(1)
+    p0 = spline.bezier_points[0]
+    p1 = spline.bezier_points[1]
+    p0.co = (dx/2 + x1, dy/2 + y1, dz/2 + z1) #o1.location / 10
+    p0.handle_right_type = 'VECTOR'
+    p1.co = (-dx/2 + x2, -dy/2 + y2, -dz/2 + z2) #o2.location / 10
+    p1.handle_left_type = 'VECTOR'
+
+    obj = bpy.data.objects.new("link", curve)
+
+    m0 = obj.modifiers.new("alpha", 'HOOK')
+    m0.object = o1
+    m1 = obj.modifiers.new("beta", 'HOOK')
+    m1.object = o2
+
+    scn.objects.link(obj)
+    scn.objects.active = obj
+
+    # using anything in bpy.ops is a giant pain in the butt
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    # the mode_set() invalidated the pointers, so get fresh ones
+    p0 = curve.splines[0].bezier_points[0]
+    p1 = curve.splines[0].bezier_points[1]
+
+    p0.co[2] = co1[2] + dz/2
+    p1.co[2] = co2[2] - dz/2
+
+    p0.select_control_point = True
+    bpy.ops.object.hook_assign(modifier="alpha")
+
+    p0.select_control_point = False
+    p1.select_control_point = True
+    bpy.ops.object.hook_assign(modifier="beta")
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+
 def create_empty_if_doesnt_exists(name, brain_layer, layers_array=None, root_fol='Brain'):
     # if not bpy.data.objects.get(root_fol):
     #     print('root fol, {}, does not exist'.format(root_fol))
@@ -2551,12 +2608,27 @@ def write_to_stderr(str):
 
 
 def get_vert_co(vert_ind, hemi):
-    obj_name = 'inflated_{}'.format(hemi)
-    obj = bpy.data.objects[obj_name]
-    me = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+    me, obj = get_hemi_mesh(hemi)
     vertex_co = me.vertices[vert_ind].co * obj.matrix_world
     bpy.data.meshes.remove(me)
     return vertex_co
+
+
+def get_verts_co(vert_inds, hemis):
+    hemis_mesh, objs = {}, {}
+    for hemi in HEMIS:
+        hemis_mesh[hemi], objs[hemi]  = get_hemi_mesh(hemi)
+    vertex_co = [hemis_mesh[hemi].vertices[vert_ind].co * objs[hemi].matrix_world
+                 for vert_ind, hemi in zip(vert_inds, hemis)]
+    for hemi in HEMIS:
+        bpy.data.meshes.remove(hemis_mesh[hemi])
+    return vertex_co
+
+
+def get_hemi_mesh(hemi):
+    obj_name = 'inflated_{}'.format(hemi)
+    obj = bpy.data.objects[obj_name]
+    return obj.to_mesh(bpy.context.scene, True, 'PREVIEW'), obj
 
 
 def index_in_list(item, lst, default=-1):

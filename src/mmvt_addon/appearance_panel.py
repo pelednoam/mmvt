@@ -245,6 +245,7 @@ def _inflating_update():
                     obj_name = 'inflated_{}'.format(obj_name)
                 obj = bpy.data.objects[obj_name]
                 move_cursor_according_to_vert(vert, obj)
+
     except:
         print('Error in inflating update!')
         print(traceback.format_exc())

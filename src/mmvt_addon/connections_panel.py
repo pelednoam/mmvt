@@ -113,7 +113,7 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
         stat_data = calc_stat_data(d.con_values, stat)
     else:
         stat_data = d.con_values
-    mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
+    ConnectionsPanel.mask = mask = calc_mask(stat_data, threshold, threshold_type, windows_num)
     indices = np.where(mask)[0]
     parent_obj = bpy.data.objects[get_connections_parent_name()]
     parent_obj.animation_data_clear()
@@ -152,9 +152,12 @@ def create_conncection_per_condition(d, layers_rods, indices, mask, windows_num,
     now = time.time()
     for run, (ind, conn_name, (i, j)) in enumerate(zip(indices, d.con_names[mask], d.con_indices[mask])):
         mu.time_to_go(now, run, N, runs_num_to_print=10)
-        p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
-        mu.cylinder_between(p1, p2, radius, layers_rods)
+        # p1, p2 = d.locations[i, :] * 0.1, d.locations[j, :] * 0.1
+        # mu.cylinder_between(p1, p2, radius, layers_rods)
         mu.create_material('{}_mat'.format(conn_name), con_color, 1)
+        node1_obj, node2_obj = [bpy.data.objects['{}_vertice'.format(d.labels[k])] for k in [i, j]]
+        p1, p2 = d.locations[i, :] * 0.01, d.locations[j, :] * 0.01
+        mu.hook_curves(node1_obj, node2_obj, p1, p2)
         cur_obj = bpy.context.active_object
         cur_obj.name = conn_name
         cur_obj.parent = parent_obj
@@ -191,6 +194,38 @@ def create_vertices(d, mask, verts_color='green'):
         cur_obj = bpy.context.active_object
         cur_obj.name = vert_name
         cur_obj.parent = parent_obj
+
+
+@mu.timeit
+def update_vertices_location():
+    if not ConnectionsPanel.connections_files_exist or ConnectionsPanel.d is None:
+        return
+    d = ConnectionsPanel.d
+    if 'verts' not in d:
+        return
+    vertices_obj = bpy.data.objects.get('connections_vertices')
+    if vertices_obj is None:
+        print('connections_vertices is None!')
+        return
+    new_locations = mu.get_verts_co(d.verts, d.hemis)
+    existing_nodes = []
+    for label_name, new_location in zip(d.labels, new_locations):
+        node_name = '{}_vertice'.format(label_name)
+        node_obj = bpy.data.objects.get(node_name)
+        if node_obj is None:
+            continue
+        node_obj.location = new_location
+        existing_nodes.append(label_name)
+    for node1_name in existing_nodes:
+        for node2_name in existing_nodes:
+            con_obj = bpy.data.objects.get('{}-{}'.format(node1_name, node2_name))
+            if con_obj is None:
+                continue
+            mu.delete_hierarchy(con_obj.name)
+            # print(con_obj.name)
+
+
+
 
 
 def vertices_selected(vertice_name):
@@ -699,6 +734,18 @@ class FilterGraph(bpy.types.Operator):
 #             ConnectionsPanel.show_connections = not ConnectionsPanel.show_connections
 #         return {"FINISHED"}
 
+
+class UpdateNodesLocations(bpy.types.Operator):
+    bl_idname = "mmvt.update_nodes_locations"
+    bl_label = "mmvt update_nodes_locations"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        update_vertices_location()
+        return {"FINISHED"}
+
+
 class FilterNodes(bpy.types.Operator):
     bl_idname = "mmvt.filter_nodes"
     bl_label = "mmvt filter nodes"
@@ -803,6 +850,7 @@ def connections_draw(self, context):
     if 'fmri' in bpy.context.scene.connectivity_files.lower() or 'meg' in bpy.context.scene.connectivity_files.lower():
         filter_text = '{} nodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterNodes.bl_idname, text=filter_text, icon='BORDERMOVE')
+    layout.operator(UpdateNodesLocations.bl_idname, text='Update nodes locations', icon='IPO')
     # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
@@ -846,6 +894,7 @@ class ConnectionsPanel(bpy.types.Panel):
     connections_files_exist = False
     conn_names = []
     selected_indices = []
+    mask = None
 
     def draw(self, context):
         connections_draw(self, context)
@@ -872,7 +921,7 @@ def init(addon):
     if not ConnectionsPanel.connections_files_exist:
         print('No connectivity files were found in {}'.format(conn_files_template))
         ConnectionsPanel.init = False
-        unregister()
+        # unregister()
         return
 
     conn_names = [mu.namebase(fname).replace('_', ' ') for fname in conn_files]
@@ -905,6 +954,7 @@ def register():
         bpy.utils.register_class(FilterGraph)
         bpy.utils.register_class(FilterElectrodes)
         bpy.utils.register_class(FilterNodes)
+        bpy.utils.register_class(UpdateNodesLocations)
         # print('ConnectionsPanel was registered!')
     except:
         print("Can't register ConnectionsPanel!")
@@ -918,6 +968,7 @@ def unregister():
         bpy.utils.unregister_class(FilterGraph)
         bpy.utils.unregister_class(FilterElectrodes)
         bpy.utils.unregister_class(FilterNodes)
+        bpy.utils.unregister_class(UpdateNodesLocations)
     except:
         pass
         # print("Can't unregister ConnectionsPanel!")
