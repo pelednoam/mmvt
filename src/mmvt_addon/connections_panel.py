@@ -175,7 +175,7 @@ def create_conncection_per_condition(d, layers_rods, indices, mask, windows_num,
     mu.change_fcurves_colors(parent_obj.children)
 
 
-def create_vertices(d, mask, verts_color='pink'):
+def create_vertices(d, mask, verts_color='green'):
     layers = [False] * 20
     layers[_addon().CONNECTIONS_LAYER] = True
     vert_color = np.hstack((cu.name_to_rgb(verts_color), [0.]))

@@ -646,13 +646,22 @@ def _read_labels_parallel(files_chunk):
 #     return labels
 
 
-def calc_center_of_mass(labels, ret_mat=False):
+def calc_center_of_mass(labels, ret_mat=False, find_vertice=False):
+    if find_vertice:
+        if labels[0].subject == '':
+            raise Exception('find_vertice=True and no subject in labels!')
+        verts_pos = utils.load_surf(labels[0].subject, MMVT_DIR, SUBJECTS_DIR)
     center_of_mass = np.zeros((len(labels), 3)) if ret_mat else {}
     for ind, label in enumerate(labels):
-        if ret_mat:
-            center_of_mass[ind] = np.mean(label.pos, 0)
+        if find_vertice:
+            vert = label.center_of_mass(restrict_vertices=True)
+            pos = verts_pos[label.hemi][vert] / 1000
         else:
-            center_of_mass[label.name] = np.mean(label.pos, 0)
+            pos = np.mean(label.pos, 0)
+        if ret_mat:
+            center_of_mass[ind] = pos
+        else:
+            center_of_mass[label.name] = pos
     return center_of_mass
 
 

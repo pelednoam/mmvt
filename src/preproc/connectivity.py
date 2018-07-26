@@ -647,7 +647,7 @@ def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_
         labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
         # Remove labels that are not in sorted_labels_names
         labels = [l for l in labels if l.name in sorted_labels_names]
-    locations = lu.calc_center_of_mass(labels, ret_mat=True) * 1000
+    locations = lu.calc_center_of_mass(labels, ret_mat=True, find_vertice=True) * 1000
     hemis = ['rh' if l.hemi == 'rh' else 'lh' for l in labels]
     labels_names = [l.name for l in labels]
     return labels_names, locations, hemis
