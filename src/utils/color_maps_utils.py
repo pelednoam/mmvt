@@ -41,18 +41,21 @@ def combine_two_colormaps(cm1_name, cm2_name, new_cm_name='', invert_cm1=False, 
     return colors_map
 
 
-def create_linear_segmented_colormap(cm_name, n=256):
-    if cm_name in plt.cm.__dict__:
+def create_linear_segmented_colormap(cm_name, invert_cm=False, n=256):
+    # if cm_name in plt.cm.__dict__:
+    if not invert_cm:
         colors = plt.cm.__dict__[cm_name](np.linspace(0, 1, n))
-    else: # try the inverse cm_name (pubu - bupu)
-        if len(cm_name) == 4:
-            inverse_cm_name = '{}{}'.format(cm_name[2:4], cm_name[0:2])
-        elif len(cm_name) == 6:
-            inverse_cm_name = '{}{}{}'.format(cm_name[4:6], cm_name[2:4], cm_name[0:2])
-        if inverse_cm_name in plt.cm.__dict__:
-            colors = plt.cm.__dict__[inverse_cm_name](np.linspace(1, 0, n))
-        else:
-            raise Exception('Can\'t find the colormap {}!'.format(cm_name))
+    else:
+        colors = plt.cm.__dict__[cm_name](np.linspace(1, 0, n))
+    # else: # try the inverse cm_name (pubu - bupu)
+    #     if len(cm_name) == 4:
+    #         inverse_cm_name = '{}{}'.format(cm_name[2:4], cm_name[0:2])
+    #     elif len(cm_name) == 6:
+    #         inverse_cm_name = '{}{}{}'.format(cm_name[4:6], cm_name[2:4], cm_name[0:2])
+    #     if inverse_cm_name in plt.cm.__dict__:
+    #         colors = plt.cm.__dict__[inverse_cm_name](np.linspace(1, 0, n))
+    #     else:
+    #         raise Exception('Can\'t find the colormap {}!'.format(cm_name))
     colors_map = mcolors.LinearSegmentedColormap.from_list(cm_name, colors)
     return colors_map
 
@@ -92,7 +95,7 @@ def get_cm_obj(cm_name, new_cm_name='', invert_cm1=False, invert_cm2=False,  cm1
             new_cm_name = '{}-{}'.format(cm1_name, cm2_name)
         return combine_two_colormaps(cm1_name, cm2_name, new_cm_name, invert_cm1, invert_cm2, cm1_minmax, cm2_minmax)
     else:
-        return create_linear_segmented_colormap(cm_name)
+        return create_linear_segmented_colormap(cm_name, invert_cm1)
 
         # if cm_name == 'BuPu_YlOrRd':
     #     return create_BuPu_YlOrRd_cm()
@@ -119,7 +122,7 @@ def create_cm(cm_name, new_cm_name='', invert_cm1=False, invert_cm2=False, cm1_m
         if new_cm_name == '':
             new_cm_name = '{}-{}'.format(cm1_name, cm2_name)
     else:
-        new_cm_name = cm_name
+        new_cm_name = cm_name if new_cm_name == '' else new_cm_name
     cm = get_cm_obj(cm_name, new_cm_name, invert_cm1, invert_cm2, cm1_minmax, cm2_minmax)
     cm_mat = color_map_to_np_mat(cm)
     # check_cm_mat(cm_mat)
@@ -134,8 +137,8 @@ def create_cm(cm_name, new_cm_name='', invert_cm1=False, invert_cm2=False, cm1_m
 if __name__ == '__main__':
     # create_cm('YlOrRd')
     # create_cm('RdOrYl')
-    create_cm('PuBu')
-    create_cm('BuPu')
+    # create_cm('PuBu')
+    create_cm('PuBu', 'BuPu', invert_cm1=True)
     # create_cm('gray')
     # create_cm('jet')
     # create_cm('hot')
