@@ -241,17 +241,12 @@ def calcNoiseCov(epoches):
 
 def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
     import math
-    # T = raw._data.shape[1]
     T = raw.last_samp - raw.first_samp + 1
     if epoches_nun == 0:
         epoches_nun = math.floor((T - windows_length) / windows_shift + 1)
     demi_events = np.zeros((epoches_nun, 3), dtype=np.uint32)
     for win_ind in range(epoches_nun):
         demi_events[win_ind] = [win_ind * windows_shift, win_ind * windows_shift + windows_length, 0]
-    # for win_ind, win in enumerate(range(0, max_time, W * 2)):
-        # demi_events[win_ind * 2] = [win, win + W, 0]
-        # demi_events[win_ind * 2 + 1] = [win + W + 1, win + W * 2, 1]
-    # demi_events_ids = {'demi_1': 0, 'demi_2': 1}
     demi_events[:, :2] += raw.first_samp
     demi_conditions = {'demi': 0}
     return demi_events, demi_conditions

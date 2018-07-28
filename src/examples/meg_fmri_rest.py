@@ -207,7 +207,7 @@ def merge_connectivity(args):
         fmri_con = np.abs(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'fmri_static_corr.npy')).squeeze())
         d = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'connectivity', 'meg_static_pli.npz')))
         labels_names = np.load(op.join(MMVT_DIR, subject, 'connectivity', 'labels_names.npy'))
-        meg_threshold, fmri_threshold = 0.3, 0.3
+        meg_threshold, fmri_threshold = 0.3, 0.5
         # if args.top_k == 0:
         #     L = len(d.labels)
         #     args.top_k = int(np.rint(L * (L - 1) / 200))
@@ -233,7 +233,7 @@ def merge_connectivity(args):
 
 
 def calc_con(con, top_k):
-    con[np.triu_indices(con.shape[0])] = 0
+    # con[np.triu_indices(con.shape[0])] = 0
     top_k = utils.top_n_indexes(con, top_k)
     norm_con = np.zeros(con.shape)
     for top in top_k:
@@ -243,33 +243,37 @@ def calc_con(con, top_k):
 
 
 def calc_hubs(con_meg, con_fmri, labels, meg_threshold=0, fmri_threshold=0):
-    meg_hub = np.argmax(np.sum(con_meg > meg_threshold, 0))
-    fmri_hub = np.argmax(np.sum(con_fmri > fmri_threshold, 0))
+    # con_meg[np.triu_indices(con_meg.shape[0])] = 0
+    # con_fmri[np.triu_indices(con_fmri.shape[0])] = 0
+    meg_sum = np.sum(np.abs(con_meg) > meg_threshold, 0)
+    fmri_sum = np.sum(np.abs(con_fmri) > fmri_threshold, 0)
+    meg_hub = np.argmax(meg_sum)
+    fmri_hub = np.argmax(fmri_sum)
     intersects = np.intersect1d(np.array(np.where(con_fmri > fmri_threshold)).ravel(),
                                 np.array(np.where(con_meg > meg_threshold)).ravel())
     int_con = np.zeros(con_meg.shape)
     for inter_ind in intersects:
-        int_con[:, inter_ind] = con_meg[:, inter_ind] + con_fmri[:, inter_ind]
+        int_con[:, inter_ind] = int_con[inter_ind, :] = con_meg[:, inter_ind] + con_fmri[:, inter_ind]
     int_hub = np.argmax(np.sum(int_con > 0, 0))
-    print('meg: {}, fmri: {}, both: {}'.format(labels[meg_hub], labels[fmri_hub], labels[int_hub]))
+    print('meg: {}({}) {}, fmri: {}({}) {}'.format(
+        labels[meg_hub], meg_hub, np.max(meg_sum),
+        labels[fmri_hub], fmri_hub, np.max(fmri_sum)))
     return meg_hub, fmri_hub, int_hub
 
 
 def create_con_with_only_hubs(con_meg, con_fmri, meg_hub, fmri_hub, int_hub):
     con_join_hubs, con_meg_hubs, con_fmri_hubs = np.zeros(con_meg.shape), np.zeros(con_meg.shape), np.zeros(con_meg.shape)
-    con_meg_hubs[:, meg_hub] = -con_meg[:, meg_hub]
-    con_fmri_hubs[:, fmri_hub] = con_fmri[:, fmri_hub]
-    for hub in [meg_hub, fmri_hub, int_hub]:
-        meg_inds = np.where(con_meg[:, hub])[0]
-        fmri_inds = np.where(con_fmri[:, hub])[0]
+    con_meg_hubs[meg_hub, :] = con_meg_hubs[:, meg_hub] = -con_meg[meg_hub]
+    con_fmri_hubs[fmri_hub, :] = con_fmri_hubs[:, fmri_hub] = con_fmri[fmri_hub]
+    for hub in [meg_hub, fmri_hub]:
+        meg_inds = np.where(con_meg[hub])[0]
+        fmri_inds = np.where(con_fmri[hub])[0]
         int_inds = np.intersect1d(meg_inds, fmri_inds)
         if len(int_inds) > 0:
             print('Intersected connections!')
             # print(int_inds)
-        con_join_hubs[:, hub] = con_fmri[:, hub] - con_meg[:, hub]
+        con_join_hubs[hub, :] = con_join_hubs[:, hub] = con_fmri[hub] - con_meg[hub]
     return con_meg_hubs, con_fmri_hubs, con_join_hubs
-
-
 
 
 if __name__ == '__main__':

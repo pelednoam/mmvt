@@ -636,7 +636,7 @@ def create_vertices_lookup(con_indices, con_names, labels):
 
 def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_labels_names=None):
     labels = lu.read_labels(
-        subject, SUBJECTS_DIR, args.atlas, exclude=tuple(args.labels_exclude),
+        subject, SUBJECTS_DIR, args.atlas, # exclude=tuple(args.labels_exclude)
         sorted_according_to_annot_file=sorted_according_to_annot_file)
     if not sorted_labels_names is None:
         sorted_labels_names_fix = []
@@ -646,9 +646,17 @@ def calc_lables_info(subject, args, sorted_according_to_annot_file=True, sorted_
             label_fix = lu.build_label_name(org_delim, org_pos, label, label_hemi)
             sorted_labels_names_fix.append(label_fix)
         sorted_labels_names = sorted_labels_names_fix
-        labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
+        sorted_labels = []
+        for sorted_labels_name in sorted_labels_names:
+            find_labels = [l for l in labels if l.name == sorted_labels_name]
+            if len(find_labels) == 1:
+                sorted_labels.append(find_labels[0])
+            else:
+                raise Exception('Couldn\'t find all the labels!')
+        # labels.sort(key=lambda x: np.where(sorted_labels_names == x.name)[0])
         # Remove labels that are not in sorted_labels_names
-        labels = [l for l in labels if l.name in sorted_labels_names]
+        # labels = [l for l in labels if l.name in sorted_labels_names]
+        labels = sorted_labels
     locations, verts = lu.calc_center_of_mass(labels, ret_mat=True, find_vertice=True)
     locations *= 1000
     hemis = ['rh' if l.hemi == 'rh' else 'lh' for l in labels]
@@ -728,10 +736,8 @@ def calc_connectivity(data, labels, hemis, args):
             data_max, data_min = data_minmax, -data_minmax
     else:
         data_max, data_min = args.data_max, args.data_min
-    print('data_max: {}, data_min: {}'.format(data_max, data_min))
+    print('data_max: {}, data_min: {}, con len: {}'.format(data_max, data_min, len(con_names)))
     # con_colors = utils.mat_to_colors(stat_data, data_min, data_max, args.color_map)
-
-    print(len(con_names))
     return None, con_indices, con_names, con_values, con_type, data_max, data_min
 
 
@@ -923,7 +929,7 @@ def calc_fmri_corr_degree(subject, identifier='', threshold=0.7, connectivity_me
         return False
     corr = np.load(corr_fname)
     np.fill_diagonal(corr, 0)
-    degree_mat = np.sum(corr > threshold, 0)
+    degree_mat = np.sum(corr > threshold, 1)
     output_fname = op.join(MMVT_DIR, subject, 'connectivity',  '{}{}_{}_degree.npy'.format(
         identifier.replace('_static', ''), connectivity_method, str(threshold)))
     np.save(output_fname, degree_mat)

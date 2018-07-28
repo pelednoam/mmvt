@@ -460,6 +460,10 @@ def plot_connections(d, plot_time, threshold=None):
             _addon().set_colorbar_title(colorbar_title)
 
 
+def get_connectivity_name():
+    return bpy.context.scene.connectivity_files
+
+
 def get_all_selected_connections(d):
     objs, inds = [], []
     parent_obj_name = get_connections_parent_name()
@@ -835,7 +839,7 @@ def connections_draw(self, context):
     layout.prop(context.scene, "connectivity_files", text="")
     layout.operator(CheckConnections.bl_idname, text="Check connections ", icon='RNA_ADD')
     layout.label(text='# Connections: {}'.format(bpy.context.scene.connections_num))
-    layout.label(text='{:.2f} < values < {:.2f}'.format(bpy.context.scene.connections_min, bpy.context.scene.connections_max))
+    layout.label(text='{:.2f} < values < {:.2f}'.format(bpy.context.scene.connections_threshold, bpy.context.scene.connections_max))
     layout.operator(CreateConnections.bl_idname, text="Create connections ", icon='RNA_ADD')
     layout.prop(context.scene, 'connections_threshold', text="Threshold")
     layout.prop(context.scene, 'above_below_threshold', text='')
