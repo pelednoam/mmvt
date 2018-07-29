@@ -220,10 +220,10 @@ def merge_connectivity(args):
         # if len(np.where(con)[0]) != args.top_k * 2:
         #     print('Wrong number of values in the conn matrix!'.format(len(np.where(con)[0])))
         #     continue
-        meg_hub, fmri_hub, int_hub = calc_hubs(meg_con, fmri_con, labels_names, meg_threshold, fmri_threshold)
+        meg_hub, fmri_hub = calc_hubs(meg_con, fmri_con, labels_names, meg_threshold, fmri_threshold)
         meg_con_hubs, fmri_con_hubs, join_con_hubs = create_con_with_only_hubs(
-            meg_con, fmri_con, meg_hub, fmri_hub, int_hub)
-        for con_hubs, con_name in zip([meg_con_hubs, fmri_con_hubs, join_con_hubs ], ['meg-hubs', 'fmri-hubs', 'fmri-meg-hubs']):
+            meg_con, fmri_con, meg_hub, fmri_hub, meg_threshold, fmri_threshold)
+        for con_hubs, con_name in zip([meg_con_hubs, fmri_con_hubs, join_con_hubs], ['meg-hubs', 'fmri-hubs', 'fmri-meg-hubs']):
             output_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}.npz'.format(con_name))
             con_vertices_fname = op.join(MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(con_name))
             connectivity.save_connectivity(
@@ -249,30 +249,38 @@ def calc_hubs(con_meg, con_fmri, labels, meg_threshold=0, fmri_threshold=0):
     fmri_sum = np.sum(np.abs(con_fmri) > fmri_threshold, 0)
     meg_hub = np.argmax(meg_sum)
     fmri_hub = np.argmax(fmri_sum)
-    intersects = np.intersect1d(np.array(np.where(con_fmri > fmri_threshold)).ravel(),
-                                np.array(np.where(con_meg > meg_threshold)).ravel())
-    int_con = np.zeros(con_meg.shape)
-    for inter_ind in intersects:
-        int_con[:, inter_ind] = int_con[inter_ind, :] = con_meg[:, inter_ind] + con_fmri[:, inter_ind]
-    int_hub = np.argmax(np.sum(int_con > 0, 0))
+    # intersects = np.intersect1d(np.array(np.where(con_fmri > fmri_threshold)).ravel(),
+    #                             np.array(np.where(con_meg > meg_threshold)).ravel())
+    # int_con = np.zeros(con_meg.shape)
+    # for inter_ind in intersects:
+    #     int_con[:, inter_ind] = int_con[inter_ind, :] = con_meg[:, inter_ind] + con_fmri[:, inter_ind]
+    # int_hub = np.argmax(np.sum(int_con > 0, 0))
     print('meg: {}({}) {}, fmri: {}({}) {}'.format(
         labels[meg_hub], meg_hub, np.max(meg_sum),
         labels[fmri_hub], fmri_hub, np.max(fmri_sum)))
-    return meg_hub, fmri_hub, int_hub
+    return meg_hub, fmri_hub
 
 
-def create_con_with_only_hubs(con_meg, con_fmri, meg_hub, fmri_hub, int_hub):
-    con_join_hubs, con_meg_hubs, con_fmri_hubs = np.zeros(con_meg.shape), np.zeros(con_meg.shape), np.zeros(con_meg.shape)
+def create_con_with_only_hubs(con_meg, con_fmri, meg_hub, fmri_hub, meg_threshold=0, fmri_threshold=0):
+    shp = con_meg.shape
+    con_join_hubs, con_meg_hubs, con_fmri_hubs, clean_con_meg, clean_con_fmri = \
+        np.zeros(shp), np.zeros(shp), np.zeros(shp), np.zeros(shp), np.zeros(shp)
     con_meg_hubs[meg_hub, :] = con_meg_hubs[:, meg_hub] = -con_meg[meg_hub]
     con_fmri_hubs[fmri_hub, :] = con_fmri_hubs[:, fmri_hub] = con_fmri[fmri_hub]
-    for hub in [meg_hub, fmri_hub]:
-        meg_inds = np.where(con_meg[hub])[0]
-        fmri_inds = np.where(con_fmri[hub])[0]
-        int_inds = np.intersect1d(meg_inds, fmri_inds)
-        if len(int_inds) > 0:
-            print('Intersected connections!')
-            # print(int_inds)
-        con_join_hubs[hub, :] = con_join_hubs[:, hub] = con_fmri[hub] - con_meg[hub]
+
+    clean_con_meg[np.where(abs(con_meg) > meg_threshold)] = con_meg[np.where(abs(con_meg) > meg_threshold)]
+    clean_con_fmri[np.where(abs(con_fmri) > fmri_threshold)] = con_fmri[np.where(abs(con_fmri) > fmri_threshold)]
+    con_join_hubs[meg_hub, :] = con_join_hubs[:, meg_hub] = -clean_con_meg[meg_hub]
+    con_join_hubs[fmri_hub, :] = con_join_hubs[:, fmri_hub] = clean_con_fmri[fmri_hub]
+
+    # for hub in [meg_hub, fmri_hub]:
+    #     meg_inds = np.where(con_meg[hub])[0]
+    #     fmri_inds = np.where(con_fmri[hub])[0]
+    #     int_inds = np.intersect1d(meg_inds, fmri_inds)
+    #     if len(int_inds) > 0:
+    #         print('Intersected connections!')
+    #         # print(int_inds)
+    #     con_join_hubs[hub, :] = con_join_hubs[:, hub] = con_fmri[hub] - con_meg[hub]
     return con_meg_hubs, con_fmri_hubs, con_join_hubs
 
 
