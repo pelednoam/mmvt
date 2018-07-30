@@ -2489,7 +2489,7 @@ bpy.types.Scene.hide_connection_under_threshold = bpy.props.BoolProperty(
 bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
     items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
 bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
-    items=[('abs', 'Absolute values', '', 0), ('pos', 'Only positive', '', 1), ('neg', 'only negative', '', 2)])
+    items=[('abs', 'Absolute peak', '', 0), ('pos', 'Positive peak', '', 1), ('neg', 'Negative peak', '', 2)])
 bpy.types.Scene.meg_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
 bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
 bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)

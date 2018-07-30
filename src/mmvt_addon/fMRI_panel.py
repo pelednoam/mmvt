@@ -377,7 +377,8 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
         bpy.context.scene.fmri_clusters = fMRIPanel.current_cluster = fMRIPanel.clusters[0]
         if bpy.context.scene.fmri_clusters in fMRIPanel.lookup[key]:
             fMRIPanel.cluster_labels = fMRIPanel.lookup[key][bpy.context.scene.fmri_clusters]
-    find_electrodes_close_to_cluster()
+    if bpy.data.objects.get('Deep_electrodes') is not None:
+        find_electrodes_close_to_cluster()
 
 
 def unfilter_clusters():
@@ -393,6 +394,7 @@ def fmri_electrodes_intersection():
     print(electrodes_in_clusters)
 
 
+@mu.tryit()
 def find_electrodes_close_to_cluster():
     electrodes_pos = _addon().electrodes.get_electrodes_pos()
     electrodes_names = _addon().electrodes.get_electrodes_names()
