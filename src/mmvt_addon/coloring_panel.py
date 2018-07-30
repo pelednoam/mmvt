@@ -1316,23 +1316,24 @@ def color_manually():
                         bpy.data.objects['Cortex-lh'].children[0].name)
                     label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
                     obj_type = mu.check_obj_type(label_obj_name)
-
+                    object_added = True
         # else:
         if obj_type is not None and not object_added:
             objects_names[obj_type].append(obj_name)
             colors[obj_type].append(color_rgb)
             data[obj_type].append(1.)
+        else:
+            print('Couldn\'t plot {}!'.format(obj_name))
 
     if coloring_objects:
         color_objects(objects_names, colors, data)
     elif coloring_labels:
-        plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
-    ColoringMakerPanel.labels_plotted = []
+        _addon.labels.plot_labels(objects_names[mu.OBJ_TYPE_LABEL], colors[mu.OBJ_TYPE_LABEL], atlas)
+    _addon().labels.set_labels_plotted([])
     for atlas, labels_tup in other_atals_labels.items():
-        plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas,
-                    do_plot=False) # atlas_labels_rh[atlas], atlas_labels_lh[atlas],
+        _addon().labels.plot_labels([t[0] for t in labels_tup], [t[1] for t in labels_tup], atlas, do_plot=False)
     if len(other_atals_labels) > 0:
-        _plot_labels()
+        _addon().labels._plot_labels()
     if len(values) > 0:
         _addon().set_colorbar_max_min(np.max(values), np.min(values))
     _addon().set_colorbar_title(bpy.context.scene.coloring_files.replace('_', ' '))
@@ -1350,6 +1351,8 @@ def find_atlas_labels(obj_name, atlas, color_rgb, other_atals_labels, atlas_labe
     if labels_fol != '':
         if atlas_labels is None:
             atlas_labels = [l.name for l in mu.read_labels_from_annots(atlas)]
+        if len(atlas_labels) == 0:
+            return other_atals_labels, object_added
         delim, pos, label, hemi = mu.get_hemi_delim_and_pos(obj_name)
         labels_delim, labels_pos, labels_label, _ = mu.get_hemi_delim_and_pos(atlas_labels[0])
         label_obj_name = mu.build_label_name(labels_delim, labels_pos, label, hemi)
@@ -1908,17 +1911,6 @@ def get_condditions_from_labels_fcurves():
     return conditions
 
 
-def plot_labels_folder():
-    labels_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.labels_folder), '*.label'))
-    if len(labels_files) == 0:
-        print('No labels were found in {}!'.format(op.realpath(bpy.context.scene.labels_folder)))
-    else:
-        colors = cu.get_distinct_colors_hs(len(labels_files))
-        # todo: same color for each hemi
-        for label_fname, color in zip(labels_files, colors):
-            plot_label(label_fname)
-
-
 class ColorEEGHelmet(bpy.types.Operator):
     bl_idname = "mmvt.eeg_helmet"
     bl_label = "mmvt eeg helmet"
@@ -2169,121 +2161,6 @@ class ClearColors(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
-    bl_idname = "mmvt.plot_label_file"
-    bl_label = "Plot label file"
-
-    filename_ext = '.label'
-    filter_glob = bpy.props.StringProperty(default='*.label', options={'HIDDEN'}, maxlen=255)
-
-    def execute(self, context):
-        label_fname = self.filepath
-        plot_label(label_fname)
-        return {'FINISHED'}
-
-
-class PlotLabelsFolder(bpy.types.Operator):
-    bl_idname = "mmvt.plot_labels_folder"
-    bl_label = "mmvt plot labels folder"
-    bl_options = {"UNDO"}
-
-    @staticmethod
-    def invoke(self, context, event=None):
-        plot_labels_folder()
-        return {'FINISHED'}
-
-
-def plot_label(label, color=''):
-    if isinstance(label, str):
-        label = mu.read_label_file(label)
-    else:
-        try:
-            _, _, _ = label.name, label.vertices, label.pos
-        except:
-            raise Exception('plot_label: label can be label fname or label object!')
-
-    if bpy.context.scene.plot_label_contour:
-        _addon().color_contours(specific_labels=[label.name])
-    else:
-        color = list(bpy.context.scene.labels_color) if color == '' else color
-        ColoringMakerPanel.labels_plotted.append((label, color))
-        _plot_labels()
-
-
-def _plot_labels(labels_plotted_tuple=None, faces_verts=None, choose_rand_colors=False):
-    if labels_plotted_tuple is None:
-        labels_plotted_tuple = ColoringMakerPanel.labels_plotted
-    if faces_verts is None:
-        faces_verts = ColoringMakerPanel.faces_verts
-    hemi_verts_num = {hemi: faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
-    data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
-    colors_num = len(labels_plotted_tuple)
-    rand_colors = mu.get_distinct_colors(colors_num) if choose_rand_colors else [''] * colors_num
-    for (label, color), rand_color in zip(labels_plotted_tuple, rand_colors):
-        label.vertices = label.vertices[label.vertices < hemi_verts_num[label.hemi]]
-        if choose_rand_colors:
-            color = rand_color
-        data[label.hemi][label.vertices] = [1, *color]
-    for hemi in mu.HEMIS:
-        color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
-    _addon().show_activity()
-
-
-def plot_labels(labels_names, colors, atlas, atlas_labels_rh=[], atlas_labels_lh=[], do_plot=True):
-    if len(atlas_labels_rh) == 0 and len(atlas_labels_lh) == 0: # or atlas == bpy.context.scene.atlas:
-        atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
-        atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
-    atlas_labels = atlas_labels_rh + atlas_labels_lh
-    if len(atlas_labels) == 0:
-        print("Couldn't find the atlas! ({})".format(atlas))
-        return
-    annot_verts_ok = check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas)
-    if not annot_verts_ok:
-        return
-    org_delim, org_pos, label, label_hemi = mu.get_hemi_delim_and_pos(atlas_labels[0].name)
-    labels_names_fix = []
-    for label_name in labels_names:
-        delim, pos, label, label_hemi = mu.get_hemi_delim_and_pos(label_name)
-        label = mu.get_label_hemi_invariant_name(label_name)
-        label_fix = mu.build_label_name(org_delim, org_pos, label, label_hemi)
-        labels_names_fix.append(label_fix)
-    labels = [l for l in atlas_labels if l.name in labels_names_fix]
-    if len(labels) < len(labels_names):
-        dump_fname = op.join(mu.get_user_fol(), 'logs', '{}_labels.txt'.format(atlas))
-        print("Can't find all the labels ({}) in the {} atlas!".format(labels_names, atlas))
-        print("Take a look here for the {} labels names: {}".format(atlas, dump_fname))
-        with open(dump_fname, 'w') as output_file:
-            output_file.write("Can't find all the labels ({}) in the {} atlas!\n".format(labels_names, atlas))
-            output_file.write("Take a look here for the {} labels names:\n".format(atlas))
-            for label in atlas_labels:
-                output_file.write('{}\n'.format(label.name))
-        import webbrowser
-        webbrowser.open_new(dump_fname)
-        return
-    labels.sort(key=lambda x: labels_names_fix.index(x.name))
-    # todo: check if bpy.context.scene.color_rois_homogeneously
-    for label, color in zip(labels, colors):
-        print('color {}: {}'.format(label, color))
-        # plot_label(label, color)
-        ColoringMakerPanel.labels_plotted.append((label, color))
-    if do_plot:
-        _plot_labels()
-
-
-def check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas):
-    annot_verts_num_lh = max([max(l.vertices) for l in atlas_labels_lh])
-    annot_verts_num_rh = max([max(l.vertices) for l in atlas_labels_rh])
-    hemi_verts_num_lh = len(bpy.data.objects['lh'].data.vertices)
-    hemi_verts_num_rh = len(bpy.data.objects['rh'].data.vertices)
-    if annot_verts_num_lh >= hemi_verts_num_lh or annot_verts_num_rh >= hemi_verts_num_rh:
-        print('{} has wrong number of vertices!'.format(atlas))
-        print('rh: annot {}, hemi {}'.format(annot_verts_num_lh, hemi_verts_num_lh))
-        print('lh: annot {}, hemi {}'.format(annot_verts_num_rh, hemi_verts_num_rh))
-        return False
-    else:
-        return True
-
-
 def clear_colors():
     clear_cortex()
     clear_subcortical_fmri_activity()
@@ -2291,7 +2168,7 @@ def clear_colors():
         clear_colors_from_parent_childrens(root)
     clear_connections()
     ColoringMakerPanel.what_is_colored = set()
-    ColoringMakerPanel.labels_plotted = []
+    _addon().labels.set_labels_plotted([])
 
 
 def clear_connections():
@@ -2463,13 +2340,13 @@ def draw(self, context):
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
             layout.prop(context.scene, 'plot_label_contour', text='Plot labels as contour')
-        if len(ColoringMakerPanel.labels_plotted) > 0:
+        if len(_addon().labels.get_labels_plotted()) > 0:
             layout.prop(context.scene, 'show_labels_plotted', text='Show labels list')
             if bpy.context.scene.show_labels_plotted:
                 layout.label(text='Labels plotted:')
                 box = layout.box()
                 col = box.column()
-                for label, color in ColoringMakerPanel.labels_plotted:
+                for label, color in _addon().labels.get_labels_plotted():
                     mu.add_box_line(col, label.name, percentage=1)
 
     # layout.label(text="Choose labels' folder")
@@ -2477,10 +2354,6 @@ def draw(self, context):
     # row.prop(context.scene, 'labels_folder', text='')
     # if bpy.context.scene.labels_folder != '':
     #     row.operator(PlotLabelsFolder.bl_idname, text='', icon='GAME')
-    row = layout.row(align=True)
-    row.operator(ChooseLabelFile.bl_idname, text="plot a label", icon='GAME').filepath = op.join(
-        mu.get_user_fol(), '*.label')
-    row.prop(context.scene, 'labels_color', text='')
     layout.operator(ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
 
 
@@ -2549,7 +2422,6 @@ class ColoringMakerPanel(bpy.types.Panel):
     meg_data_min, meg_data_max = 0, 0
     eeg_sensors_data_minmax, eeg_colors_ratio = None, None
     meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
-    labels_plotted = []
     static_conn = None
     connectivity_labels = []
     activity_values = {hemi:[] for hemi in mu.HEMIS}
@@ -2963,7 +2835,6 @@ def register():
         bpy.utils.register_class(ColorConnectionsLabelsAvg)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
-        bpy.utils.register_class(ChooseLabelFile)
         bpy.utils.register_class(PlotLabelsFolder)
         bpy.utils.register_class(ColorStaticConnectionsDegree)
         # print('Freeview Panel was registered!')
@@ -2994,7 +2865,6 @@ def unregister():
         bpy.utils.unregister_class(ColorConnectionsLabelsAvg)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
-        bpy.utils.unregister_class(ChooseLabelFile)
         bpy.utils.unregister_class(PlotLabelsFolder)
         bpy.utils.unregister_class(ColorStaticConnectionsDegree)
     except:

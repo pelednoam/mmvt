@@ -1054,15 +1054,17 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
 
 
 @utils.tryit()
-def create_high_level_atlas(subject, high_level_atlas_name='high_level_atlas'):
+def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas'):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas40.annot')):
         fu.create_annotation_file(
             subject, 'aparc.DKTatlas40', subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
     look = create_labels_names_lookup(subject, 'aparc.DKTatlas40')
     csv_fname = op.join(MMVT_DIR, '{}.csv'.format(high_level_atlas_name))
     if not op.isfile(csv_fname):
-        print('No {}.csv in {}!'.format(high_level_atlas_name, MMVT_DIR))
-        return False
+        csv_fname = op.join(MMVT_DIR, '{}.csv'.format(high_level_atlas_name.replace('.', '_')))
+        if not op.isfile(csv_fname):
+            print('No {}.csv in {}!'.format(high_level_atlas_name, MMVT_DIR))
+            return False
     labels = []
     for hemi in utils.HEMIS:
         for line in utils.csv_file_reader(csv_fname, ','):
@@ -1074,6 +1076,9 @@ def create_high_level_atlas(subject, high_level_atlas_name='high_level_atlas'):
                 new_label = look['{}-{}'.format(line[0], hemi)]
             labels.append(new_label)
     lu.labels_to_annot(subject, SUBJECTS_DIR, high_level_atlas_name, labels=labels, overwrite=True)
+    save_labels_vertices(subject, high_level_atlas_name)
+    calc_labeles_contours(subject, high_level_atlas_name)
+    calc_labels_center_of_mass(subject, high_level_atlas_name)
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(
         '{hemi}', high_level_atlas_name)))
 
@@ -1577,7 +1582,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--label_name', help='', required=False, default='')
     parser.add_argument('--hemi', help='', required=False, default='')
     parser.add_argument('--label_r', help='', required=False, default='5', type=int)
-    parser.add_argument('--high_level_atlas_name', help='', required=False, default='high_level_atlas')
+    parser.add_argument('--high_level_atlas_name', help='', required=False, default='high.level.atlas')
 
     parser.add_argument('--slice_xyz', help='', required=False, default='166,118,113', type=au.int_arr_type)
     parser.add_argument('--slices_modality', help='', required=False, default='mri')

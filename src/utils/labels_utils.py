@@ -659,6 +659,7 @@ def calc_center_of_mass(labels, ret_mat=False, find_vertice=False):
             pos = verts_pos[label.hemi][vert] / 1000
         else:
             pos = np.mean(label.pos, 0)
+            vert = -1
         if ret_mat:
             center_of_mass[ind] = pos
             verts[ind] = vert

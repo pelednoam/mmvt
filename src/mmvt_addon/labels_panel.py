@@ -7,6 +7,8 @@ import traceback
 import shutil
 import numpy as np
 import mmvt_utils as mu
+import colors_utils as cu
+
 
 
 def _addon():
@@ -208,6 +210,116 @@ def _load_labels_data(labels_data_fname):
     return d, labels, data, atlas, cb_title, labels_max, labels_min, cmap
 
 
+def plot_label(label, color=''):
+    if isinstance(label, str):
+        label = mu.read_label_file(label)
+    else:
+        try:
+            _, _, _ = label.name, label.vertices, label.pos
+        except:
+            raise Exception('plot_label: label can be label fname or label object!')
+
+    if bpy.context.scene.plot_label_contour:
+        _addon().color_contours(specific_labels=[label.name])
+    else:
+        color = list(bpy.context.scene.labels_color) if color == '' else color
+        LabelsPanel.labels_plotted.append((label, color))
+        _plot_labels()
+
+
+def _plot_labels(labels_plotted_tuple=None, faces_verts=None, choose_rand_colors=False):
+    if labels_plotted_tuple is None:
+        labels_plotted_tuple = LabelsPanel.labels_plotted
+    if faces_verts is None:
+        faces_verts = _addon().coloring.get_faces_verts()
+    hemi_verts_num = {hemi: faces_verts[hemi].shape[0] for hemi in mu.HEMIS}
+    data = {hemi: np.zeros((hemi_verts_num[hemi], 4)) for hemi in mu.HEMIS}
+    colors_num = len(labels_plotted_tuple)
+    rand_colors = mu.get_distinct_colors(colors_num) if choose_rand_colors else [''] * colors_num
+    for (label, color), rand_color in zip(labels_plotted_tuple, rand_colors):
+        label.vertices = label.vertices[label.vertices < hemi_verts_num[label.hemi]]
+        if choose_rand_colors:
+            color = rand_color
+        data[label.hemi][label.vertices] = [1, *color]
+    for hemi in mu.HEMIS:
+        _addon().coloring.color_hemi_data('inflated_{}'.format(hemi), data[hemi], threshold=0.5)
+    _addon().show_activity()
+
+
+def plot_labels(labels_names, colors, atlas, atlas_labels_rh=[], atlas_labels_lh=[], do_plot=True):
+    if len(atlas_labels_rh) == 0 and len(atlas_labels_lh) == 0: # or atlas == bpy.context.scene.atlas:
+        atlas_labels_rh = mu.read_labels_from_annots(atlas, hemi='rh')
+        atlas_labels_lh = mu.read_labels_from_annots(atlas, hemi='lh')
+    atlas_labels = atlas_labels_rh + atlas_labels_lh
+    if len(atlas_labels) == 0:
+        print("Couldn't find the atlas! ({})".format(atlas))
+        return
+    annot_verts_ok = check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas)
+    if not annot_verts_ok:
+        return
+    org_delim, org_pos, label, label_hemi = mu.get_hemi_delim_and_pos(atlas_labels[0].name)
+    labels_names_fix = []
+    for label_name in labels_names:
+        delim, pos, label, label_hemi = mu.get_hemi_delim_and_pos(label_name)
+        label = mu.get_label_hemi_invariant_name(label_name)
+        label_fix = mu.build_label_name(org_delim, org_pos, label, label_hemi)
+        labels_names_fix.append(label_fix)
+    labels = [l for l in atlas_labels if l.name in labels_names_fix]
+    if len(labels) < len(labels_names):
+        dump_fname = op.join(mu.get_user_fol(), 'logs', '{}_labels.txt'.format(atlas))
+        print("Can't find all the labels ({}) in the {} atlas!".format(labels_names, atlas))
+        print("Take a look here for the {} labels names: {}".format(atlas, dump_fname))
+        with open(dump_fname, 'w') as output_file:
+            output_file.write("Can't find all the labels ({}) in the {} atlas!\n".format(labels_names, atlas))
+            output_file.write("Take a look here for the {} labels names:\n".format(atlas))
+            for label in atlas_labels:
+                output_file.write('{}\n'.format(label.name))
+        import webbrowser
+        webbrowser.open_new(dump_fname)
+        return
+    labels.sort(key=lambda x: labels_names_fix.index(x.name))
+    # todo: check if bpy.context.scene.color_rois_homogeneously
+    for label, color in zip(labels, colors):
+        print('color {}: {}'.format(label, color))
+        # plot_label(label, color)
+        LabelsPanel.labels_plotted.append((label, color))
+    if do_plot:
+        _plot_labels()
+
+
+def check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas):
+    annot_verts_num_lh = max([max(l.vertices) for l in atlas_labels_lh])
+    annot_verts_num_rh = max([max(l.vertices) for l in atlas_labels_rh])
+    hemi_verts_num_lh = len(bpy.data.objects['lh'].data.vertices)
+    hemi_verts_num_rh = len(bpy.data.objects['rh'].data.vertices)
+    if annot_verts_num_lh >= hemi_verts_num_lh or annot_verts_num_rh >= hemi_verts_num_rh:
+        print('{} has wrong number of vertices!'.format(atlas))
+        print('rh: annot {}, hemi {}'.format(annot_verts_num_lh, hemi_verts_num_lh))
+        print('lh: annot {}, hemi {}'.format(annot_verts_num_rh, hemi_verts_num_rh))
+        return False
+    else:
+        return True
+
+
+def plot_labels_folder():
+    labels_files = glob.glob(op.join(bpy.path.abspath(bpy.context.scene.labels_folder), '*.label'))
+    if len(labels_files) == 0:
+        print('No labels were found in {}!'.format(op.realpath(bpy.context.scene.labels_folder)))
+    else:
+        colors = cu.get_distinct_colors_hs(len(labels_files))
+        # todo: same color for each hemi
+        for label_fname, color in zip(labels_files, colors):
+            plot_label(label_fname)
+
+
+def get_labels_plotted():
+    return LabelsPanel.labels_plotted
+
+
+def set_labels_plotted(val):
+    LabelsPanel.labels_plotted = val
+
+
 def labels_draw(self, context):
     layout = self.layout
 
@@ -241,6 +353,10 @@ def labels_draw(self, context):
         row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
 
     col = layout.box().column()
+    row = col.row(align=True)
+    row.operator(ChooseLabelFile.bl_idname, text="plot a label", icon='GAME').filepath = op.join(
+        mu.get_user_fol(), '*.label')
+    row.prop(context.scene, 'labels_color', text='')
     if not GrowLabel.running:
         col.label(text='Creating a new label:')
         col.prop(context.scene, 'new_label_name', text='')
@@ -249,8 +365,20 @@ def labels_draw(self, context):
         col.operator(GrowLabel.bl_idname, text=txt, icon='OUTLINER_DATA_MESH')
     else:
         col.label(text='Growing the label...')
+
     layout.operator(ClearContours.bl_idname, text="Clear contours", icon='PANEL_CLOSE')
     layout.operator(_addon().ClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
+
+
+class PlotLabelsFolder(bpy.types.Operator):
+    bl_idname = "mmvt.plot_labels_folder"
+    bl_label = "mmvt plot labels folder"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        plot_labels_folder()
+        return {'FINISHED'}
 
 
 class ChooseLabesDataFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
@@ -367,6 +495,19 @@ class NextLabelConture(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+    bl_idname = "mmvt.plot_label_file"
+    bl_label = "Plot label file"
+
+    filename_ext = '.label'
+    filter_glob = bpy.props.StringProperty(default='*.label', options={'HIDDEN'}, maxlen=255)
+
+    def execute(self, context):
+        label_fname = self.filepath
+        plot_label(label_fname)
+        return {'FINISHED'}
+
+
 bpy.types.Scene.cortical_labels_data_files = bpy.props.EnumProperty(
     items=[], description="label files", update=labels_data_files_update)
 bpy.types.Scene.new_label_name = bpy.props.StringProperty()
@@ -386,6 +527,7 @@ class LabelsPanel(bpy.types.Panel):
     
     labels_data_files = []
     existing_contoures = []
+    labels_plotted = []
     contours_coloring_exist = False
     labels_contours = {}
     labels = dict(rh=[], lh=[])
@@ -444,6 +586,8 @@ def register():
         bpy.utils.register_class(PrevLabelConture)
         bpy.utils.register_class(PlotLabelsData)
         bpy.utils.register_class(ChooseLabesDataFile)
+        bpy.utils.register_class(ChooseLabelFile)
+
     except:
         print("Can't register Labels Panel!")
 
@@ -458,5 +602,7 @@ def unregister():
         bpy.utils.unregister_class(PrevLabelConture)
         bpy.utils.unregister_class(PlotLabelsData)
         bpy.utils.unregister_class(ChooseLabesDataFile)
+        bpy.utils.unregister_class(ChooseLabelFile)
+
     except:
         pass
