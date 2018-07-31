@@ -4034,7 +4034,7 @@ def get_subjects_itr_func(args):
 
 def call_main(args):
     subjects_itr, subject_func = get_subjects_itr_func(args)
-    pu.run_on_subjects(args, main, subjects_itr, subject_func)
+    return pu.run_on_subjects(args, main, subjects_itr, subject_func)
 
 
 if __name__ == '__main__':

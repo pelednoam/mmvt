@@ -155,8 +155,6 @@ def meg_preproc(args):
                 epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_Onset-epo.fif'.format(subject, task)),
                 empty_fname=empty_fnames[task],
                 function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
-                # function='calc_epochs',
-                # function='calc_labels_connectivity',
                 conditions=task.lower(),
                 cor_fname=cors[task].format(subject=subject),
                 average_per_event=False,
@@ -166,22 +164,17 @@ def meg_preproc(args):
                 t_min=times[0], t_max=times[1],
                 read_events_from_file=False, stim_channels='STI001',
                 use_empty_room_for_noise_cov=True,
-                # calc_source_band_induced_mean_power=False,
-                # calc_inducde_mean_power_per_label=False,
-                bands='', #dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
-                con_method='coh',
-                con_mode='cwt_morlet',
-                overwrite_connectivity=False,
                 read_only_from_annot=False,
                 # pick_ori='normal',
-                # overwrite_epochs=True,
-                overwrite_evoked=True,
-                # overwrite_inv=True,
-                overwrite_stc=True,
-                overwrite_labels_data=True,
+                overwrite_evoked=args.overwrite,
+                overwrite_inv=args.overwrite,
+                overwrite_stc=args.overwrite,
+                overwrite_labels_data=args.overwrite,
                 n_jobs=args.n_jobs
             ))
-            meg.call_main(meg_args)
+            ret = meg.call_main(meg_args)
+            if not ret and args.throw:
+                raise Exception("errors!")
 
     good_subjects = [s for s in subjects if
            op.isfile(op.join(MMVT_DIR, subject, 'meg',
@@ -328,6 +321,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
+    parser.add_argument('--throw', required=False, default=False, type=au.is_true)
     parser.add_argument('--meg_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs')
                         # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
