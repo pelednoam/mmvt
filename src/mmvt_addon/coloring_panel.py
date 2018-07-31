@@ -2330,7 +2330,7 @@ def draw(self, context):
         col.prop(context.scene, 'static_conn_files', text='')
         col.prop(context.scene, 'connectivity_degree_threshold', text="Threshold")
         col.prop(context.scene, 'connectivity_degree_threshold_use_abs', text="Use connectivity absolute value")
-        col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
+        # col.prop(context.scene, 'connectivity_degree_save_image', text="Save an image each update")
         # col.operator(ColorStaticConnectionsDegree.bl_idname, text="Plot Connectivity Degree", icon='POTATO')
 
     if faces_verts_exist:
@@ -2339,7 +2339,6 @@ def draw(self, context):
             # col.label('Manual coloring files')
             col.prop(context.scene, "coloring_files", text="")
             col.operator(ColorManually.bl_idname, text="Color Manually", icon='POTATO')
-            layout.prop(context.scene, 'plot_label_contour', text='Plot labels as contour')
         if len(_addon().labels.get_labels_plotted()) > 0:
             layout.prop(context.scene, 'show_labels_plotted', text='Show labels list')
             if bpy.context.scene.show_labels_plotted:
@@ -2393,7 +2392,6 @@ bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
     default=0.7, min=0, max=1, description="", update=update_connectivity_degree_threshold)
 bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
-bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.show_labels_plotted = bpy.props.BoolProperty(default=True, description="Show labels list")
 bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
 bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=[])

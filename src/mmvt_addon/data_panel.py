@@ -252,14 +252,14 @@ def import_brain(context=None):
     _addon().load_all_panels(first_time=True)
 
 
-class FixBrainMaterials(bpy.types.Operator):
-    bl_idname = "mmvt.fix_brain_materials"
-    bl_label = "fix_brain_materials"
-    bl_options = {"UNDO"}
-
-    def invoke(self, context, event=None):
-        _addon().fix_cortex_labels_material()
-        return {"FINISHED"}
+# class FixBrainMaterials(bpy.types.Operator):
+#     bl_idname = "mmvt.fix_brain_materials"
+#     bl_label = "fix_brain_materials"
+#     bl_options = {"UNDO"}
+#
+#     def invoke(self, context, event=None):
+#         _addon().fix_cortex_labels_material()
+#         return {"FINISHED"}
 
 
 class UpdateMMVT(bpy.types.Operator):
@@ -1148,8 +1148,8 @@ def data_draw(self, context):
     # col.prop(context.scene, 'atlas', text="Atlas")
     col.label(text='Atlas: {}'.format(context.scene.atlas))
     col.operator(ImportBrain.bl_idname, text="Import Brain", icon='MATERIAL_DATA')
-    col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
-    col.operator(FixBrainMaterials.bl_idname, text="Fix brain materials", icon='PARTICLE_DATA')
+    # col.prop(context.scene, 'inflated_morphing', text="Include inflated morphing")
+    # col.operator(FixBrainMaterials.bl_idname, text="Fix brain materials", icon='PARTICLE_DATA')
 
     if mu.both_hemi_files_exist(op.join(mu.get_user_fol(), 'surf', '{}.flat.pial.npz'.format('{hemi}'))):
         col.operator(StartFlatProcess.bl_idname, text="Import flat surface", icon='MATERIAL_DATA')
@@ -1174,9 +1174,9 @@ def data_draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, 'meg_labels_data_files', text="")
         col.operator(AddDataToBrain.bl_idname, text="Add MEG data to Brain", icon='FCURVE')
-        row = col.row(align=True)
-        row.prop(context.scene, 'add_meg_data_to_labels', text="labels")
-        row.prop(context.scene, 'add_meg_labels_data_to_parent', text="diff")
+        # row = col.row(align=True)
+        col.prop(context.scene, 'add_meg_data_to_labels', text="Add data to labels")
+        col.prop(context.scene, 'add_meg_labels_data_to_parent', text="Add conditions difference data")
         col.prop(context.scene, 'add_meg_labels_data_overwrite', text="Overwrite")
         col.prop(context.scene, 'import_unknown', text="Import unknown")
     if DataMakerPanel.subcortical_meg_data_exist:
@@ -1459,7 +1459,7 @@ def register():
         bpy.utils.register_class(CreateEEGMesh)
         bpy.utils.register_class(AnatomyPreproc)
         bpy.utils.register_class(ChooseElectrodesPositionsFile)
-        bpy.utils.register_class(FixBrainMaterials)
+        # bpy.utils.register_class(FixBrainMaterials)
         # bpy.utils.register_class(AddOtherSubjectMEGEvokedResponse)
         # bpy.utils.register_class(SelectExternalMEGEvoked)
         # print('Data Panel was registered!')
@@ -1486,7 +1486,7 @@ def unregister():
         bpy.utils.unregister_class(CreateEEGMesh)
         bpy.utils.unregister_class(AnatomyPreproc)
         bpy.utils.unregister_class(ChooseElectrodesPositionsFile)
-        bpy.utils.unregister_class(FixBrainMaterials)
+        # bpy.utils.unregister_class(FixBrainMaterials)
         # bpy.utils.unregister_class(AddOtherSubjectMEGEvokedResponse)
         # bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:

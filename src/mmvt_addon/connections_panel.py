@@ -858,7 +858,7 @@ def connections_draw(self, context):
     if 'fmri' in bpy.context.scene.connectivity_files.lower() or 'meg' in bpy.context.scene.connectivity_files.lower():
         filter_text = '{} nodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterNodes.bl_idname, text=filter_text, icon='BORDERMOVE')
-    layout.operator(UpdateNodesLocations.bl_idname, text='Update nodes locations', icon='IPO')
+    layout.operator(UpdateNodesLocations.bl_idname, text='Update locations', icon='IPO')
     # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 

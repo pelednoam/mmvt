@@ -340,6 +340,7 @@ def labels_draw(self, context):
         elif vertex_data != '' and vertex_data is not None:
             col.label('Cursor value: {}'.format(vertex_data))
         col.operator(PlotLabelsData.bl_idname, text="Plot labels", icon='TPAINT_HLT')
+        layout.prop(context.scene, 'plot_label_contour', text='Plot labels as contour')
     col.operator(ChooseLabesDataFile.bl_idname, text="Load labels file", icon='LOAD_FACTORY')
 
     if LabelsPanel.contours_coloring_exist:
@@ -514,6 +515,7 @@ bpy.types.Scene.new_label_name = bpy.props.StringProperty()
 bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
 bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
 
 
 class LabelsPanel(bpy.types.Panel):
