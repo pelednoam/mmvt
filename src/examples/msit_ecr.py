@@ -57,11 +57,11 @@ def anatomy_preproc(args, subject=''):
 def get_empty_fnames(subject, tasks, args):
     utils.make_dir(op.join(MEG_DIR, subject))
     utils.make_link(op.join(args.remote_subject_dir.format(subject=subject), 'bem'),
-                    op.join(MEG_DIR, subject, 'bem'))
+                    op.join(MEG_DIR, subject, 'bem'), overwrite=True)
     for task in tasks:
         utils.make_dir(op.join(MEG_DIR, task, subject))
-        utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'))
-    utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(SUBJECTS_DIR, subject, 'bem'))
+        utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'), overwrite=True)
+    utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(SUBJECTS_DIR, subject, 'bem'), overwrite=True)
 
     remote_meg_fol = '/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{}'.format(subject)
     csv_fname = op.join(remote_meg_fol, 'cfg.txt')
