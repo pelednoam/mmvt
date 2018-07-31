@@ -577,9 +577,12 @@ def create_spatial_connectivity(subject):
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
             neighbors = defaultdict(list)
-            pial_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf))
+            pial_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.ply'.format(hemi, surf))
             if not op.isfile(pial_fname):
                 create_surfaces(subject)
+            if not op.isfile(pial_fname):
+                print('{} does not exist!'.format(pial_fname))
+                continue
             _, faces = utils.read_pial(subject, MMVT_DIR, hemi, surface_type=surf)
             # if not op.isfile(conn_fname):
             #     print("Connectivity file doesn't exist! {}".format(conn_fname))

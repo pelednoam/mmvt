@@ -2,6 +2,8 @@ import os.path as op
 import numpy as np
 from itertools import product
 import shutil
+import os
+import os
 import glob
 from src.utils import utils
 from src.utils import labels_utils as lu
@@ -22,16 +24,18 @@ def prepare_files(args):
         for task in args.tasks:
             fol = utils.make_dir(op.join(MEG_DIR, task, subject))
             local_epo_fname = op.join(fol, '{}_{}_Onset-epo.fif'.format(subject, task))
-            if not op.isfile(local_epo_fname):
-                remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_Onset-epo.fif'.format(subject, task))
-                print('Creating a local link to {}'.format(remote_epo_fname))
-                utils.make_link(remote_epo_fname, local_epo_fname)
+            if op.isfile(local_epo_fname):
+                os.remove(local_epo_fname)
+            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_Onset-epo.fif'.format(subject, task))
+            print('Creating a local link to {}'.format(remote_epo_fname))
+            utils.make_link(remote_epo_fname, local_epo_fname)
             local_raw_fname = op.join(fol, '{}_{}-raw.fif'.format(subject, task))
-            if not op.isfile(local_raw_fname):
-                remote_raw_fname = op.join(
-                    utils.get_parent_fol(args.meg_dir), 'ica', subject, '{}_{}-raw.fif'.format(subject, task))
-                print('Creating a local link to {}'.format(remote_raw_fname))
-                utils.make_link(remote_raw_fname, local_raw_fname)
+            if op.isfile(local_raw_fname):
+                os.remove(local_raw_fname)
+            remote_raw_fname = op.join(
+                utils.get_parent_fol(args.meg_dir), 'ica', subject, '{}_{}-raw.fif'.format(subject, task))
+            print('Creating a local link to {}'.format(remote_raw_fname))
+            utils.make_link(remote_raw_fname, local_raw_fname)
         ret[subject] = ret[subject] and op.isfile(local_epo_fname) and op.isfile(local_raw_fname)
     print('Good subjects:')
     print([s for s, r in ret.items() if r])
