@@ -577,12 +577,15 @@ def create_spatial_connectivity(subject):
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
             neighbors = defaultdict(list)
-            conn_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf))
-            if not op.isfile(conn_fname):
-                print("Connectivity file doesn't exist! {}".format(conn_fname))
-                continue
-            d = np.load(conn_fname)
-            connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(d['faces'])
+            pial_fname = op.join(MMVT_DIR, subject, 'surf', '{}.{}.npz'.format(hemi, surf))
+            if not op.isfile(pial_fname):
+                create_surfaces(subject)
+            _, faces = utils.read_pial(subject, MMVT_DIR, hemi, surface_type=surf)
+            # if not op.isfile(conn_fname):
+            #     print("Connectivity file doesn't exist! {}".format(conn_fname))
+            #     continue
+            # d = np.load(conn_fname)
+            connectivity_per_hemi[hemi] = mne.spatial_tris_connectivity(faces)
             rows, cols = connectivity_per_hemi[hemi].nonzero()
             for ind in range(len(rows)):
                 neighbors[rows[ind]].append(cols[ind])
