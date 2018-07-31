@@ -118,7 +118,7 @@ def get_empty_fnames(subject, tasks, args):
 #         meg.call_main(args)
 
 
-def meg_preproc(args, overwrite=False):
+def meg_preproc(args):
     inv_method, em = 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
@@ -141,7 +141,7 @@ def meg_preproc(args, overwrite=False):
             output_fname = op.join(
                 MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_minmax.npz'.format(
                     task.lower(), atlas, inv_method, em))
-            if op.isfile(output_fname) and not overwrite:
+            if op.isfile(output_fname) and not args.overwrite:
                 print('{} already exist!'.format(output_fname))
                 continue
             meg_args = meg.read_cmd_args(dict(
@@ -327,6 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
+    parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--meg_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs')
                         # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
