@@ -1077,6 +1077,7 @@ def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas'):
             labels.append(new_label)
     lu.labels_to_annot(subject, SUBJECTS_DIR, high_level_atlas_name, labels=labels, overwrite=True)
     save_labels_vertices(subject, high_level_atlas_name)
+    create_spatial_connectivity(subject)
     calc_labeles_contours(subject, high_level_atlas_name)
     calc_labels_center_of_mass(subject, high_level_atlas_name)
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(
