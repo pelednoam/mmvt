@@ -483,7 +483,7 @@ def streaming_draw(self, context):
     layout.prop(context.scene, 'stream_show_only_good_electrodes', text='Show only good electrodes')
     layout.prop(context.scene, 'streaming_window_length', text='Window length')
     layout.prop(context.scene, 'stim_length', text='Stim length')
-    layout.prop(context.scene, 'electrodes_sep', text='electrodes sep')
+    layout.prop(context.scene, 'electrodes_sep', text='Curves separation')
 
 
 bpy.types.Scene.streaming_buffer_size = bpy.props.IntProperty(default=100, min=1)
