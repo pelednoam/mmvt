@@ -33,7 +33,7 @@ applyMorph = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
 
 
 def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject_from in subjects:
         cmd = mri_robust_register
         lta_name = 't1_to_{}'.format(subject_to)
@@ -45,7 +45,7 @@ def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox
 
 
 def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=False, print_only=False, n_jobs=1):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(op.join(
                 subjects_dir, s, f'mri_cvs_register_to_{subject_to}', f'final_CVSmorph_to{subject_to}.m3z')))]
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
@@ -64,7 +64,7 @@ def _mri_cvs_register_parallel(p):
 
 
 def morph_t1(subjects, template_system, subjects_dir, print_only=False):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     for subject in subjects:
         if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
             print(f'The m3z morph matrix does not exist for subject {subject}!')
@@ -77,7 +77,7 @@ def morph_t1(subjects, template_system, subjects_dir, print_only=False):
 
 
 def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=4):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
 
     subjects = list(electrodes.keys())
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
@@ -106,7 +106,7 @@ def _morph_electrodes_parallel(p):
 
 
 def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     output_fname = op.join(mmvt_dir, subject_to, 'electrodes', 'template_electrodes.pkl')
     if op.isfile(output_fname) and not overwrite:
         return
@@ -134,7 +134,7 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
 
 
 def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
-    subject_to = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     template_electrodes = defaultdict(list)
     header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
     for subject in electrodes.keys():
@@ -187,7 +187,7 @@ def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir,
 
 def get_electrodes_from_morphed_volume(template_system, morphed_output_fname, electrodes_num, subjects_dir, threshold=0):
     from src.misc.dell import find_electrodes_in_ct
-    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
 
     morphed_data = nib.load(morphed_output_fname).get_data()
     header = nib.load(op.join(subjects_dir, template, 'mri', 'T1.mgz'))
@@ -335,7 +335,7 @@ def read_all_electrodes(subjects, bipolar):
 
 def save_template_electrodes_to_template(template_electrodes, bipolar, mmvt_dir, template_system='mni', prefix='', postfix=''):
     output_fname = '{}electrodes{}_positions.npz'.format(prefix, '_bipolar' if bipolar else '', postfix)
-    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     if template_electrodes is None:
         input_fname = op.join(mmvt_dir, template, 'electrodes', 'template_electrodes.pkl')
         print('Reading {} ({})'.format(input_fname, utils.file_modification_time(input_fname)))
@@ -351,7 +351,7 @@ def save_template_electrodes_to_template(template_electrodes, bipolar, mmvt_dir,
 
 
 def export_into_csv(template_system, mmvt_dir, prefix=''):
-    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     electrodes_dict = utils.Bag(np.load(op.join(mmvt_dir, template, 'electrodes', '{}electrodes_positions.npz'.format(prefix))))
     fol = utils.make_dir(op.join(MMVT_DIR, template, 'electrodes'))
     csv_fname = op.join(fol, '{}{}_RAS.csv'.format(prefix, template))
@@ -368,7 +368,7 @@ def export_into_csv(template_system, mmvt_dir, prefix=''):
 
 
 def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatlas40'):
-    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     template_elab_files = glob.glob(op.join(
         MMVT_DIR, template, 'electrodes', f'{template}_{atlas}_electrodes_cigar_r_3_l_4.pkl'))
     if len(template_elab_files) == 0:
@@ -586,7 +586,7 @@ if __name__ == '__main__':
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
     template_system = 'ras' #'matt_hibert' # 'mni' # hc029
-    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     atlas = 'aparc.DKTatlas40'
     bipolar = False
     use_apply_morph = True
@@ -600,12 +600,12 @@ if __name__ == '__main__':
 
     if use_apply_morph:
         good_subjects, bad_subjects = prepare_files(subjects, template_system)
-        # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
-        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
-        # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-        # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-        # export_into_csv(template_system, MMVT_DIR, prefix)
+        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
+        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
+        read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+        export_into_csv(template_system, MMVT_DIR, prefix)
     else:
         output_fname = op.join(MMVT_DIR, template, 'electrodes', '{}electrodes{}_positions.npz'.format(
             prefix, '_bipolar' if bipolar else '', postfix))
