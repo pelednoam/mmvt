@@ -465,7 +465,7 @@ def sanity_check():
 
 
 def prepare_files(subjects, template_system):
-    template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     # mri_cvs_check --mov {subject} --template {template}
     necessary_files = {'surf': ['lh.inflated', 'rh.inflated', 'lh.pial', 'rh.pial', 'rh.white', 'lh.white',
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
