@@ -17,6 +17,8 @@ SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 mri_robust_register = 'mri_robust_register --mov {subjects_dir}/{subject_from}/mri/T1.mgz --dst {subjects_dir}/{subject_to}/mri/T1.mgz --lta {subjects_dir}/{subject_from}/mri/{lta_name}.lta --satit --mapmov {subjects_dir}/{subject_from}/mri/T1_to_{subject_to}.mgz --cost nmi'
 mri_cvs_register = 'mri_cvs_register --mov {subject_from} --template {subject_to} ' + \
                    '--outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to} --nocleanup' # --step3'
+mri_cvs_register_mni = 'mri_cvs_register --mov {subject_from} --mni ' + \
+                   '--outdir {subjects_dir}/{subject_from}/mri_cvs_register_to_mni --nocleanup' # --step3'
 mri_vol2vol = 'mri_vol2vol --mov {subjects_dir}/{subject}/mri/T1.mgz ' + \
     '--o {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz --m3z ' + \
     '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
@@ -28,8 +30,8 @@ mri_elcs2elcs = 'mri_vol2vol --mov {subjects_dir}/{subject}/electrodes/{elcs_fil
 applyMorph = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
              '--transform {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to}/' + \
              'combined_to{subject_to}_elreg_afteraseg-norm.tm3d ' + \
-             'point_list {subjects_dir}/{subject_from}/electrodes/stim_electrodes.txt ' + \
-             '{subjects_dir}/{subject_from}/electrodes/stim_electrodes_to_{subject_to}.txt a'
+             'point_list {subjects_dir}/{subject_from}/electrodes/{electrodes_to_morph_file_name}.txt ' + \
+             '{subjects_dir}/{subject_from}/electrodes/{morphed_electrodes_file_name}.txt a'
 
 
 def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
@@ -60,7 +62,11 @@ def _mri_cvs_register_parallel(p):
         if overwrite and not print_only:
             utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
         rs = utils.partial_run_script(locals(), print_only=print_only)
-        rs(mri_cvs_register)
+        if subject_to == 'fsaverage':
+            rs(mri_cvs_register_mni)
+        else:
+            rs(mri_cvs_register)
+
 
 
 def morph_t1(subjects, template_system, subjects_dir, print_only=False):
@@ -90,7 +96,8 @@ def _morph_electrodes_parallel(p):
     subjects, subject_to, subjects_dir, overwrite, print_only = p
     bad_subjects, good_subjects = [], []
     for subject_from in subjects:
-        output_fname = op.join(subjects_dir, subject_from, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
+        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}.txt'
+        output_fname = op.join(subjects_dir, subject_from, 'electrodes', morphed_electrodes_file_name)
         if op.isfile(output_fname) and not overwrite:
             continue
         rs = utils.partial_run_script(locals(), print_only=print_only)
@@ -117,7 +124,8 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     for subject in electrodes.keys():
         if subject == subject_to:
             continue
-        input_fname = op.join(subjects_dir, subject, 'electrodes', f'stim_electrodes_to_{subject_to}.txt')
+        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}.txt'
+        input_fname = op.join(subjects_dir, subject, 'electrodes', morphed_electrodes_file_name)
         if not op.isfile(input_fname):
             bad_subjects.append(subject)
             continue
@@ -471,7 +479,8 @@ def prepare_files(subjects, template_system):
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
-    subjects = list(subjects) + [template]
+    if template != 'fsaverage':
+        subjects = list(subjects) + [template]
     martinos_subjects = {'mg96':'ep007', 'mg78': 'ep001', 'ep001': 'ep001'}
     goods, bads = [], []
     for subject in subjects:
@@ -514,7 +523,8 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
         trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
         fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
-        csv_fname = op.join(fol, 'stim_electrodes.txt')
+        electrodes_to_morph_file_name = 'electrodes_to_morph.txt'
+        csv_fname = op.join(fol, electrodes_to_morph_file_name)
         if op.isfile(csv_fname) and not overwrite:
             continue
         with open(csv_fname, 'w') as csv_file:
