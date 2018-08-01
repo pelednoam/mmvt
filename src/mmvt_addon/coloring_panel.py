@@ -2119,7 +2119,7 @@ class ColorMegLabels(bpy.types.Operator):
 class ColorfMRI(bpy.types.Operator):
     bl_idname = "mmvt.fmri_color"
     bl_label = "mmvt fmri color"
-    bl_description = 'Plot the current fMRI activity map.\nScript: mmvt.plot_fmri()'
+    bl_description = 'Plot the current fMRI activity map.\nScript: mmvt.coloring.plot_fmri()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2370,7 +2370,7 @@ bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description="MEG fi
 bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="")
+bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="lower threshold")
 bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
