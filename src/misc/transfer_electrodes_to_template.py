@@ -585,27 +585,27 @@ if __name__ == '__main__':
     root = [d for d in roots if op.isdir(d)][0]
     csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'matt_hibert' # 'mni' # hc029
+    template_system = 'ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage5' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     atlas = 'aparc.DKTatlas40'
     bipolar = False
-    use_apply_morph = False
+    use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
-    subjects = ['mg78']
+    subjects = ['mg96']
     electrodes = read_all_electrodes(subjects, bipolar)
 
     if use_apply_morph:
         good_subjects, bad_subjects = prepare_files(subjects, template_system)
-        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
-        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
-        read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-        export_into_csv(template_system, MMVT_DIR, prefix)
+        # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
+        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
+        # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+        # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+        # export_into_csv(template_system, MMVT_DIR, prefix)
     else:
         output_fname = op.join(MMVT_DIR, template, 'electrodes', '{}electrodes{}_positions.npz'.format(
             prefix, '_bipolar' if bipolar else '', postfix))
