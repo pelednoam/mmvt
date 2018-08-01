@@ -2457,6 +2457,14 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
+def calc_power_spectrum(mri_subject, task, atlas, extract_mode, inverse_method, labels_data_template):
+    for hemi, em, im in product(utils.HEMIS, args.extract_mode, args.inverse_method):
+        labels_fname = get_labels_data_fname(
+            args.labels_data_template, im, args.task, atlas, em, hemi)
+        labels_dict = np.load(labels_fname)
+
+
+
 def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
                         trans_file='', info_fname='', info=None):
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
@@ -3746,6 +3754,9 @@ def main(tup, remote_subject_dir, args, flags=None):
 
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(mri_subject, args)
+
+    if 'power_spectrum' in args.function:
+        flags['power_spectrum'] = calc_power_spectrum(mri_subject, args)
 
     if 'save_vertex_activity_map' in args.function:
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)

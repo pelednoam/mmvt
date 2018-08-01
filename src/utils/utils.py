@@ -2037,3 +2037,7 @@ def get_mmvt_code_root():
     return op.dirname(os.path.split(curr_dir)[0])
 
 
+def power_spectrum(x, fs):
+    from scipy import signal
+    f, Pxx_spec = signal.welch(x, fs, 'flattop', 1024, scaling='spectrum')
+    return f, np.sqrt(Pxx_spec)
