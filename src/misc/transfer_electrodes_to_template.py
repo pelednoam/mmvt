@@ -650,7 +650,7 @@ if __name__ == '__main__':
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
-    subjects = ['mg108'] #['mg105', 'mg107', 'mg108', 'mg111']
+    subjects = ['mg107'] #['mg105', 'mg107', 'mg108', 'mg111']
     electrodes = read_all_electrodes(subjects, bipolar)
 
     if use_apply_morph:
