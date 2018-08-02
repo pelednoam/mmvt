@@ -57,8 +57,8 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
         output_fname = op.join(subjects_dir, '{subject}', 'mri_cvs_register_to_mni',
                                'combined_tocvs_avg35_inMNI152_elreg_afteraseg-norm.tm3d')
     else:
-        output_fname = op.join(subjects_dir, '{subject}', f'mri_cvs_register_to_{subject_to}',
-                               f'combined_to{subject_to}_elreg_afteraseg-norm.tm3d')
+        output_fname = op.join(subjects_dir, '{subject}', 'mri_cvs_register_to_{}'.format(subject_to),
+                               'combined_to{}_elreg_afteraseg-norm.tm3d'.format(subject_to))
     subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(output_fname.format(subject=s)))]
     if len(subjects) == 0:
         return
@@ -119,7 +119,7 @@ def _morph_electrodes_parallel(p):
     bad_subjects, good_subjects = [], []
     for subject_from in subjects:
         electrodes_to_morph_file_name = 'electrodes_to_morph'
-        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}'
+        morphed_electrodes_file_name = 'electrodes_morph_to_{}'.format(subject_to)
         rs = utils.partial_run_script(locals(), print_only=print_only)
         if subject_to == 'fsaverage':
             rs(apply_morph_mni)
@@ -140,7 +140,7 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     for subject in electrodes.keys():
         if subject == subject_to:
             continue
-        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}'
+        morphed_electrodes_file_name = 'electrodes_morph_to_{}'.format(subject_to)
         input_fname = op.join(subjects_dir, subject, 'electrodes', morphed_electrodes_file_name)
         if not op.isfile(input_fname):
             bad_subjects.append(subject)
@@ -149,7 +149,7 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
         vox = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
         tkregs = apply_trans(trans, vox)
         for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
-            template_electrodes[subject].append((f'{subject}_{elc_name}', tkreg))
+            template_electrodes[subject].append(('{}_{}'.format(subject, elc_name), tkreg))
         good_subjects.append(subject)
     utils.save(template_electrodes, output_fname)
     print('read_morphed_electrodes: {}'.format(op.isfile(output_fname)))
@@ -325,9 +325,9 @@ def read_csv_file(csv_fname, save_as_bipolar):
         elecs_names = [e.strip() for e in line[1:3].tolist()]
         elecs_groups = [utils.elec_group(e) for e in elecs_names]
         if elecs_groups[0] == elecs_groups[1]:
-            elec_name = f'{elecs_names[1]}-{elecs_names[0]}'
+            elec_name = '{}-{}'.format(elecs_names[1], elecs_names[0])
         else:
-            print(f'The electrodes has different groups! {elecs_groups[0]}, {elecs_groups[1]}')
+            print('The electrodes has different groups! {}, {}'.format(elecs_groups[0], elecs_groups[1]))
             continue
         coords1 = line[3:6].astype(np.float)
         coords2 = line[6:9].astype(np.float)
@@ -371,7 +371,7 @@ def save_template_electrodes_to_template(template_electrodes, bipolar, mmvt_dir,
     elecs_names = utils.flat_list_of_lists(
         [[e[0] for e in template_electrodes[subject]] for subject in template_electrodes.keys()])
     np.savez(output_fname, pos=elecs_coordinates, names=elecs_names, pos_org=[])
-    print(f'Electrodes were saved to {output_fname}')
+    print('Electrodes were saved to {}'.format(output_fname))
 
 
 def export_into_csv(template_system, mmvt_dir, prefix=''):
@@ -395,17 +395,17 @@ def export_into_csv(template_system, mmvt_dir, prefix=''):
 def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatlas40'):
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     template_elab_files = glob.glob(op.join(
-        MMVT_DIR, template, 'electrodes', f'{template}_{atlas}_electrodes_cigar_r_3_l_4.pkl'))
+        MMVT_DIR, template, 'electrodes', '{}_{}_electrodes_cigar_r_3_l_4.pkl'.format(template, atlas)))
     if len(template_elab_files) == 0:
-        print(f'No electrodes labeling file for {template}!')
+        print('No electrodes labeling file for {}!'.format(template))
         return
     elab_template = utils.load(template_elab_files[0])
     errors = ''
     for subject in electrodes.keys():
         elab_files = glob.glob(op.join(
-            MMVT_DIR, subject, 'electrodes', f'{subject}_{atlas}_electrodes_cigar_r_3_l_4.pkl'))
+            MMVT_DIR, subject, 'electrodes', '{}_{}_electrodes_cigar_r_3_l_4.pkl'.format(subject, atlas)))
         if len(elab_files) == 0:
-            print(f'No electrodes labeling file for {subject}!')
+            print('No electrodes labeling file for {}!'.format(subject))
             continue
         electrodes_names = [e[0] for e in electrodes[subject]]
         elab = utils.load(elab_files[0])
@@ -413,7 +413,7 @@ def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatl
         for elc in electrodes_names:
             no_errors = True
             elc_labeling = [e for e in elab if e['name'] == elc][0]
-            elc_labeling_template = [e for e in elab_template if e['name'] == f'{subject}_{elc}'][0]
+            elc_labeling_template = [e for e in elab_template if e['name'] == '{}_{}'.format(subject, elc)][0]
             for roi, prob in zip(elc_labeling['cortical_rois'], elc_labeling['cortical_probs']):
                 no_err, err = compare_rois_and_probs(
                     subject, template, elc, roi, prob, elc_labeling['cortical_rois'],
@@ -429,35 +429,35 @@ def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatl
                 if err != '':
                     errors += err + '\n'
             if no_errors:
-                print(f'{subject},{elc},Good!')
-                errors += f'{subject},{elc},Good!\n'
+                print('{},{},Good!'.format(subject, elc))
+                errors += '{},{},Good!\n'.format(subject, elc)
     with open(op.join(MMVT_DIR, template, 'electrodes', 'trans_errors.txt'), "w") as text_file:
         print(errors, file=text_file)
     # print(errors)
 
 
-def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
-                           elc_labeling_template_rois_probs):
-    no_errors = True
-    err = ''
-    if roi not in elc_labeling_template_rois:
-        if prob > 0.05:
-            err = f'{subject},{elc},{roi} ({prob}) not in {template}'
-            print(err)
-            no_errors = False
-    else:
-        roi_ind = elc_labeling_template_rois.index(roi)
-        template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
-        if abs(prob - template_roi_prob) > 0.05:
-            err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
-            print(err)
-            no_errors = False
-    for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
-        if roi not in elc_labeling_rois and prob > 0.05:
-            err = f'{subject},{elc},{roi} ({prob}) only in {template}'
-            print(err)
-            no_errors = False
-    return no_errors, err
+# def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
+#                            elc_labeling_template_rois_probs):
+#     no_errors = True
+#     err = ''
+#     if roi not in elc_labeling_template_rois:
+#         if prob > 0.05:
+#             err = f'{subject},{elc},{roi} ({prob}) not in {template}'
+#             print(err)
+#             no_errors = False
+#     else:
+#         roi_ind = elc_labeling_template_rois.index(roi)
+#         template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
+#         if abs(prob - template_roi_prob) > 0.05:
+#             err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
+#             print(err)
+#             no_errors = False
+#     for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
+#         if roi not in elc_labeling_rois and prob > 0.05:
+#             err = f'{subject},{elc},{roi} ({prob}) only in {template}'
+#             print(err)
+#             no_errors = False
+#     return no_errors, err
 
 
 def sanity_check():
@@ -508,12 +508,12 @@ def prepare_files(subjects, template_system):
             continue
         darpa_subject = subject[:2].upper() + subject[2:]
         fols = glob.glob(op.join(
-            f'/homes/5/npeled/space1/Angelique/recon-alls/{darpa_subject}/', '**', f'{darpa_subject}_SurferOutput'),
+            '/homes/5/npeled/space1/Angelique/recon-alls/{}/'.format(darpa_subject), '**', '{}_SurferOutput'.format(darpa_subject)),
             recursive=True)
         remote_subject_dir = fols[0] if len(fols) == 1 else ''
         files_exist = get_subject_files(subject, necessary_files, remote_subject_dir)
         if not files_exist:
-            remote_subject_dir = op.join('/space/huygens/1/users/kara', f'{darpa_subject}_SurferOutput')
+            remote_subject_dir = op.join('/space/huygens/1/users/kara', '{}_SurferOutput'.format(darpa_subject))
             files_exist = get_subject_files(subject, necessary_files, remote_subject_dir)
         if not files_exist and subject in martinos_subjects.keys():
             remote_subject_dir = op.join(
@@ -523,8 +523,8 @@ def prepare_files(subjects, template_system):
             goods.append(subject)
         else:
             bads.append(subject)
-    print(f'goods: {goods}')
-    print(f'bads: {bads}')
+    print(f'goods: {}'.format(goods))
+    print(f'bads: {}'.format(bads))
     return goods, bads
 
 
@@ -553,60 +553,60 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
                 wr.writerow(vox)
 
 
-def create_volume_with_electrodes(electrodes, subjects_dir, merge_to_pairs=True, overwrite=False):
-    for subject in electrodes.keys():
-        if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
-            print(f'No T1 file for {subject}')
-            continue
-        t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
-        fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
-        output_fname = op.join(fol, 'stim_electrodes.nii.gz')
-        data = np.zeros((256, 256, 256), dtype=np.int16)
-        if merge_to_pairs:
-            groups = defaultdict(list)
-            for elc_name, coords in electrodes[subject]:
-                groups[utils.elec_group(elc_name)].append(elc_name, coords)
-            for group in groups.keys():
-                pair_data = np.zeros((256, 256, 256), dtype=np.int16)
-                for elc_name, coords in groups[group]:
-                    vox = tkreg_to_vox(t1_header, coords)
-                    pair_data[tuple(vox)] = 1000
-                pair_output_fname = op.join(fol, f'stim_{elc_name}.nii.gz')
-                if not op.isfile(elc_output_fname) or overwrite:
-                    pass
-        else:
-            for elc_name, coords in electrodes[subject]:
-                vox = tkreg_to_vox(t1_header, coords)
-                # data[tuple(vox)] = 1000
-                elc_output_fname = op.join(fol, f'stim_{elc_name}.nii.gz')
-                if not op.isfile(elc_output_fname) or overwrite:
-                    elc_data = np.zeros((256, 256, 256), dtype=np.int16)
-                    elc_data[tuple(vox)] = 1000
-                    elc_img = nib.Nifti1Image(elc_data, t1_header.get_affine(), t1_header)
-                    print(f'Saving {elc_output_fname}')
-                    nib.save(elc_img, elc_output_fname)
-        # if not op.isfile(output_fname) or overwrite:
-        #     img = nib.Nifti1Image(data, t1_header.get_affine(), t1_header)
-        #     print(f'Saving {output_fname}')
-        #     nib.save(img, output_fname)
-        # tkreg = get_tkreg_from_volume(subject, output_fname)
-
+# def create_volume_with_electrodes(electrodes, subjects_dir, merge_to_pairs=True, overwrite=False):
+#     for subject in electrodes.keys():
+#         if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
+#             print('No T1 file for {}'.format(subject))
+#             continue
+#         t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
+#         fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
+#         output_fname = op.join(fol, 'stim_electrodes.nii.gz')
+#         data = np.zeros((256, 256, 256), dtype=np.int16)
+#         if merge_to_pairs:
+#             groups = defaultdict(list)
+#             for elc_name, coords in electrodes[subject]:
+#                 groups[utils.elec_group(elc_name)].append(elc_name, coords)
+#             for group in groups.keys():
+#                 pair_data = np.zeros((256, 256, 256), dtype=np.int16)
+#                 for elc_name, coords in groups[group]:
+#                     vox = tkreg_to_vox(t1_header, coords)
+#                     pair_data[tuple(vox)] = 1000
+#                 pair_output_fname = op.join(fol, 'stim_{}.nii.gz'.format(elc_name))
+#                 if not op.isfile(elc_output_fname) or overwrite:
+#                     pass
+#         else:
+#             for elc_name, coords in electrodes[subject]:
+#                 vox = tkreg_to_vox(t1_header, coords)
+#                 # data[tuple(vox)] = 1000
+#                 elc_output_fname = op.join(fol, f'stim_{elc_name}.nii.gz')
+#                 if not op.isfile(elc_output_fname) or overwrite:
+#                     elc_data = np.zeros((256, 256, 256), dtype=np.int16)
+#                     elc_data[tuple(vox)] = 1000
+#                     elc_img = nib.Nifti1Image(elc_data, t1_header.get_affine(), t1_header)
+#                     print(f'Saving {elc_output_fname}')
+#                     nib.save(elc_img, elc_output_fname)
+#         # if not op.isfile(output_fname) or overwrite:
+#         #     img = nib.Nifti1Image(data, t1_header.get_affine(), t1_header)
+#         #     print(f'Saving {output_fname}')
+#         #     nib.save(img, output_fname)
+#         # tkreg = get_tkreg_from_volume(subject, output_fname)
+#
 
 def tkreg_to_vox(t1_header, tkreg):
     return np.rint(fu.apply_trans(np.linalg.inv(t1_header.get_vox2ras_tkr()), tkreg)).astype(int)[0]
 
-
-def get_tkreg_from_volume(subject, data_fname):
-    if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
-        print(f'No T1 file for {subject}')
-        return None
-    t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
-    data = nib.load(data_fname).get_data()
-    indices = np.where(data > 0)
-    vox = np.array(indices).T
-    print(vox)
-    tkreg = fu.apply_trans(t1_header.get_vox2ras_tkr(), vox)
-    return tkreg
+#
+# def get_tkreg_from_volume(subject, data_fname):
+#     if not op.isfile(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')):
+#         print('No T1 file for {}'.format(subject))
+#         return None
+#     t1_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).header
+#     data = nib.load(data_fname).get_data()
+#     indices = np.where(data > 0)
+#     vox = np.array(indices).T
+#     print(vox)
+#     tkreg = fu.apply_trans(t1_header.get_vox2ras_tkr(), vox)
+#     return tkreg
 
 
 def get_output_using_sftp(subject_to='colin27'):
