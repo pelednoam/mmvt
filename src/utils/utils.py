@@ -1746,7 +1746,7 @@ def add_str_to_file_name(fname, txt, suf=''):
     return op.join(get_parent_fol(fname), '{}{}.{}'.format(namebase(fname), txt, suf))
 
 
-def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False):
+def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False, exclude_pattern=''):
     if op.isfile(default_fname):
         return default_fname, True
     if isinstance(glob_pattern, str):
@@ -1761,6 +1761,11 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
         glob_pattern = [op.join(parent_fol, g) if get_parent_fol(g) == '' else g for g in glob_pattern]
         lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_pattern]
         files = list(itertools.chain.from_iterable(lists))
+        if exclude_pattern != '':
+            exclude_glob_patterns = [op.join(parent_fol, exclude_pattern) if get_parent_fol(g) == '' else g for g in glob_pattern]
+            excludes = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in exclude_glob_patterns]
+            excludes = list(itertools.chain.from_iterable(excludes))
+            files = list(set(files) - set(excludes))
         exist = len(files) > 0
         if exist:
             if len(files) == 1:
@@ -2039,5 +2044,6 @@ def get_mmvt_code_root():
 
 def power_spectrum(x, fs):
     from scipy import signal
-    f, Pxx_spec = signal.welch(x, fs, 'flattop', 1024, scaling='spectrum')
-    return f, np.sqrt(Pxx_spec)
+    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling='spectrum') # 1024
+    linear_spectrum = np.log(np.sqrt(Pxx_spec))
+    return frequencies, linear_spectrum #[Hz] / [V RMS]

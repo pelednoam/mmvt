@@ -20,7 +20,7 @@ plt.plot(freqs[idx], ps[idx])
 plt.title('Power spectrum (np.fft.fft)')
 
 # signal.welch
-f, Pxx_spec = signal.welch(x, fs, 'flattop', 1024, scaling='spectrum')
+f, Pxx_spec = signal.welch(x, fs, 'flattop', None, scaling='spectrum')
 plt.figure()
 plt.semilogy(f, np.sqrt(Pxx_spec))
 plt.xlabel('frequency [Hz]')
