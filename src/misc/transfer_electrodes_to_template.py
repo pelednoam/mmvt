@@ -630,6 +630,16 @@ def get_output_using_sftp(subject_to='colin27'):
             password = password_temp
 
 
+def prepare_files_for_all_subjects():
+    necessary_files = {'surf': ['lh.inflated', 'rh.inflated', 'lh.pial', 'rh.pial', 'rh.white', 'lh.white',
+                                'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
+                                'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
+                       'label': ['lh.aparc.annot', 'rh.aparc.annot']}
+    remote_subject_dir = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput"'
+    utils.prepare_subject_folder(
+        necessary_files, 'MG*', remote_subject_dir, SUBJECTS_DIR)
+
+
 if __name__ == '__main__':
     # roots = ['/home/npeled/Documents/stim_locations', '/homes/5/npeled/space1/Angelique/misc']
     # root = [d for d in roots if op.isdir(d)][0]
@@ -645,12 +655,13 @@ if __name__ == '__main__':
     n_jobs=2
 
     # get_output_using_sftp()
-    # raise Exception('Done')
+    prepare_files_for_all_subjects()
+    raise Exception('Done')
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
-    subjects = ['mg107'] #['mg105', 'mg107', 'mg108', 'mg111']
+    subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
     electrodes = read_all_electrodes(subjects, bipolar)
 
     if use_apply_morph:
