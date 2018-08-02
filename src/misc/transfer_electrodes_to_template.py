@@ -625,9 +625,9 @@ def get_output_using_sftp(subject_to='colin27'):
 
 
 if __name__ == '__main__':
-    roots = ['/home/npeled/Documents/stim_locations', '/homes/5/npeled/space1/Angelique/misc']
-    root = [d for d in roots if op.isdir(d)][0]
-    csv_name = 'StimLocationsPatientList.csv'
+    # roots = ['/home/npeled/Documents/stim_locations', '/homes/5/npeled/space1/Angelique/misc']
+    # root = [d for d in roots if op.isdir(d)][0]
+    # csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
     template_system = 'ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
