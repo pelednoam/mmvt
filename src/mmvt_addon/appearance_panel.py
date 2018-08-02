@@ -749,7 +749,7 @@ def flat_map_exists():
 
 
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
-    items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)],description="",
+    items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)], description="Activity maps – The whole brain is one object. \nROIs – Each label is a separate object.\n",
     update=appearance_show_rois_activity_update)
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
@@ -764,17 +764,21 @@ try:
     flat_exist = True
     bpy.types.Scene.surface_type = bpy.props.EnumProperty(
         items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2), ("flat", "Flat", "", 3)],
-        description="Surface type", update=surface_type_update)
-    bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
+        description="Brain view", update=surface_type_update)
+    bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update,
+        description='Sets the value between Pial view (value = -1.00), Inflated view (value = 0.00) and Flat view (value = 1.00)'
+                    '\n\nScript: mmvt.appearance.get_inflated_ratio() and set_inflated_ratio(ratio)')
 except:
     flat_exist = False
     bpy.types.Scene.surface_type = bpy.props.EnumProperty(
         items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2)],
-        description="Surface type", update=surface_type_update)
-    bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=0, default=0, step=0.1, update=inflating_update)
+        description="Brain view", update=surface_type_update)
+    bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=0, default=0, step=0.1, update=inflating_update,
+        description='Sets the value between Pial view (value = -1.00), Inflated view (value = 0.00) and Flat view (value = 1.00)'
+                    '\n\nScript: mmvt.appearance.get_inflated_ratio() and set_inflated_ratio(ratio)')
 
 
-bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.cursor_is_snapped = bpy.props.BoolProperty(default=False, description='The cross stays on the cortex when clicked')
 bpy.types.Scene.show_hide_electrodes = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_eeg = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.show_hide_meg_sensors = bpy.props.BoolProperty(default=False)
@@ -782,11 +786,13 @@ bpy.types.Scene.show_hide_connections = bpy.props.BoolProperty(default=False)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=0, max=1, default=0, update=inflating_update)
 # bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update)
 bpy.types.Scene.hemis_inf_distance = bpy.props.FloatProperty(min=-5, max=5, default=0, update=hemis_inf_distance_update)
-bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update)
+bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0, update=hemis_distance_update,
+    description = 'Sets the distance value between the hemispheres')
 bpy.types.Scene.show_appearance_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.panels_background_color = bpy.props.FloatVectorProperty(
-    name="object_color", subtype='COLOR', default=(0, 0, 0), min=0.0, max=1.0, description="color picker",
-    update=panels_background_color_update)
+    name="object_color", subtype='COLOR', default=(0, 0, 0), min=0.0, max=1.0, update=panels_background_color_update,
+    description='Changes the background of the brain display section '
+                '\n\nScript: mmvt.appearance.get_panels_background_color() and set_panels_background_color()')
 
 
 class SnapCursor(bpy.types.Operator):
@@ -803,6 +809,7 @@ class SnapCursor(bpy.types.Operator):
 class ShowHideMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_meg_sensors"
     bl_label = "mmvt show_hide_meg_sensors"
+    bl_description = 'Show/Hide MEG sensors \n\nScript: mmvt.appearance.show_hide_meg_sensors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -815,6 +822,7 @@ class ShowHideMEGSensors(bpy.types.Operator):
 class ShowHideEEG(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_eeg"
     bl_label = "mmvt show_hide_eeg"
+    bl_description = 'Show/Hide EEG sensors \n\nScript: mmvt.appearance.shoe_hide_eeg()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -827,6 +835,7 @@ class ShowHideEEG(bpy.types.Operator):
 class ShowHideElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_elctrodes"
     bl_label = "mmvt show_hide_electrodes"
+    bl_description = 'Show/Hide electrodes \n\nScript: mmvt.appearance.show_hide_electrodes()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -839,6 +848,7 @@ class ShowHideElectrodes(bpy.types.Operator):
 class ShowHideConnections(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_connections"
     bl_label = "mmvt show_hide_connections"
+    bl_description = 'Show/Hide MEG sensors \n\nScript: mmvt.appearance.show_hide_connections()'
     bl_options = {"UNDO"}
 
     @staticmethod
