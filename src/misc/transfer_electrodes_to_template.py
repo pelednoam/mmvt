@@ -636,7 +636,7 @@ def prepare_files_for_all_subjects():
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
-    remote_subject_dir = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput"'
+    remote_subject_dir = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
     subjects = pu.decode_subjects(['MG*'], remote_subject_dir)
     for subject in subjects:
         remote_subject_dir = utils.build_remote_subject_dir(remote_subject_dir, subject)
