@@ -18,22 +18,31 @@ MMVT_DIR = utils.get_link_dir(LINKS_DIR, 'mmvt')
 
 
 def prepare_files(args):
+    # todo: should look in the dict for files locations
     ret = {}
     for subject in args.subject:
         ret[subject] = True
         for task in args.tasks:
             fol = utils.make_dir(op.join(MEG_DIR, task, subject))
             local_epo_fname = op.join(fol, '{}_{}_Onset-epo.fif'.format(subject, task))
-            if op.isfile(local_epo_fname):
+            if op.islink(local_epo_fname) or op.isfile(local_epo_fname):
                 os.remove(local_epo_fname)
-            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_Onset-epo.fif'.format(subject, task))
+            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
+            if not op.isfile(remote_epo_fname):
+                print('{} does not exist!'.format(remote_epo_fname))
+                ret[subject] = False
+                continue
             print('Creating a local link to {}'.format(remote_epo_fname))
             utils.make_link(remote_epo_fname, local_epo_fname)
             local_raw_fname = op.join(fol, '{}_{}-raw.fif'.format(subject, task))
-            if op.isfile(local_raw_fname):
+            if op.islink(local_raw_fname) or op.isfile(local_raw_fname):
                 os.remove(local_raw_fname)
             remote_raw_fname = op.join(
                 utils.get_parent_fol(args.meg_dir), 'ica', subject, '{}_{}-raw.fif'.format(subject, task))
+            if not op.isfile(remote_epo_fname):
+                print('{} does not exist!'.format(remote_raw_fname))
+                ret[subject] = False
+                continue
             print('Creating a local link to {}'.format(remote_raw_fname))
             utils.make_link(remote_raw_fname, local_raw_fname)
         ret[subject] = ret[subject] and op.isfile(local_epo_fname) and op.isfile(local_raw_fname)
@@ -117,7 +126,6 @@ def get_empty_fnames(subject, tasks, args):
 #         ))
 #         meg.call_main(args)
 
-
 def meg_preproc(args):
     inv_method, em = 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
@@ -125,8 +133,18 @@ def meg_preproc(args):
     prepare_files(args)
     times = (-2, 4)
 
+    data_dic = np.load(op.join(args.remote_root_dir, 'data_dictionary.npz'))
+    meta_data = data_dic['noam_dict'].tolist()
+    msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
+    ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
+    good_subjects = msit_subjects.intersection(ecr_subjects)
+
     subjects = args.subject
     for subject in subjects:
+        if subject not in good_subjects:
+            print('{} not in the meta data!'.format(subject))
+            continue
+        # if not all([op.isfile(op.join(MMVT_DIR, 'MEG', task))
         # if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
         anatomy_preproc(args, subject)
         if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
@@ -221,8 +239,8 @@ def post_analysis(args):
     data_dic = np.load(op.join(res_fol, 'data_dictionary.npz'))
     meta_data = data_dic['noam_dict'].tolist()
     # brain_overall_res_fname = op.join(res_fol, 'brain_overall_res.npz')
-    subjects1 = set(meta_data[0]['MSIT'].keys())
-    subjects2 = set(meta_data[1]['MSIT'].keys())
+    msit_subjects = set(meta_data[0]['MSIT'].keys())
+    ecr_subjects = set(meta_data[1]['ECR'].keys())
     subjects_with_data = defaultdict(list)
     mean_evo = {group_id:defaultdict(list) for group_id in range(2)}
     mean_power = {group_id: {} for group_id in range(2)}
@@ -322,6 +340,8 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
+    parser.add_argument('--remote_root_dir', required=False,
+                        default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam')
     parser.add_argument('--meg_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs')
                         # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
@@ -332,7 +352,7 @@ if __name__ == '__main__':
 
     if args.subject[0] == 'all':
         args.subject = [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, '*')) if op.isdir(d) and
-                        op.isfile(op.join(d, '{}_{}_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-                        op.isfile(op.join(d, '{}_{}_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))]
+                        op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
+                        op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))]
         print('{} subjects were found with both tasks!'.format(len(args.subject)))
     locals()[args.function](args)
