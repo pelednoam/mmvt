@@ -2119,7 +2119,7 @@ class ColorMegLabels(bpy.types.Operator):
 class ColorfMRI(bpy.types.Operator):
     bl_idname = "mmvt.fmri_color"
     bl_label = "mmvt fmri color"
-    bl_description = 'Plot the current fMRI activity map.\nScript: mmvt.coloring.plot_fmri()'
+    bl_description = 'Plot the current fMRI activity map.\n\nScript: mmvt.coloring.plot_fmri()'
     bl_options = {"UNDO"}
 
     @staticmethod

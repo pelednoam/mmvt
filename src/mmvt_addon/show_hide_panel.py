@@ -1,3 +1,4 @@
+# coding=utf-8
 import bpy
 import mmvt_utils as mu
 import mathutils
@@ -484,6 +485,7 @@ class ShowAxial(bpy.types.Operator):
 class ShowHideLH(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_lh"
     bl_label = "mmvt show_hide_lh"
+    bl_description = 'Hide/Show left hemisphere \n\nScript: mmvt.show_hide.show_hide_hemi()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -496,6 +498,7 @@ class ShowHideLH(bpy.types.Operator):
 class ShowHideRH(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_rh"
     bl_label = "mmvt show_hide_rh"
+    bl_description = 'Hide/Show right hemisphere \n\nScript: mmvt.show_hide.show_hide_hemi()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -508,6 +511,7 @@ class ShowHideRH(bpy.types.Operator):
 class ShowHideSubCorticals(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_sub"
     bl_label = "mmvt show_hide_sub"
+    bl_description = 'Hide/Show subcortical region \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -524,6 +528,7 @@ class ShowHideSubCorticals(bpy.types.Operator):
 class ShowHideLHSubs(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_sub_left"
     bl_label = "mmvt show_hide_sub_left"
+    bl_description = 'Hide/Show left side of the subcortical region \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -536,6 +541,7 @@ class ShowHideLHSubs(bpy.types.Operator):
 class ShowHideRHSubs(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_sub_right"
     bl_label = "mmvt show_hide_sub_right"
+    bl_description = 'Hide/Show right side of the subcortical region \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -687,7 +693,9 @@ bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotat
 bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation')
 bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.render_split = bpy.props.BoolProperty()
-bpy.types.Scene.hide_half_subcorticals = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.hide_half_subcorticals = bpy.props.BoolProperty(default=False,
+    description='Changes the ‘Hide Subcorticals’ button into two buttons which Hide/Show left or right side of the'
+                ' subcortical region')
 bpy.types.Scene.show_hide_settings = bpy.props.BoolProperty(default=False)
 
 bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0, step=1, name='x')#, min=-0.1, max=0.1, )
