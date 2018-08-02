@@ -1078,12 +1078,13 @@ def get_inv_fname(inv_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
     return inv_fname
 
 
-def get_raw_fname(raw_fname=''):
+def get_raw_fname(raw_fname='', include_empty=False):
     if raw_fname == '':
         raw_fname = RAW
     print('{}: looking for raw fif file...'.format(inspect.stack()[1][3]))
-    raw_fname, raw_exist = locating_meg_file(raw_fname, '*raw.fif')
-    return raw_fname
+    exclude_pattern = '*empty*.fif' if not include_empty else ''
+    raw_fname, raw_exist = locating_meg_file(raw_fname, '*raw.fif', exclude_pattern=exclude_pattern)
+    return raw_fname if raw_exist else ''
 
 
 def get_fwd_fname(fwd_fname='', fwd_usingMEG=True, fwd_usingEEG=True):
@@ -2457,12 +2458,64 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
-def calc_power_spectrum(mri_subject, task, atlas, extract_mode, inverse_method, labels_data_template):
+def calc_power_spectrum(subject, events, args, do_plot=True):
+    info = get_info(args.info_fname, args.evo_fname, args.raw_fname)
+    if info is None:
+        print('calc_power_spectrum: Can\'t find the MEG info file!')
+        return False
+    if args.labels_data_template == '':
+        args.labels_data_template = LBL
     for hemi, em, im in product(utils.HEMIS, args.extract_mode, args.inverse_method):
-        labels_fname = get_labels_data_fname(
-            args.labels_data_template, im, args.task, atlas, em, hemi)
-        labels_dict = np.load(labels_fname)
+        labels_fname = get_labels_fname(subject, hemi, em)
+        if not op.isfile(labels_fname):
+            print('Can\'t find the labels file! {}'.format(labels_fname))
+            continue
+        labels_dict = utils.Bag(np.load(labels_fname))
+        data = labels_dict.data[em] if isinstance(labels_dict.data, dict) else labels_dict.data
+        for (cond_name, cond_id) in events.items():
+            for label_ind, label_name in enumerate(labels_dict.names):
+                label_data = data[label_ind, :, cond_id] if data.ndim == 3 else data[label_ind, :]
+                frequencies, linear_spectrum = utils.power_spectrum(info.sfreq, label_data)
+                if do_plot:
+                    plt.figure()
+                    plt.plot(frequencies, linear_spectrum)
+                    plt.xlabel('frequency [Hz]')
+                    plt.ylabel('Linear spectrum [V RMS]')
+                    plt.title('Power spectrum (scipy.signal.welch)')
+                    plt.show()
+                pass
 
+
+def get_labels_fname(subject, hemi, em):
+    labels_fnames = glob.glob(op.join(MMVT_DIR, subject, 'meg', 'labels_data*{}*{}_{}.npz'.format(
+        args.atlas, em, hemi)))
+    if args.task != '':
+        labels_task_fnames = [l for l in labels_fnames if args.task.lower() in utils.namebase(l.lower())]
+        if len(labels_task_fnames) > 0:
+            labels_fnames = labels_task_fnames
+    labels_fname = utils.select_one_file(labels_fnames)
+    return labels_fname
+
+
+def get_info(info_fname='', evoked_fname='', raw_fname=''):
+    info = None
+    evoked_fname = get_evo_fname(evoked_fname)
+    raw_fname = get_raw_fname(raw_fname)
+    if info_fname == '':
+        info_fname = INFO
+    if op.isfile(info_fname):
+        info = utils.load(info_fname)
+    if info is None and op.isfile(evoked_fname):
+        evoked = mne.read_evokeds(evoked_fname)
+        if isinstance(evoked, list):
+            evoked = evoked[0]
+        info = evoked.info
+    if info is None and op.isfile(raw_fname):
+        raw = mne.io.read_raw_fif(raw_fname)
+        info = raw.info
+    if info is not None:
+        info = utils.Bag(info)
+    return info
 
 
 def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
@@ -3755,8 +3808,8 @@ def main(tup, remote_subject_dir, args, flags=None):
     if utils.should_run(args, 'read_sensors_layout'):
         flags['read_sensors_layout'] = read_sensors_layout(mri_subject, args)
 
-    if 'power_spectrum' in args.function:
-        flags['power_spectrum'] = calc_power_spectrum(mri_subject, args)
+    if 'calc_power_spectrum' in args.function:
+        flags['calc_power_spectrum'] = calc_power_spectrum(subject, conditions, args)
 
     if 'save_vertex_activity_map' in args.function:
         stc_fnames = [STC_HEMI_SMOOTH.format(cond='{cond}', method=inverse_method, hemi=hemi)
@@ -3874,6 +3927,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--epo_fname', help='', required=False, default='')
     parser.add_argument('--evo_fname', help='', required=False, default='')
     parser.add_argument('--cor_fname', help='', required=False, default='')
+    parser.add_argument('--info_fname', help='', required=False, default='')
     parser.add_argument('--noise_cov_fname', help='', required=False, default='')
     parser.add_argument('--empty_fname', help='', required=False, default='')
     parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
