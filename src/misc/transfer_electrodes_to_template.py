@@ -631,13 +631,17 @@ def get_output_using_sftp(subject_to='colin27'):
 
 
 def prepare_files_for_all_subjects():
+    from src.utils import preproc_utils as pu
     necessary_files = {'surf': ['lh.inflated', 'rh.inflated', 'lh.pial', 'rh.pial', 'rh.white', 'lh.white',
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     remote_subject_dir = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput"'
-    utils.prepare_subject_folder(
-        necessary_files, 'MG*', remote_subject_dir, SUBJECTS_DIR)
+    subjects = pu.decode_subjects('MG*', remote_subject_dir)
+    for subject in subjects:
+        remote_subject_dir = utils.build_remote_subject_dir(remote_subject_dir, subject)
+        utils.prepare_subject_folder(
+            necessary_files, subject, remote_subject_dir, SUBJECTS_DIR)
 
 
 if __name__ == '__main__':
