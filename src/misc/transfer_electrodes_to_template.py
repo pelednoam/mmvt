@@ -621,7 +621,7 @@ def get_output_using_sftp(subject_to='colin27'):
     for subject in subjects:
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'electrodes'))
         password = utils.prepare_subject_folder(
-            necessary_files, subject, remote_subject_dir.format(subject=subject), SUBJECTS_DIR,
+            necessary_files, subject, remote_subject_dir.format(subject=subject.lower()), SUBJECTS_DIR,
             True, sftp_username, sftp_domain, sftp_password=password)
 
 
