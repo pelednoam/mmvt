@@ -617,6 +617,7 @@ def get_output_using_sftp(subject_to='colin27'):
     remote_subject_dir = '/space/thibault/1/users/npeled/subjects/{subject}'
     necessary_files = {f'mri_cvs_register_to_{subject_to}': f'combined_to{subject_to}_elreg_afteraseg-norm.tm3d'}
     for subject in subjects:
+        utils.make_dir(op.join(SUBJECTS_DIR, subject, 'electrodes'))
         utils.prepare_subject_folder(
             necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
             True, sftp_username, sftp_domain)
@@ -634,7 +635,7 @@ if __name__ == '__main__':
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
-    n_jobs=4
+    n_jobs=2
 
     get_output_using_sftp()
     raise Exception('Done')
