@@ -10,6 +10,8 @@ from collections import defaultdict
 import functools
 
 from src.mmvt_addon import mmvt_utils as mu
+from src.utils import freesurfer_utils as fu
+
 read_labels_from_annots = mu.read_labels_from_annots
 read_labels_from_annot = mu.read_labels_from_annot
 Label = mu.Label
@@ -565,7 +567,17 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 labels = read_labels_parallel(
                     subject, subjects_dir, atlas, hemi=hemi, labels_fol=labels_fol, n_jobs=n_jobs)
         if len(labels) == 0:
-            raise Exception("Can't read the {} labels!".format(atlas))
+            if fu.is_fs_atlas(atlas):
+                annotations_exist = fu.create_annotation_file(
+                    subject, atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME,
+                    overwrite_annot_file=True)
+            if not annotations_exist:
+                raise Exception("Can't recreate {}!".format(atlas))
+            labels = mne.read_labels_from_annot(
+                subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name, hemi=hemi)
+            if len(labels) == 0:
+                if not annotations_exist:
+                    raise Exception("Can't read the {} labels!".format(atlas))
         if exclude is None:
             exclude = []
         labels = [l for l in labels if not np.any([e in l.name for e in exclude])]

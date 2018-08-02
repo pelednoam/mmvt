@@ -5,6 +5,7 @@ import shutil
 import traceback
 from collections import defaultdict
 from tqdm import tqdm
+import csv
 
 import mne
 import numpy as np
@@ -417,7 +418,10 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
         # check the annot files:
         annot_ok = True
         for hemi in utils.HEMIS:
-            labels = lu.read_labels_from_annot(annotation_fname_template.format(hemi=hemi))
+            try:
+                labels = lu.read_labels_from_annot(annotation_fname_template.format(hemi=hemi))
+            except:
+                labels = []
             annot_ok = annot_ok and len(labels) > 1
         if annot_ok:
             print('The annotation file is already exist ({})'.format(annotation_fname_template))
@@ -547,32 +551,32 @@ def save_matlab_labels_vertices(subject, atlas):
     return True
 
 
-def save_labels_vertices(subject, atlas):
-    try:
-        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, sorted_according_to_annot_file=True,
-                                read_only_from_annot=True)
-        if len(labels) == 0:
-            labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
-        labels_names, labels_vertices = defaultdict(list), defaultdict(list)
-        for label in labels:
-            labels_names[label.hemi].append(label.name)
-            labels_vertices[label.hemi].append(label.vertices)
-        output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(atlas))
-        utils.save((labels_names, labels_vertices), output_fname)
-        return op.isfile(output_fname)
-    except:
-        return False
+@utils.tryit()
+def save_labels_vertices(subject, atlas, overwrite=False):
+    output_fname = op.join(MMVT_DIR, subject, 'labels_vertices_{}.pkl'.format(atlas))
+    if op.isfile(output_fname) and not overwrite:
+        return True
+    labels = lu.read_labels(subject, SUBJECTS_DIR, atlas, sorted_according_to_annot_file=True,
+                            read_only_from_annot=True)
+    if len(labels) == 0:
+        labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
+    labels_names, labels_vertices = defaultdict(list), defaultdict(list)
+    for label in labels:
+        labels_names[label.hemi].append(label.name)
+        labels_vertices[label.hemi].append(label.vertices)
+    utils.save((labels_names, labels_vertices), output_fname)
+    return op.isfile(output_fname)
 
 
 @utils.tryit()
-def create_spatial_connectivity(subject):
+def create_spatial_connectivity(subject, surf_types=('pial', 'dural'), overwrite=False):
     ret = True
-    for surf in ['pial', 'dural']:
+    for surf in surf_types:
         verts_neighbors_fname = op.join(MMVT_DIR, subject, 'verts_neighbors{}_{}.pkl'.format(
             '' if surf == 'pial' else '_{}'.format(surf), '{hemi}'))
         connectivity_fname = op.join(MMVT_DIR, subject, 'spatial_connectivity{}.pkl'.format(
             '' if surf == 'pial' else '_{}'.format(surf)))
-        if utils.both_hemi_files_exist(verts_neighbors_fname) and op.isfile(connectivity_fname):
+        if utils.both_hemi_files_exist(verts_neighbors_fname) and op.isfile(connectivity_fname) and not overwrite:
             continue
         connectivity_per_hemi = {}
         for hemi in utils.HEMIS:
@@ -916,8 +920,10 @@ def calc_faces_contours(subject, atlas):
 #     return utils.both_hemi_files_exist(out_file)
 
 
-def calc_labels_center_of_mass(subject, atlas):
-    import csv
+def calc_labels_center_of_mass(subject, atlas, overwrite=False):
+    com_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas))
+    if op.isfile(com_fname) and not overwrite:
+        return True
     labels = lu.read_labels(subject, SUBJECTS_DIR, atlas)
     if len(labels) > 0:
         if np.all(labels[0].pos == 0):
@@ -931,7 +937,6 @@ def calc_labels_center_of_mass(subject, atlas):
             writer = csv.writer(csvfile, delimiter=',')
             for label in labels:
                 writer.writerow([label.name, *center_of_mass[label.name]])
-        com_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}_center_of_mass.pkl'.format(atlas))
         blend_fname = op.join(MMVT_DIR, subject, '{}_center_of_mass.pkl'.format(atlas))
         utils.save(center_of_mass, com_fname)
         shutil.copyfile(com_fname, blend_fname)
@@ -1060,11 +1065,14 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
 
 
 @utils.tryit()
-def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas'):
+def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas', base_atlas='aparc.DKTatlas40',
+                            overwrite=False):
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas40.annot')):
         fu.create_annotation_file(
-            subject, 'aparc.DKTatlas40', subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
-    look = create_labels_names_lookup(subject, 'aparc.DKTatlas40')
+            subject, base_atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
+    look = create_labels_names_lookup(subject, base_atlas)
+    if len(look) == 0:
+        return False
     csv_fname = op.join(MMVT_DIR, '{}.csv'.format(high_level_atlas_name))
     if not op.isfile(csv_fname):
         csv_fname = op.join(MMVT_DIR, '{}.csv'.format(high_level_atlas_name.replace('.', '_')))
@@ -1072,20 +1080,23 @@ def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas'):
             print('No {}.csv in {}!'.format(high_level_atlas_name, MMVT_DIR))
             return False
     labels = []
-    for hemi in utils.HEMIS:
-        for line in utils.csv_file_reader(csv_fname, ','):
-            if len(line) == 0:
-                continue
-            elif len(line) > 1:
-                new_label = lu.join_labels('{}-{}'.format(line[0], hemi), (look['{}-{}'.format(l, hemi)] for l in line[1:]))
-            else:
-                new_label = look['{}-{}'.format(line[0], hemi)]
-            labels.append(new_label)
+    try:
+        for hemi in utils.HEMIS:
+            for line in utils.csv_file_reader(csv_fname, ','):
+                if len(line) == 0:
+                    continue
+                elif len(line) > 1:
+                    new_label = lu.join_labels('{}-{}'.format(line[0], hemi), (look['{}-{}'.format(l, hemi)] for l in line[1:]))
+                else:
+                    new_label = look['{}-{}'.format(line[0], hemi)]
+                labels.append(new_label)
+    except:
+        return False
     lu.labels_to_annot(subject, SUBJECTS_DIR, high_level_atlas_name, labels=labels, overwrite=True)
-    save_labels_vertices(subject, high_level_atlas_name)
-    create_spatial_connectivity(subject)
-    calc_labeles_contours(subject, high_level_atlas_name)
-    calc_labels_center_of_mass(subject, high_level_atlas_name)
+    save_labels_vertices(subject, high_level_atlas_name, overwrite)
+    create_spatial_connectivity(subject, ['pial'], overwrite)
+    calc_labeles_contours(subject, high_level_atlas_name, overwrite)
+    calc_labels_center_of_mass(subject, high_level_atlas_name, overwrite)
     return utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(
         '{hemi}', high_level_atlas_name)))
 

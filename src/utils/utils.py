@@ -922,8 +922,11 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                             else:
                                 local_fname = op.join(local_subject_dir, fol, namebase_with_ext(remote_fname))
                             if remote_fname != local_fname:
-                                print('coping {} to {}'.format(remote_fname, local_fname))
-                                shutil.copyfile(remote_fname, local_fname)
+                                if op.isfile(local_fname) and op.getsize(remote_fname) != op.getsize(remote_fname):
+                                    os.remove(local_fname)
+                                if not op.isfile(local_fname):
+                                    print('coping {} to {}'.format(remote_fname, local_fname))
+                                    shutil.copyfile(remote_fname, local_fname)
                         else:
                             print("Remote file can't be found! {}".format(remote_fname))
                 except:
@@ -937,14 +940,20 @@ def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_d
     all_files_exists = True
     for fol, files in necessary_files.items():
         fol = fol.replace(':', op.sep)
-        # if fol == 'label':
-        #     continue
         for file_name in files:
             file_name = file_name.replace('{subject}', subject)
-            files = glob.glob(op.join(local_subject_dir, fol, file_name))
+            full_fname = op.join(local_subject_dir, fol, file_name)
+            files = glob.glob(full_fname)
             if len(files) == 0:
                 if trace:
                     print("{}: the file {} doesn't exist in the local subjects folder!!!".format(subject, file_name))
+                all_files_exists = False
+                break
+            file_size = op.getsize(full_fname)
+            if file_size == 0:
+                if trace:
+                    print("{}: the file {} size is 0!!!".format(subject, file_name))
+                os.remove(full_fname)
                 all_files_exists = False
     return all_files_exists
 

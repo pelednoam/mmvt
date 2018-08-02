@@ -2492,8 +2492,11 @@ def make_link(source, target, overwrite=False):
         if not overwrite:
             print('{} already exist'.format(target))
         else:
-            os.remove(target)
-            os.symlink(source, target)
+            try:
+                os.remove(target)
+                os.symlink(source, target)
+            except:
+                print('Couldn\'t remove {}!'.format(target))
         return True
     except:
         return False

@@ -27,29 +27,41 @@ mri_elcs2elcs = 'mri_vol2vol --mov {subjects_dir}/{subject}/electrodes/{elcs_fil
     '--o {subjects_dir}/{subject}/electrodes/{output_name}_to_colin27.nii.gz --m3z ' + \
     '{subjects_dir}/{subject}/mri_cvs_register_to_colin27/final_CVSmorph_tocolin27.m3z ' + \
     '--noDefM3zPath --no-save-reg --targ {subjects_dir}/colin27/mri/T1.mgz'
-applyMorph = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
+apply_morph = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
              '--transform {subjects_dir}/{subject_from}/mri_cvs_register_to_{subject_to}/' + \
              'combined_to{subject_to}_elreg_afteraseg-norm.tm3d ' + \
              'point_list {subjects_dir}/{subject_from}/electrodes/{electrodes_to_morph_file_name}.txt ' + \
-             '{subjects_dir}/{subject_from}/electrodes/{morphed_electrodes_file_name}.txt a'
+             '{mmvt_dir}/{subject_from}/electrodes/{morphed_electrodes_file_name}.txt a'
+apply_morph_mni = 'applyMorph --template {subjects_dir}/{subject_to}/mri/orig.mgz ' \
+             '--transform {subjects_dir}/{subject_from}/mri_cvs_register_to_mni/' + \
+             'combined_tocvs_avg35_inMNI152_elreg_afteraseg-norm.tm3d ' + \
+             'point_list {subjects_dir}/{subject_from}/electrodes/{electrodes_to_morph_file_name}.txt ' + \
+             '{mmvt_dir}/{subject_from}/electrodes/{morphed_electrodes_file_name}.txt a'
 
 
-def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
-    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    for subject_from in subjects:
-        cmd = mri_robust_register
-        lta_name = 't1_to_{}'.format(subject_to)
-        if vox2vox:
-            cmd += ' --vox2vox'
-            lta_name += '_vox2vox'
-        rs = utils.partial_run_script(locals(), print_only=print_only)
-        rs(cmd)
+# def robust_register_to_template(subjects, template_system, subjects_dir, vox2vox=False, print_only=False):
+#     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+#     for subject_from in subjects:
+#         cmd = mri_robust_register
+#         lta_name = 't1_to_{}'.format(subject_to)
+#         if vox2vox:
+#             cmd += ' --vox2vox'
+#             lta_name += '_vox2vox'
+#         rs = utils.partial_run_script(locals(), print_only=print_only)
+#         rs(cmd)
 
 
 def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=False, print_only=False, n_jobs=1):
     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(op.join(
-                subjects_dir, s, f'mri_cvs_register_to_{subject_to}', f'final_CVSmorph_to{subject_to}.m3z')))]
+    if subject_to == 'fsaverage':
+        output_fname = op.join(subjects_dir, '{subject}', 'mri_cvs_register_to_mni',
+                               'combined_tocvs_avg35_inMNI152_elreg_afteraseg-norm.tm3d')
+    else:
+        output_fname = op.join(subjects_dir, '{subject}', f'mri_cvs_register_to_{subject_to}',
+                               f'combined_to{subject_to}_elreg_afteraseg-norm.tm3d')
+    subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(output_fname.format(subject=s)))]
+    if len(subjects) == 0:
+        return
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
     chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, overwrite, print_only)
               for chunk_indices in indices]
@@ -69,52 +81,56 @@ def _mri_cvs_register_parallel(p):
 
 
 
-def morph_t1(subjects, template_system, subjects_dir, print_only=False):
-    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    for subject in subjects:
-        if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
-            print(f'The m3z morph matrix does not exist for subject {subject}!')
-            continue
-        output_fname = op.join(subjects_dir, subject, 'mri', 'T1_to_colin_csv_register.mgz')
-        if not op.isfile(output_fname):
-            rs = utils.partial_run_script(locals(), print_only=print_only)
-            rs(mri_vol2vol)
-        print(f'freeview -v {subjects_dir}/colin27/mri/T1.mgz {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz')
+# def morph_t1(subjects, template_system, subjects_dir, print_only=False):
+#     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+#     for subject in subjects:
+#         if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
+#             print(f'The m3z morph matrix does not exist for subject {subject}!')
+#             continue
+#         output_fname = op.join(subjects_dir, subject, 'mri', 'T1_to_colin_csv_register.mgz')
+#         if not op.isfile(output_fname):
+#             rs = utils.partial_run_script(locals(), print_only=print_only)
+#             rs(mri_vol2vol)
+#         print(f'freeview -v {subjects_dir}/colin27/mri/T1.mgz {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz')
 
 
 def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=4):
     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-
-    subjects = list(electrodes.keys())
+    output_fname = op.join(mmvt_dir, '{subject}', 'electrodes','morphed_electrodes_file_name.txt')
+    subjects = [s for s in list(electrodes.keys()) if overwrite or not op.isfile(output_fname.format(subject=s))]
+    if len(subjects) == 0:
+        return True
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
-    chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, overwrite, print_only)
+    chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, mmvt_dir, output_fname, overwrite, print_only)
               for chunk_indices in indices]
     utils.run_parallel(_morph_electrodes_parallel, chunks, n_jobs)
-
-
-def _morph_electrodes_parallel(p):
-    subjects, subject_to, subjects_dir, overwrite, print_only = p
-    bad_subjects, good_subjects = [], []
     for subject_from in subjects:
-        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}.txt'
-        output_fname = op.join(subjects_dir, subject_from, 'electrodes', morphed_electrodes_file_name)
-        if op.isfile(output_fname) and not overwrite:
-            continue
-        rs = utils.partial_run_script(locals(), print_only=print_only)
-        rs(applyMorph)
-        ret = op.isfile(output_fname)
+        ret = op.isfile(output_fname.format(subject=subject_from))
         if not ret:
             bad_subjects.append(subject_from)
         else:
             good_subjects.append(subject_from)
-
     print('good subjects: {}'.format(good_subjects))
     print('bad subjects: {}'.format(bad_subjects))
 
 
+def _morph_electrodes_parallel(p):
+    subjects, subject_to, subjects_dir, mmvt_dir, output_fname, overwrite, print_only = p
+    bad_subjects, good_subjects = [], []
+    for subject_from in subjects:
+        electrodes_to_morph_file_name = 'electrodes_to_morph'
+        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}'
+        rs = utils.partial_run_script(locals(), print_only=print_only)
+        if subject_to == 'fsaverage':
+            rs(apply_morph_mni)
+        else:
+            rs(apply_morph)
+
+
 def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False):
     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    output_fname = op.join(mmvt_dir, subject_to, 'electrodes', 'template_electrodes.pkl')
+    fol = utils.make_dir(op.join(mmvt_dir, subject_to, 'electrodes'))
+    output_fname = op.join(fol, 'template_electrodes.pkl')
     if op.isfile(output_fname) and not overwrite:
         return
     t1_header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
@@ -124,7 +140,7 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     for subject in electrodes.keys():
         if subject == subject_to:
             continue
-        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}.txt'
+        morphed_electrodes_file_name = f'electrodes_morph_to_{subject_to}'
         input_fname = op.join(subjects_dir, subject, 'electrodes', morphed_electrodes_file_name)
         if not op.isfile(input_fname):
             bad_subjects.append(subject)
@@ -141,71 +157,71 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     print('bad subjects: {}'.format(bad_subjects))
 
 
-def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
-    subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    template_electrodes = defaultdict(list)
-    header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
-    for subject in electrodes.keys():
-        if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
-            # print(f'The m3z morph matrix does not exist for subject {subject}!')
-            continue
-        electrodes_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes.nii.gz')
-        if not op.isfile(electrodes_fname):
-            # print(f"Can't find volumetric electrodes file for {subject}")
-            continue
-        for stim_file in glob.glob(op.join(subjects_dir, subject, 'electrodes', 'stim_????.nii.gz')):
-            elcs_file_name = utils.namebase_with_ext(stim_file)
-            output_name = utils.namebase(stim_file)
-            output_fname = op.join(subjects_dir, subject, 'electrodes', f'{output_name}_to_colin27.nii.gz')
-            if not op.isfile(output_fname) or overwrite:
-                rs = utils.partial_run_script(locals(), print_only=print_only)
-                rs(mri_elcs2elcs)
-        for morphed_fname in glob.glob(op.join(subjects_dir, subject, 'electrodes', 'stim_????_to_colin27.nii.gz')):
-            print(f'Loading {morphed_fname}')
-            x = nib.load(morphed_fname).get_data()
-            inds = np.array(np.where(x>0)).T
-            vol = inds[np.argmax([x[tuple(ind)] for ind in inds])]
-            tkreg = fu.apply_trans(header.get_vox2ras_tkr(), vol)[0]
-            elc_name = utils.namebase(morphed_fname).split('_')[1]
-            template_electrodes[subject].append((f'{subject}_{elc_name}', tkreg))
-            # utils.plot_3d_scatter(inds, names=[x[tuple(ind)] for ind in inds])
-            # print(subject, utils.namebase(morphed_fname), len(inds))
-        # morphed_output_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes_to_colin27.nii.gz')
-        # if not op.isfile(morphed_output_fname):
-        #     elcs_file_name = 'stim_electrodes.nii.gz'
-        #     rs = utils.partial_run_script(locals(), print_only=print_only)
-        #     rs(mri_elcs2elcs)
-        # if not op.isfile(morphed_output_fname):
-        #     print('Error in morphing the electrodes volumetric file!')
-        #     continue
-        # elecs = get_tkreg_from_volume(subject, electrodes_fname)
-        # tkreg, pairs, dists = get_electrodes_from_morphed_volume(template_system, morphed_output_fname, len(elecs), subjects_dir, 0)
-        # print([dists[p[0],p[1]] for p in pairs])
-        # utils.plot_3d_scatter(tkreg, names=range(len(tkreg)), labels_indices=range(len(tkreg)), title=subject)
-        # print(f'{subject} has {len(elecs)} electrodes')
-        # print(f'{subject} after morphing as {len(tkreg)} electrodes:')
-        # print(f'freeview -v {subjects_dir}/{subject}/electrodes/stim_electrodes.nii.gz {subjects_dir}/colin27/mri/T1.mgz')
-        # for ind, pair in enumerate(pairs):
-        #     pair_name = chr(ord('A') + ind)
-        #     for elc_ind in range(2):
-        #         template_electrodes[subject].append((f'{subject}_{pair_name}{elc_ind + 1}', tkreg[pair[elc_ind]]))
-    utils.save(template_electrodes, op.join(mmvt_dir, subject_to, 'electrodes', 'template_electrodes.pkl'))
-    return template_electrodes
+# def morph_electrodes_volume(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False):
+#     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+#     template_electrodes = defaultdict(list)
+#     header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
+#     for subject in electrodes.keys():
+#         if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
+#             # print(f'The m3z morph matrix does not exist for subject {subject}!')
+#             continue
+#         electrodes_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes.nii.gz')
+#         if not op.isfile(electrodes_fname):
+#             # print(f"Can't find volumetric electrodes file for {subject}")
+#             continue
+#         for stim_file in glob.glob(op.join(subjects_dir, subject, 'electrodes', 'stim_????.nii.gz')):
+#             elcs_file_name = utils.namebase_with_ext(stim_file)
+#             output_name = utils.namebase(stim_file)
+#             output_fname = op.join(subjects_dir, subject, 'electrodes', f'{output_name}_to_colin27.nii.gz')
+#             if not op.isfile(output_fname) or overwrite:
+#                 rs = utils.partial_run_script(locals(), print_only=print_only)
+#                 rs(mri_elcs2elcs)
+#         for morphed_fname in glob.glob(op.join(subjects_dir, subject, 'electrodes', 'stim_????_to_colin27.nii.gz')):
+#             print(f'Loading {morphed_fname}')
+#             x = nib.load(morphed_fname).get_data()
+#             inds = np.array(np.where(x>0)).T
+#             vol = inds[np.argmax([x[tuple(ind)] for ind in inds])]
+#             tkreg = fu.apply_trans(header.get_vox2ras_tkr(), vol)[0]
+#             elc_name = utils.namebase(morphed_fname).split('_')[1]
+#             template_electrodes[subject].append((f'{subject}_{elc_name}', tkreg))
+#             # utils.plot_3d_scatter(inds, names=[x[tuple(ind)] for ind in inds])
+#             # print(subject, utils.namebase(morphed_fname), len(inds))
+#         # morphed_output_fname = op.join(subjects_dir, subject, 'electrodes', 'stim_electrodes_to_colin27.nii.gz')
+#         # if not op.isfile(morphed_output_fname):
+#         #     elcs_file_name = 'stim_electrodes.nii.gz'
+#         #     rs = utils.partial_run_script(locals(), print_only=print_only)
+#         #     rs(mri_elcs2elcs)
+#         # if not op.isfile(morphed_output_fname):
+#         #     print('Error in morphing the electrodes volumetric file!')
+#         #     continue
+#         # elecs = get_tkreg_from_volume(subject, electrodes_fname)
+#         # tkreg, pairs, dists = get_electrodes_from_morphed_volume(template_system, morphed_output_fname, len(elecs), subjects_dir, 0)
+#         # print([dists[p[0],p[1]] for p in pairs])
+#         # utils.plot_3d_scatter(tkreg, names=range(len(tkreg)), labels_indices=range(len(tkreg)), title=subject)
+#         # print(f'{subject} has {len(elecs)} electrodes')
+#         # print(f'{subject} after morphing as {len(tkreg)} electrodes:')
+#         # print(f'freeview -v {subjects_dir}/{subject}/electrodes/stim_electrodes.nii.gz {subjects_dir}/colin27/mri/T1.mgz')
+#         # for ind, pair in enumerate(pairs):
+#         #     pair_name = chr(ord('A') + ind)
+#         #     for elc_ind in range(2):
+#         #         template_electrodes[subject].append((f'{subject}_{pair_name}{elc_ind + 1}', tkreg[pair[elc_ind]]))
+#     utils.save(template_electrodes, op.join(mmvt_dir, subject_to, 'electrodes', 'template_electrodes.pkl'))
+#     return template_electrodes
 
 
-def get_electrodes_from_morphed_volume(template_system, morphed_output_fname, electrodes_num, subjects_dir, threshold=0):
-    from src.misc.dell import find_electrodes_in_ct
-    template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-
-    morphed_data = nib.load(morphed_output_fname).get_data()
-    header = nib.load(op.join(subjects_dir, template, 'mri', 'T1.mgz'))
-    opt_voxels = np.array(np.where(morphed_data > threshold)).T
-    vol, _ = find_electrodes_in_ct.clustering(opt_voxels, morphed_data, electrodes_num, clustering_method='knn')
-    tkreg = fu.apply_trans(header.header.get_vox2ras_tkr(), vol)
-    dists = cdist(tkreg, tkreg)
-    inds = np.where((dists < 7) & (dists > 3))
-    pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
-    return tkreg, pairs, dists
+# def get_electrodes_from_morphed_volume(template_system, morphed_output_fname, electrodes_num, subjects_dir, threshold=0):
+#     from src.misc.dell import find_electrodes_in_ct
+#     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
+#
+#     morphed_data = nib.load(morphed_output_fname).get_data()
+#     header = nib.load(op.join(subjects_dir, template, 'mri', 'T1.mgz'))
+#     opt_voxels = np.array(np.where(morphed_data > threshold)).T
+#     vol, _ = find_electrodes_in_ct.clustering(opt_voxels, morphed_data, electrodes_num, clustering_method='knn')
+#     tkreg = fu.apply_trans(header.header.get_vox2ras_tkr(), vol)
+#     dists = cdist(tkreg, tkreg)
+#     inds = np.where((dists < 7) & (dists > 3))
+#     pairs = list(set([tuple(sorted([inds[0][k], inds[1][k]])) for k in range(len(inds[0]))]))
+#     return tkreg, pairs, dists
 
 
 def apply_trans(trans, points):
@@ -222,23 +238,23 @@ def apply_trans(trans, points):
     return points
 
 
-def lta_transfer_ras2ras(subject, coords, return_trans=False):
-    lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
-    if not op.isfile(lta_fname):
-        return None
-    lta = fu.read_lta_file(lta_fname)
-    lta[np.isclose(lta, np.zeros(lta.shape))] = 0
-    subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
-    template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
-    vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
-    ras = apply_trans(subject_header.get_vox2ras(), vox)
-    template_ras = apply_trans(lta, ras)
-    template_vox = apply_trans(template_header.get_ras2vox(), template_ras)
-    template_cords = apply_trans(template_header.get_vox2ras_tkr(), template_vox)
-    if return_trans:
-        return template_cords, lta
-    else:
-        return template_cords
+# def lta_transfer_ras2ras(subject, coords, return_trans=False):
+#     lta_fname = op.join(SUBJECTS_DIR, subject, 'mri', 't1_to_{}.lta'.format(template_system))
+#     if not op.isfile(lta_fname):
+#         return None
+#     lta = fu.read_lta_file(lta_fname)
+#     lta[np.isclose(lta, np.zeros(lta.shape))] = 0
+#     subject_header = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')).get_header()
+#     template_header = nib.load(op.join(SUBJECTS_DIR, template_system, 'mri', 'T1.mgz')).get_header()
+#     vox = apply_trans(np.linalg.inv(subject_header.get_vox2ras_tkr()), coords)
+#     ras = apply_trans(subject_header.get_vox2ras(), vox)
+#     template_ras = apply_trans(lta, ras)
+#     template_vox = apply_trans(template_header.get_ras2vox(), template_ras)
+#     template_cords = apply_trans(template_header.get_vox2ras_tkr(), template_vox)
+#     if return_trans:
+#         return template_cords, lta
+#     else:
+#         return template_cords
 
 
 def lta_transfer_ras2ras(subject, coords, return_trans=False):
@@ -369,9 +385,10 @@ def export_into_csv(template_system, mmvt_dir, prefix=''):
         wr.writerow(['Electrode Name','R','A','S'])
         for elc_name, elc_coords in zip(electrodes_dict.names, electrodes_dict.pos):
             wr.writerow([elc_name, *['{:.2f}'.format(x) for x in elc_coords.squeeze()]])
-    fol = utils.make_dir(op.join(SUBJECTS_DIR, template, 'electrodes'))
+    fol = utils.make_dir(op.join(MMVT_DIR, template, 'electrodes'))
     csv_fname2 = op.join(fol, utils.namebase_with_ext(csv_fname))
-    shutil.copy(csv_fname, csv_fname2)
+    if csv_fname != csv_fname2:
+        shutil.copy(csv_fname, csv_fname2)
     print('export_into_csv: {}'.format(op.isfile(csv_fname) and op.isfile(csv_fname2)))
 
 
@@ -520,18 +537,20 @@ def get_subject_files(subject, necessary_files, remote_subject_dir):
 
 def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
     for subject in electrodes.keys():
-        t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
-        trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
-        fol = utils.make_dir(op.join(subjects_dir, subject, 'electrodes'))
+        fol = utils.make_dir(op.join(SUBJECTS_DIR, subject, 'electrodes'))
         electrodes_to_morph_file_name = 'electrodes_to_morph.txt'
         csv_fname = op.join(fol, electrodes_to_morph_file_name)
-        if op.isfile(csv_fname) and not overwrite:
-            continue
+        # if op.isfile(csv_fname) and not overwrite:
+        #     continue
+        t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
+        trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
+        print('create_electrodes_files: Writing to {}'.format(csv_fname))
         with open(csv_fname, 'w') as csv_file:
             wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE, delimiter=' ')
             for _, coords in electrodes[subject]:
                 vox = np.rint(apply_trans(trans, coords)).astype(int)
-                wr.writerow([*['{:.2f}'.format(x) for x in vox]])
+                # wr.writerow([*['{:.2f}'.format(x) for x in vox]])
+                wr.writerow(vox)
 
 
 def create_volume_with_electrodes(electrodes, subjects_dir, merge_to_pairs=True, overwrite=False):
@@ -590,6 +609,19 @@ def get_tkreg_from_volume(subject, data_fname):
     return tkreg
 
 
+def get_output_using_sftp(subject_to='colin27'):
+    subjects = ['mg87', 'mg92', 'mg90', 'mg78', 'mg115', 'mg91', 'mg111', 'mg99', 'ep001', 'mg112', 'mg101', 'mg85',
+                'mg86', 'mg108', 'mg95', 'mg109', 'mg107', 'mg114']
+    sftp_domain = 'door.nmr.mgh.harvard.edu'
+    sftp_username = 'npeled'
+    remote_subject_dir = '/space/thibault/1/users/npeled/subjects/{subject}'
+    necessary_files = {f'mri_cvs_register_to_{subject_to}': f'combined_to{subject_to}_elreg_afteraseg-norm.tm3d'}
+    for subject in subjects:
+        utils.prepare_subject_folder(
+            necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
+            True, sftp_username, sftp_domain)
+
+
 if __name__ == '__main__':
     roots = ['/home/npeled/Documents/stim_locations', '/homes/5/npeled/space1/Angelique/misc']
     root = [d for d in roots if op.isdir(d)][0]
@@ -602,17 +634,23 @@ if __name__ == '__main__':
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
+    n_jobs=4
+
+    get_output_using_sftp()
+    raise Exception('Done')
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
-    subjects = ['mg104']
+    # MG96, MG104, MG105, MG107, MG108, and MG111
+    subjects = ['mg105', 'mg107', 'mg108', 'mg111']
     electrodes = read_all_electrodes(subjects, bipolar)
 
     if use_apply_morph:
         good_subjects, bad_subjects = prepare_files(subjects, template_system)
-        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=4, print_only=False, overwrite=False)
+        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
+                                 overwrite=False)
         create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=4)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
         export_into_csv(template_system, MMVT_DIR, prefix)

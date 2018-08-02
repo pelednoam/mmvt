@@ -1240,9 +1240,10 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
         subject, atlas, elc_r, elc_len, '_bipolar' if bipolar else '')
     output_fname = op.join(ela_code_fol, 'electrodes', output_name)
     mmvt_ela_fname = op.join(MMVT_DIR, subject, 'electrodes', output_name)
-    if op.isfile(output_fname) or (not op.isfile(mmvt_ela_fname) and overwrite):
+    if (op.isfile(output_fname) or op.isfile(mmvt_ela_fname)) and not overwrite:
         if not op.isfile(mmvt_ela_fname) and op.isfile(output_fname):
             shutil.copyfile(output_fname, mmvt_ela_fname)
+        print('The model for {}, {} is already exist ({})'.format(subject, atlas, mmvt_ela_fname))
         return True
 
     import importlib

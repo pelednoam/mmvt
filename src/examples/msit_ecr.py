@@ -38,7 +38,7 @@ def prepare_files(args):
             if op.islink(local_raw_fname) or op.isfile(local_raw_fname):
                 os.remove(local_raw_fname)
             remote_raw_fname = op.join(
-                utils.get_parent_fol(args.meg_dir), 'ica', subject, '{}_{}-raw.fif'.format(subject, task))
+                utils.get_parent_fol(args.meg_dir), 'raw_preprocessed', subject, '{}_{}_meg_ica-raw.fif'.format(subject, task))
             if not op.isfile(remote_epo_fname):
                 print('{} does not exist!'.format(remote_raw_fname))
                 ret[subject] = False
@@ -58,7 +58,8 @@ def anatomy_preproc(args, subject=''):
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
         high_level_atlas_name='darpa_atlas',
         function='create_annotation,create_high_level_atlas',
-        ignore_missing=True
+        overwrite_fs_files=True,
+        ignore_missing=False
     ))
     anat.call_main(args)
 
@@ -74,9 +75,11 @@ def get_empty_fnames(subject, tasks, args):
 
     remote_meg_fol = '/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{}'.format(subject)
     csv_fname = op.join(remote_meg_fol, 'cfg.txt')
+    empty_fnames, cors, days = '', '', ''
+
     if not op.isfile(csv_fname):
         print('No cfg file!')
-        return {task:'' for task in tasks}
+        return '', '', ''
     days, empty_fnames, cors = {}, {}, {}
     for line in utils.csv_file_reader(csv_fname, ' '):
         for task in tasks:
@@ -132,30 +135,41 @@ def meg_preproc(args):
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     prepare_files(args)
     times = (-2, 4)
+    subjects_with_error = []
 
     data_dic = np.load(op.join(args.remote_root_dir, 'data_dictionary.npz'))
     meta_data = data_dic['noam_dict'].tolist()
     msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
     ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
-    good_subjects = msit_subjects.intersection(ecr_subjects)
+    msit_ecr_subjects = msit_subjects.intersection(ecr_subjects)
+    good_subjects = []
 
-    subjects = args.subject
-    for subject in subjects:
-        if subject not in good_subjects:
+    for subject in args.subject:
+        if subject not in msit_ecr_subjects:
             print('{} not in the meta data!'.format(subject))
             continue
-        # if not all([op.isfile(op.join(MMVT_DIR, 'MEG', task))
-        # if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.darpa_atlas.annot')):
+        if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
+            print('{}: No recon-all files!'.format(subject))
+            continue
         anatomy_preproc(args, subject)
         if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
             print('Can\'t find the atlas {}!'.format(atlas))
-            continue
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
-        args.subject = subject
+        if empty_fnames == '' or cors == '' or days == '':
+            print('{}: Error with get_empty_fnames!'.format(subject))
         for task in args.tasks:
             if task not in cors:
-                print('{} no in get_empty_fnames!'.format(task))
+                print('{}: {} not in get_empty_fnames!'.format(subject, task))
                 continue
+        good_subjects.append(subject)
+    print('Good subjects: ({})'.format(len(good_subjects)))
+    print(good_subjects)
+    print('Bad subjects from the meta data:')
+    print(set(good_subjects) - set(good_subjects))
+
+    for subject in good_subjects:
+        args.subject = subject
+        for task in args.tasks:
             output_fname = op.join(
                 MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_minmax.npz'.format(
                     task.lower(), atlas, inv_method, em))
@@ -191,18 +205,21 @@ def meg_preproc(args):
                 n_jobs=args.n_jobs
             ))
             ret = meg.call_main(meg_args)
-            if not ret and args.throw:
-                raise Exception("errors!")
+            if not ret:
+                if args.throw:
+                    raise Exception("errors!")
+                else:
+                    subjects_with_error.append(subject)
 
-    good_subjects = [s for s in subjects if
+    good_subjects = [s for s in good_subjects if
            op.isfile(op.join(MMVT_DIR, subject, 'meg',
                              'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
            op.isfile(op.join(MMVT_DIR, subject, 'meg',
                              'labels_data_ecr_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em)))]
     print('Good subjects:')
     print(good_subjects)
-    print('Bad subjects:')
-    print(list(set(subjects) - set(good_subjects)))
+    print('subjects_with_error:')
+    print(subjects_with_error)
 
 
 def post_meg_preproc(args):
