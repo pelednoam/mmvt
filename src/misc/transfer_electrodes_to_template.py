@@ -610,8 +610,8 @@ def tkreg_to_vox(t1_header, tkreg):
 
 
 def get_output_using_sftp(subject_to='colin27'):
-    subjects = ['mg87', 'mg92', 'mg90', 'mg78', 'mg115', 'mg91', 'mg111', 'mg99', 'ep001', 'mg112', 'mg101', 'mg85',
-                'mg86', 'mg108', 'mg95', 'mg109', 'mg107', 'mg114']
+    subjects = ['MG87', 'MG92', 'MG90', 'MG78', 'MG115', 'MG91', 'MG111', 'MG99', 'ep001', 'MG112', 'MG101', 'MG85',
+                'MG86', 'MG108', 'MG95', 'MG109', 'MG107', 'MG114']
     sftp_domain = 'door.nmr.mgh.harvard.edu'
     sftp_username = 'npeled'
     remote_subject_dir = '/space/thibault/1/users/npeled/subjects/{subject}'
@@ -619,9 +619,9 @@ def get_output_using_sftp(subject_to='colin27'):
                            ['combined_to{}_elreg_afteraseg-norm.tm3d'.format(subject_to)]}
     for subject in subjects:
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'electrodes'))
-        utils.prepare_subject_folder(
+        password = utils.prepare_subject_folder(
             necessary_files, subject, remote_subject_dir.format(subject=subject), SUBJECTS_DIR,
-            True, sftp_username, sftp_domain)
+            True, sftp_username, sftp_domain, sftp_password=password)
 
 
 if __name__ == '__main__':

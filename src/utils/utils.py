@@ -896,9 +896,9 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
         print('Not all the necessary files exist, and the remote_subject_dir was not set!')
         return False
     if sftp:
-        sftp_copy_subject_files(subject, necessary_files, sftp_username, sftp_domain,
-                                local_subjects_dir, remote_subject_dir, sftp_password,
-                                overwrite_files, print_traceback, sftp_port)
+        password = sftp_copy_subject_files(
+            subject, necessary_files, sftp_username, sftp_domain, local_subjects_dir, remote_subject_dir,
+            sftp_password, overwrite_files, print_traceback, sftp_port)
     else:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
@@ -933,7 +933,10 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                     if print_traceback:
                         print(traceback.format_exc())
     all_files_exists = check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, True)
-    return all_files_exists
+    if sftp:
+        return all_files_exists, password
+    else:
+        return all_files_exists
 
 
 def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_dir, trace=True):
@@ -1000,6 +1003,7 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
                 except:
                     if print_traceback:
                         print(traceback.format_exc())
+    return password
 
 
 def ask_for_sftp_password(username):
