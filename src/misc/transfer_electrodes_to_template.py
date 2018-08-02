@@ -644,6 +644,12 @@ def prepare_files_for_all_subjects():
             necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, overwrite_files=True)
 
 
+def get_all_subjects():
+    remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
+    subjects = pu.decode_subjects(['MG*'], remote_subject_template)
+    return subjects
+
+
 if __name__ == '__main__':
     # roots = ['/home/npeled/Documents/stim_locations', '/homes/5/npeled/space1/Angelique/misc']
     # root = [d for d in roots if op.isdir(d)][0]
@@ -659,13 +665,14 @@ if __name__ == '__main__':
     n_jobs=2
 
     # get_output_using_sftp()
-    prepare_files_for_all_subjects()
-    raise Exception('Done')
+    # prepare_files_for_all_subjects()
+    subjects = get_all_subjects()
+    # raise Exception('Done')
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
-    subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
+    # subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
     electrodes = read_all_electrodes(subjects, bipolar)
 
     if use_apply_morph:
