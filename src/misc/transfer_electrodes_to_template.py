@@ -523,8 +523,8 @@ def prepare_files(subjects, template_system):
             goods.append(subject)
         else:
             bads.append(subject)
-    print(f'goods: {}'.format(goods))
-    print(f'bads: {}'.format(bads))
+    print('goods: {}'.format(goods))
+    print('bads: {}'.format(bads))
     return goods, bads
 
 
