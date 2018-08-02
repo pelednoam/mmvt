@@ -615,11 +615,12 @@ def get_output_using_sftp(subject_to='colin27'):
     sftp_domain = 'door.nmr.mgh.harvard.edu'
     sftp_username = 'npeled'
     remote_subject_dir = '/space/thibault/1/users/npeled/subjects/{subject}'
-    necessary_files = {f'mri_cvs_register_to_{subject_to}': f'combined_to{subject_to}_elreg_afteraseg-norm.tm3d'}
+    necessary_files = {'mri_cvs_register_to_{}'.format(subject_to):
+                           'combined_to{}_elreg_afteraseg-norm.tm3d'.format(subject_to)}
     for subject in subjects:
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'electrodes'))
         utils.prepare_subject_folder(
-            necessary_files, subject, remote_subject_dir, SUBJECTS_DIR,
+            necessary_files, subject, remote_subject_dir.format(subject=subject), SUBJECTS_DIR,
             True, sftp_username, sftp_domain)
 
 
