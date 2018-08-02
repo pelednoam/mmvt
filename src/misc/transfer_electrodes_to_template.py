@@ -621,11 +621,13 @@ def get_output_using_sftp(subject_to='colin27'):
     for subject in subjects:
         print('Getting tm3d file for {}'.format(subject))
         utils.make_dir(op.join(SUBJECTS_DIR, subject, 'electrodes'))
-        ret, password = utils.prepare_subject_folder(
+        ret, password_temp = utils.prepare_subject_folder(
             necessary_files, subject, remote_subject_dir.format(subject=subject.lower()), SUBJECTS_DIR,
             True, sftp_username, sftp_domain, sftp_password=password)
         if not ret:
             print('Error in copying the file!')
+        if password_temp != '':
+            password = password_temp
 
 
 if __name__ == '__main__':
