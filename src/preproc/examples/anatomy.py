@@ -25,6 +25,17 @@ def get_subject_files_using_sftp(args):
         pu.run_on_subjects(args, anat.main)
 
 
+def get_subject_files_from_mad(args):
+    for subject in args.subject:
+        args = anat.read_cmd_args(dict(
+            subject=subject,
+            atlas=args.atlas,
+            remote_subject_dir='/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput',
+            function='prepare_subject_folder'
+        ))
+        pu.run_on_subjects(args, anat.main)
+
+
 @utils.check_for_freesurfer
 def create_annot_from_mad(args):
     remote_subject_dir_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
