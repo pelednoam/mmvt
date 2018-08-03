@@ -73,7 +73,11 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
         # There is no point in calculating bipolar for grid electrodes
         grid_data = data[electrodes_types == GRID, :]
         names_grid, pos_grid = get_names_dists_non_bipolar_electrodes(grid_data)
-        names = np.concatenate((names_depth, names_grid))
+        try:
+            names = np.concatenate((names_depth, names_grid))
+        except:
+            print('Can\'t concatenate names_depth: {} and names_grid: {}'.format(names_depth, names_grid))
+            return None, None
         pos = utils.vstack(pos_depth, pos_grid)
         # No need in pos_org for grid electordes
         pos_org.extend([() for _ in pos_grid])
@@ -257,6 +261,8 @@ def convert_electrodes_pos(
         output_file_name = 'electrodes{}_{}positions.npz'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
         output_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
         pos, names = electrodes_csv_to_npy(csv_file, output_file, bipolar)
+        if pos is None or names is None:
+            return False, None, None
         # if copy_to_blender:
         #     blender_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
         #     shutil.copyfile(output_file, blender_file)
