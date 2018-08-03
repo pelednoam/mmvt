@@ -689,11 +689,20 @@ def natural_keys(text):
     return [atoi(c) for c in re.split('(\d+)', text)]
 
 
+def split_bipolar_name(elec_name):
+    splits = elec_name.split('-')
+    if len(splits) == 2:
+        elec_name2, elec_name1 = splits
+    elif len(splits) == 4:
+        elec_name2, elec_name1 = '-'.join(splits[:2]), '-'.join(splits[2:4])
+    return elec_name1, elec_name2
+
+
 def elec_group_number(elec_name, bipolar=False):
     if isinstance(elec_name, bytes):
         elec_name = elec_name.decode('utf-8')
     if bipolar and '-' in elec_name:
-        elec_name2, elec_name1 = elec_name.split('-')
+        elec_name1, elec_name2 = split_bipolar_name(elec_name)
         group1, num1 = elec_group_number(elec_name1, False)
         group2, num2 = elec_group_number(elec_name2, False)
         group = group1 if group1 != '' else group2
