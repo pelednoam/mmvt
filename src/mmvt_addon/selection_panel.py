@@ -353,6 +353,7 @@ def set_selection_type(selection_type):
 class SelectAllRois(bpy.types.Operator):
     bl_idname = "mmvt.roi_selection"
     bl_label = "select2 ROIs"
+    bl_description = 'Selects all ROIs. \n\nScript: mmvt.selection.select_all_rois()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -387,6 +388,7 @@ class SelectAllSubcorticals(bpy.types.Operator):
 class SelectAllMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.meg_sensors_selection"
     bl_label = "select meg sensors"
+    bl_description = 'Selects all the MEG sensors to show their data. \n\nScript: mmvt.selection.select_meg_sensors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -402,6 +404,7 @@ class SelectAllMEGSensors(bpy.types.Operator):
 class SelectAllEEG(bpy.types.Operator):
     bl_idname = "mmvt.eeg_selection"
     bl_label = "select eeg"
+    bl_description = 'Selects all the EEG sensors to show their data. \n\nScript: mmvt.selection.select_eeg_sensors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -422,6 +425,7 @@ class SelectAllEEG(bpy.types.Operator):
 class SelectAllElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.electrodes_selection"
     bl_label = "select2 Electrodes"
+    bl_description = 'Selects all the electrodes to show their data. \n\nScript: mmvt.selection.select_all_electrodes()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -436,6 +440,7 @@ class SelectAllElectrodes(bpy.types.Operator):
 class SelectAllConnections(bpy.types.Operator):
     bl_idname = "mmvt.connections_selection"
     bl_label = "select connections"
+    bl_description = 'Selects all connections. \n\nScript: mmvt.selection.select_all_connections()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -449,6 +454,7 @@ class SelectAllConnections(bpy.types.Operator):
 class ClearSelection(bpy.types.Operator):
     bl_idname = "mmvt.clear_selection"
     bl_label = "deselect all"
+    bl_description = 'Deselects all the selected data'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -473,6 +479,7 @@ class ClearSelection(bpy.types.Operator):
 class FitSelection(bpy.types.Operator):
     bl_idname = "mmvt.fit_selection"
     bl_label = "Fit selection"
+    bl_description = 'Scales the graph to fit the window optimally. \n\nScript: mmvt.selection.fit_selection()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -495,6 +502,7 @@ class FitSelection(bpy.types.Operator):
 class ResetCurvesSep(bpy.types.Operator):
     bl_idname = "mmvt.reset_curves_sep"
     bl_label = "reset_curves_sep"
+    bl_description = 'Restarts the curves separation'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -509,6 +517,8 @@ class ResetCurvesSep(bpy.types.Operator):
 class CalcBestCurvesSep(bpy.types.Operator):
     bl_idname = "mmvt.calc_best_curves_sep"
     bl_label = "calc_best_curves_sep"
+    bl_description = 'Separates automatically the best distance between the curves in the graph. ' \
+                     '\n\nScript: mmvt.selection.calc_best_curves_sep()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -520,6 +530,8 @@ class CalcBestCurvesSep(bpy.types.Operator):
 class MaxMinGraphPanel(bpy.types.Operator):
     bl_idname = "mmvt.max_min_graph_panel"
     bl_label = "max_min_graph_panel"
+    bl_description = 'Scales the graph to fit the window optimally. \n\nScript: mmvt.selection.maximize_graph() ' \
+                     'and mmvt.selection.minimize_graph()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -609,16 +621,19 @@ def get_window_length(obj_name):
 
 
 bpy.types.Scene.selection_type = bpy.props.EnumProperty(
-    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2)])
+    items=[("diff", "Conditions difference", "", 1), ("conds", "All conditions", "", 2)],
+    description='Selects the condition that will be displayed. \n\nScript: set_selection_type()\n\nCondition')
            # ("spec_cond", "Specific condition", "", 3)], description="Selection type")
 bpy.types.Scene.conditions_selection = bpy.props.EnumProperty(items=[], description="Condition Selection",
                                                               update=conditions_selection_update)
 bpy.types.Scene.current_window_selection = bpy.props.IntProperty(min=0, default=0, max=1000, description="")
 bpy.types.Scene.selected_modlity = bpy.props.EnumProperty(items=[])
-bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty()
+bpy.types.Scene.fit_graph_on_selection = bpy.props.BoolProperty(description='Scales optimally the graph upon selection')
 bpy.types.Scene.graph_max_min = bpy.props.BoolProperty()
-bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update)
-bpy.types.Scene.find_curves_sep_auto = bpy.props.BoolProperty()
+bpy.types.Scene.curves_sep = bpy.props.FloatProperty(default=0, min=0, update=curves_sep_update,
+    description='Separates the curves in the graph')
+bpy.types.Scene.find_curves_sep_auto = bpy.props.BoolProperty(
+    description='When checked separates automatically the best distance between the curves in the graph')
 # bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:", update=subselect_update)
 
 

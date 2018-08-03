@@ -749,7 +749,7 @@ def flat_map_exists():
 
 
 bpy.types.Scene.appearance_show_rois_activity = bpy.props.EnumProperty(
-    items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)], description="Activity maps – The whole brain is one object. \nROIs – Each label is a separate object.\n",
+    items=[("activity", "Activity maps", "", 0), ("rois", "ROIs", "", 1)], description="Activity maps – The whole brain is one object. \nROIs – Each label is a separate object.\n\nMode",
     update=appearance_show_rois_activity_update)
 bpy.types.Scene.subcortical_layer = bpy.props.StringProperty(description="subcortical layer")
 bpy.types.Scene.filter_view_type = bpy.props.EnumProperty(
