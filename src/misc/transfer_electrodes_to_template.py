@@ -679,7 +679,8 @@ if __name__ == '__main__':
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
     # subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
-    electrodes = read_all_electrodes(subjects, bipolar)
+    electrodes = read_all_electrodes(good_subjects, bipolar)
+    raise Exception('Done')
 
     if use_apply_morph:
         # good_subjects, bad_subjects = prepare_files(subjects, template_system)
