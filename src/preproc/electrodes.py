@@ -226,6 +226,8 @@ def calc_dist_mat(subject, bipolar=False, snap=False):
     output_fname = 'electrodes{}_{}dists.npy'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', output_fname)
 
+    if not op.isfile(pos_fname):
+        return False
     d = np.load(pos_fname)
     pos = d['pos']
     x = np.zeros((len(pos), len(pos)))
