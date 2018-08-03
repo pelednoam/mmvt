@@ -630,18 +630,22 @@ def get_output_using_sftp(subject_to='colin27'):
             password = password_temp
 
 
-def prepare_files_for_all_subjects():
+def prepare_files_for_subjects(subjects):
     from src.utils import preproc_utils as pu
     necessary_files = {'surf': ['lh.inflated', 'rh.inflated', 'lh.pial', 'rh.pial', 'rh.white', 'lh.white',
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
     remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
-    subjects = pu.decode_subjects(['MG*'], remote_subject_template)
+    # subjects = pu.decode_subjects(['MG*'], remote_subject_template)
+    good_subjects = []
     for subject in subjects:
         remote_subject_dir = utils.build_remote_subject_dir(remote_subject_template, subject)
-        utils.prepare_subject_folder(
+        all_files_exist = utils.prepare_subject_folder(
             necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, overwrite_files=True)
+        if all_files_exist:
+            good_subjects.append(subject)
+    return good_subjects
 
 
 def get_all_subjects():
@@ -665,8 +669,8 @@ if __name__ == '__main__':
     n_jobs=2
 
     # get_output_using_sftp()
-    # prepare_files_for_all_subjects()
     subjects = get_all_subjects()
+    good_subjects = prepare_files_for_subjects(subjects)
     # raise Exception('Done')
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
@@ -676,14 +680,14 @@ if __name__ == '__main__':
     electrodes = read_all_electrodes(subjects, bipolar)
 
     if use_apply_morph:
-        good_subjects, bad_subjects = prepare_files(subjects, template_system)
+        # good_subjects, bad_subjects = prepare_files(subjects, template_system)
         cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
                                  overwrite=False)
-        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
-        read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-        export_into_csv(template_system, MMVT_DIR, prefix)
+        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
+        # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+        # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+        # export_into_csv(template_system, MMVT_DIR, prefix)
     else:
         output_fname = op.join(MMVT_DIR, template, 'electrodes', '{}electrodes{}_positions.npz'.format(
             prefix, '_bipolar' if bipolar else '', postfix))
