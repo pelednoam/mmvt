@@ -671,6 +671,8 @@ if __name__ == '__main__':
     # get_output_using_sftp()
     subjects = get_all_subjects()
     good_subjects = prepare_files_for_subjects(subjects)
+    print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
+    print(good_subjects)
     # raise Exception('Done')
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
