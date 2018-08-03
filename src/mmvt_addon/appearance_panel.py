@@ -766,7 +766,7 @@ try:
         items=[("pial", "Pial", "", 1), ("inflated", "Inflated", "", 2), ("flat", "Flat", "", 3)],
         description="Brain view", update=surface_type_update)
     bpy.types.Scene.inflating = bpy.props.FloatProperty(min=-1, max=1, default=0, step=0.1, update=inflating_update,
-        description='Sets the value between Pial view (value = -1.00), Inflated view (value = 0.00) and Flat view (value = 1.00)'
+        description='Sets the value between Pial view (value = -1.00), Inflated view (value = 0.00) and Flat view (value = 1.00).'
                     '\n\nScript: mmvt.appearance.get_inflated_ratio() and set_inflated_ratio(ratio)')
 except:
     flat_exist = False
@@ -791,7 +791,7 @@ bpy.types.Scene.hemis_distance = bpy.props.FloatProperty(min=0, max=5, default=0
 bpy.types.Scene.show_appearance_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.panels_background_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0, 0, 0), min=0.0, max=1.0, update=panels_background_color_update,
-    description='Changes the background of the brain display section '
+    description='Changes the background of the brain display section. '
                 '\n\nScript: mmvt.appearance.get_panels_background_color() and set_panels_background_color()')
 
 
@@ -809,7 +809,7 @@ class SnapCursor(bpy.types.Operator):
 class ShowHideMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_meg_sensors"
     bl_label = "mmvt show_hide_meg_sensors"
-    bl_description = 'Show/Hide MEG sensors \n\nScript: mmvt.appearance.show_hide_meg_sensors()'
+    bl_description = 'Show/Hide MEG sensors. \n\nScript: mmvt.appearance.show_hide_meg_sensors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -822,7 +822,7 @@ class ShowHideMEGSensors(bpy.types.Operator):
 class ShowHideEEG(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_eeg"
     bl_label = "mmvt show_hide_eeg"
-    bl_description = 'Show/Hide EEG sensors \n\nScript: mmvt.appearance.shoe_hide_eeg()'
+    bl_description = 'Show/Hide EEG sensors. \n\nScript: mmvt.appearance.shoe_hide_eeg()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -835,7 +835,7 @@ class ShowHideEEG(bpy.types.Operator):
 class ShowHideElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_elctrodes"
     bl_label = "mmvt show_hide_electrodes"
-    bl_description = 'Show/Hide electrodes \n\nScript: mmvt.appearance.show_hide_electrodes()'
+    bl_description = 'Show/Hide electrodes. \n\nScript: mmvt.appearance.show_hide_electrodes()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -848,7 +848,7 @@ class ShowHideElectrodes(bpy.types.Operator):
 class ShowHideConnections(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_connections"
     bl_label = "mmvt show_hide_connections"
-    bl_description = 'Show/Hide MEG sensors \n\nScript: mmvt.appearance.show_hide_connections()'
+    bl_description = 'Show/Hide MEG sensors. \n\nScript: mmvt.appearance.show_hide_connections()'
     bl_options = {"UNDO"}
 
     @staticmethod

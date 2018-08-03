@@ -402,6 +402,7 @@ def minimize_brain():
 class CenterView(bpy.types.Operator):
     bl_idname = "mmvt.center_view"
     bl_label = "mmvt center_view"
+    bl_description = 'Moves the brain back to the center of the window. \n\nScript: mmvt.show_hide.mu.center_view()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -413,6 +414,7 @@ class CenterView(bpy.types.Operator):
 class ShowSagittal(bpy.types.Operator):
     bl_idname = "mmvt.show_sagittal"
     bl_label = "mmvt show_sagittal"
+    bl_description = 'Moves the brain to an Sagital view. \n\nScript: mmvt.show_hide.show_sagital()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -424,6 +426,7 @@ class ShowSagittal(bpy.types.Operator):
 class ShowCoronal(bpy.types.Operator):
     bl_idname = "mmvt.show_coronal"
     bl_label = "mmvt show_coronal"
+    bl_description = 'Moves the brain to an Coronal view. \n\nScript: mmvt.show_hide.show_coronal()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -450,6 +453,10 @@ class MaxMinBrain(bpy.types.Operator):
 class SplitView(bpy.types.Operator):
     bl_idname = "mmvt.split_view"
     bl_label = "mmvt split view"
+    bl_description = 'Split Lateral – Splits the hemispheres into lateral view.' \
+                     '\nSplit Medial – Turns the hemispheres into medial view.' \
+                     '\nNormal View - Changes the brain back to regular view. ' \
+                     '\n\nScript: mmvt.show_hide._split_view()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -461,6 +468,7 @@ class SplitView(bpy.types.Operator):
 class ShowAxial(bpy.types.Operator):
     bl_idname = "mmvt.show_axial"
     bl_label = "mmvt show_axial"
+    bl_description = 'Moves the brain to an Axial view. \n\nScript: mmvt.show_hide.show_axial()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -485,7 +493,7 @@ class ShowAxial(bpy.types.Operator):
 class ShowHideLH(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_lh"
     bl_label = "mmvt show_hide_lh"
-    bl_description = 'Hide/Show left hemisphere \n\nScript: mmvt.show_hide.show_hide_hemi()'
+    bl_description = 'Hide/Show left hemisphere. \n\nScript: mmvt.show_hide.show_hide_hemi()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -498,7 +506,7 @@ class ShowHideLH(bpy.types.Operator):
 class ShowHideRH(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_rh"
     bl_label = "mmvt show_hide_rh"
-    bl_description = 'Hide/Show right hemisphere \n\nScript: mmvt.show_hide.show_hide_hemi()'
+    bl_description = 'Hide/Show right hemisphere. \n\nScript: mmvt.show_hide.show_hide_hemi()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -511,7 +519,7 @@ class ShowHideRH(bpy.types.Operator):
 class ShowHideSubCorticals(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_sub"
     bl_label = "mmvt show_hide_sub"
-    bl_description = 'Hide/Show subcortical region \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
+    bl_description = 'Hide/Show subcortical region. \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -528,7 +536,7 @@ class ShowHideSubCorticals(bpy.types.Operator):
 class ShowHideLHSubs(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_sub_left"
     bl_label = "mmvt show_hide_sub_left"
-    bl_description = 'Hide/Show left side of the subcortical region \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
+    bl_description = 'Hide/Show left side of the subcortical region. \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -541,7 +549,7 @@ class ShowHideLHSubs(bpy.types.Operator):
 class ShowHideRHSubs(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_sub_right"
     bl_label = "mmvt show_hide_sub_right"
-    bl_description = 'Hide/Show right side of the subcortical region \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
+    bl_description = 'Hide/Show right side of the subcortical region. \n\nScript: mmvt.show_hide.show_hide_sub_corticals()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -686,11 +694,17 @@ bpy.types.Scene.objects_show_hide_cerebellum = bpy.props.BoolProperty(
     default=True, description="Show Cerebellum")
 bpy.types.Scene.objects_show_hide_head = bpy.props.BoolProperty(
     default=True, description="Show head")
-bpy.types.Scene.show_hide_cerebellum = bpy.props.BoolProperty(default=False, update=show_hide_cerebellum_update)
+bpy.types.Scene.show_hide_cerebellum = bpy.props.BoolProperty(default=False, update=show_hide_cerebellum_update,
+    description='Hide/Show the cerebellum')
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
-    default=True, description="Show only rendered objects", update=show_only_redner_update)
-bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain')
-bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation')
+    default=True, update=show_only_redner_update, description='Removes the crosshairs and other descriptive markers')
+bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain',
+    description='When the box is checked the brain starts to rotate according the values that were set to the x,y,x '
+                'axis below the check box')
+bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation',
+    description='Saves an image each rotation according the values that were set to the x,y,x axis below the check box. '
+                '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '
+                '\nExample:  ..\ mmvt\mmvt_root\mmvt_blend\colin27\\figures')
 bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
 bpy.types.Scene.render_split = bpy.props.BoolProperty()
 bpy.types.Scene.hide_half_subcorticals = bpy.props.BoolProperty(default=False,
@@ -698,9 +712,15 @@ bpy.types.Scene.hide_half_subcorticals = bpy.props.BoolProperty(default=False,
                 ' subcortical region')
 bpy.types.Scene.show_hide_settings = bpy.props.BoolProperty(default=False)
 
-bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0, step=1, name='x')#, min=-0.1, max=0.1, )
-bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0, step=1, name='y')#, min=-0.1, max=0.1, )
-bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0, step=1, name='z')#, min=-0.1, max=0.1, name='z')
+bpy.types.Scene.rotate_dx = bpy.props.FloatProperty(default=0, step=1, name='x',
+    description='Sets the value of the x axis for the brain rotation (The brain rotation starts after checking the '
+                '‘Rotate The Brain’ check box)')#, min=-0.1, max=0.1, )
+bpy.types.Scene.rotate_dy = bpy.props.FloatProperty(default=0, step=1, name='y',
+    description='Sets the value of the y axis for the brain rotation (The brain rotation starts after checking the '
+                '‘Rotate The Brain’ check box)')#, min=-0.1, max=0.1, )
+bpy.types.Scene.rotate_dz = bpy.props.FloatProperty(default=0, step=1, name='z',
+    description='Sets the value of the z axis for the brain rotation (The brain rotation starts after checking the '
+                '‘Rotate The Brain’ check box)')#, min=-0.1, max=0.1, name='z')
 
 
 # bpy.types.Scene.current_view = 'free'
