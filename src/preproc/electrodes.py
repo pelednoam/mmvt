@@ -1225,7 +1225,8 @@ def get_ras_file(subject, args):
     if args.remote_ras_fol != '' and not op.isfile(local_fname):
         remote_ras_fol = utils.build_remote_subject_dir(args.remote_ras_fol, subject)
         remote_fname = op.join(remote_ras_fol, '{}_RAS.xlsx'.format(subject))
-        shutil.copyfile(remote_fname, local_fname)
+        if op.isfile(remote_fname):
+            shutil.copyfile(remote_fname, local_fname)
     return op.isfile(local_fname)
 
 
