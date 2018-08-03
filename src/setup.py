@@ -307,8 +307,8 @@ def install_blender_reqs(blender_fol='', gui=True):
         os.chdir(blender_bin_fol)
         # install blender reqs:
         reqs = 'matplotlib zmq pizco scipy mne joblib tqdm nibabel pdfkit decorator Pillow scikit-learn gitpython decorator'
+        pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
         if not utils.is_windows():
-            pip_cmd = '{} {}'.format(op.join('bin', python_exe), op.join(resource_fol, 'get-pip.py'))
             utils.run_script(pip_cmd)
             # https://github.com/pypa/pip/issues/5226
             # https://stackoverflow.com/questions/49743961/cannot-upgrade-pip-9-0-1-to-9-0-3-requirement-already-satisfied/49758204#49758204
