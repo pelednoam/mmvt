@@ -252,13 +252,14 @@ def post_meg_preproc(args):
 def calc_meg_connectivity(args):
     inv_method, em = 'MNE', 'mean_flip'
     for task in args.tasks:
-        labels_data_name = 'labels_data_{}_{}_{}_{}_{}.npz'.format(task.lower(), args.atlas, inv_method, em, '{hemi}')
+        # labels_data_name = 'labels_data_{}_{}_{}_{}_{}.npz'.format(task.lower(), args.atlas, inv_method, em, '{hemi}')
         args = meg.read_cmd_args(utils.Bag(
             subject=args.subject, mri_subject=args.subject,
             task=task, inverse_method=inv_method, extract_mode=em, atlas=args.atlas,
             # meg_dir=args.meg_dir,
             remote_subject_dir=args.remote_subject_dir,  # Needed for finding COR
             get_task_defaults=False,
+            data_per_task=True,
             fname_format='{}_{}_Onset'.format('{subject}', task),
             raw_fname=op.join(MEG_DIR, task, '{subject}', '{}_{}-raw.fif'.format('{subject}', task)),
             epo_fname=op.join(MEG_DIR, task, '{subject}', '{}_{}_Onset-epo.fif'.format('{subject}', task)),
@@ -266,18 +267,17 @@ def calc_meg_connectivity(args):
             function='calc_labels_connectivity',
             conditions=task.lower(),
             # cor_fname=cors[task].format(subject=subject),
-            data_per_task=True,
-            ica_overwrite_raw=False,
-            normalize_data=False,
+            # ica_overwrite_raw=False,
+            # normalize_data=False,
             # t_min=times[0], t_max=times[1],
             # read_events_from_file=False, stim_channels='STI001',
-            use_empty_room_for_noise_cov=True,
-            read_only_from_annot=False,
+            # use_empty_room_for_noise_cov=True,
+            # read_only_from_annot=False,
             # pick_ori='normal',
-            overwrite_evoked=args.overwrite,
-            overwrite_inv=args.overwrite,
-            overwrite_stc=args.overwrite,
-            overwrite_labels_data=args.overwrite,
+            # overwrite_evoked=args.overwrite,
+            # overwrite_inv=args.overwrite,
+            # overwrite_stc=args.overwrite,
+            # overwrite_labels_data=args.overwrite,
             n_jobs=args.n_jobs
         ))
         meg.call_main(args)

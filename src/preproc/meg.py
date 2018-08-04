@@ -487,6 +487,7 @@ def calc_epochs_wrapper(
     return flag, epochs
 
 
+@utils.tryit()
 def calc_labels_connectivity(
         subject, atlas, events, mri_subject='', subjects_dir='', mmvt_dir='', inverse_method='dSPM',
         epo_fname='', inv_fname='', raw_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
