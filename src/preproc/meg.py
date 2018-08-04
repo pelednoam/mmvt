@@ -514,6 +514,9 @@ def calc_labels_connectivity(
         cwt_frequencies = np.arange(4, 200, 2)
     if raw is None:
         raw_fname = get_raw_fname(raw_fname)
+        if not op.isfile(raw_fname):
+            print('Can\'t find the raw data! ({})'.format(raw_fname))
+            return False
         raw = mne.io.read_raw_fif(raw_fname)
         sfreq = raw.info['sfreq']
     fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'connectivity'))
@@ -3785,6 +3788,8 @@ def init(subject, args, mri_subject='', remote_subject_dir=''):
 
 def main(tup, remote_subject_dir, args, flags=None):
     (subject, mri_subject), inverse_method = tup
+    args.raw_fname = args.raw_fname.format(subject=subject)
+    args.epo_fname = args.epo_fname.format(subject=subject)
     evoked, epochs, raw = None, None, None
     stcs_conds, stcs_conds_smooth = None, None
     if flags is None:

@@ -167,7 +167,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     if args.labels_data_name != '':
-        labels_data_fname = op.join(conn_fol, args.labels_data_name)
+        labels_data_fname = op.join(conn_fol, args.labels_data_name.format(subject=subject, hemi='{hemi}'))
     else:
         labels_data_fname = utils.select_one_file(glob.glob(op.join(
             conn_fol, '{}*labels_data*_{}_*{}_rh.npz'.format(args.identifier, args.atlas, labels_extract_mode))))
@@ -338,10 +338,15 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             if args.bands == '':
                 args.bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
             conn = np.zeros((data.shape[0], data.shape[0], len(args.bands))) # What about windows_num?
-            epochs = mne.read_epochs(args.epochs_fname)
+            if args.use_epochs_for_connectivity_calc:
+                args.epochs_fname = args.epochs_fname.format(subject=subject)
+                if not op.isfile(args.epochs_fname):
+                    print('If use_epochs_for_connectivity_calc is True, you should set the flag --epochs_fname')
+                    return False
+                data = mne.read_epochs(args.epochs_fname)
             indices = np.array_split(np.arange(len(args.bands)), args.n_jobs)
             # for iband, (band, (fmin, fmax)) in enumerate(args.bands.items()):
-            chunks = [(epochs, chunk_indices, args.sfreq, args.bands)
+            chunks = [(data, chunk_indices, args.sfreq, args.bands)
                       for chunk_indices in indices]
             results = utils.run_parallel(_coh_parallel, chunks, args.n_jobs)
             for chunk in results:
@@ -506,7 +511,7 @@ def _coh_parallel(p):
     conn_data, indices, sfreq, bands = p
     # for window_ind, window in zip(indices, conn_data):
     for iband, (fmin, fmax) in enumerate(bands.values()):
-        print('COH: Window ind {}'.format(fmin, fmax))
+        print('COH: band {}-{}'.format(fmin, fmax))
         coh_val = coherence(conn_data, sfreq, fmin, fmax)
         if not coh_val is None:
             res[iband] = coh_val
@@ -1009,6 +1014,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--bands', required=False, default='')
     parser.add_argument('--epochs_fname', required=False, default='')
 
+
+    parser.add_argument('--use_epochs_for_connectivity_calc', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--save_mmvt_connectivity', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--calc_subs_connectivity', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--recalc_connectivity', help='', required=False, default=0, type=au.is_true)

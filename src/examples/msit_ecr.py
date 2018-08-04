@@ -9,6 +9,7 @@ from src.utils import utils
 from src.utils import labels_utils as lu
 from src.preproc import anatomy as anat
 from src.preproc import meg as meg
+from src.preproc import connectivity
 
 
 LINKS_DIR = utils.get_links_dir()
@@ -129,6 +130,7 @@ def get_empty_fnames(subject, tasks, args):
 #         ))
 #         meg.call_main(args)
 
+
 def meg_preproc(args):
     inv_method, em = 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
@@ -186,7 +188,8 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_Onset-epo.fif'.format(subject, task)),
                 empty_fname=empty_fnames[task],
-                function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
+                function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,' +
+                         'calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),
                 cor_fname=cors[task].format(subject=subject),
                 average_per_event=False,
@@ -224,7 +227,6 @@ def meg_preproc(args):
 
 def post_meg_preproc(args):
     inv_method, em = 'MNE', 'mean_flip'
-    atlas = 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
 
@@ -236,21 +238,54 @@ def post_meg_preproc(args):
             task = task.lower()
             if not utils.both_hemi_files_exist(
                     op.join(MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_lh.npz'.format(
-                        task, atlas, inv_method, em, '{hemi}'))):
+                        task, args.atlas, inv_method, em, '{hemi}'))):
                 print('label data can\'t be found for {} {}'.format(subject, task))
                 continue
             utils.make_dir(op.join(res_fol, subject))
-            meg.calc_labels_func(subject, task, atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_mean_power_bands(subject, task, atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
+            meg.calc_labels_func(subject, task, args.atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
+            meg.calc_labels_mean_power_bands(subject, task, args.atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
         for fname in [f for f in glob.glob(op.join(MMVT_DIR, subject, 'labels', 'labels_data', '*')) if op.isfile(f)]:
             shutil.copyfile(fname, op.join(res_fol, subject, utils.namebase_with_ext(fname)))
 
 
+def calc_meg_connectivity(args):
+    inv_method, em = 'MNE', 'mean_flip'
+    for task in args.tasks:
+        labels_data_name = 'labels_data_{}_{}_{}_{}_{}.npz'.format(task.lower(), args.atlas, inv_method, em, '{hemi}')
+        args = meg.read_cmd_args(utils.Bag(
+            subject=args.subject, mri_subject=args.subject,
+            task=task, inverse_method=inv_method, extract_mode=em, atlas=args.atlas,
+            # meg_dir=args.meg_dir,
+            remote_subject_dir=args.remote_subject_dir,  # Needed for finding COR
+            get_task_defaults=False,
+            fname_format='{}_{}_Onset'.format('{subject}', task),
+            raw_fname=op.join(MEG_DIR, task, '{subject}', '{}_{}-raw.fif'.format('{subject}', task)),
+            epo_fname=op.join(MEG_DIR, task, '{subject}', '{}_{}_Onset-epo.fif'.format('{subject}', task)),
+            # empty_fname=empty_fnames[task],
+            function='calc_labels_connectivity',
+            conditions=task.lower(),
+            # cor_fname=cors[task].format(subject=subject),
+            data_per_task=True,
+            ica_overwrite_raw=False,
+            normalize_data=False,
+            # t_min=times[0], t_max=times[1],
+            # read_events_from_file=False, stim_channels='STI001',
+            use_empty_room_for_noise_cov=True,
+            read_only_from_annot=False,
+            # pick_ori='normal',
+            overwrite_evoked=args.overwrite,
+            overwrite_inv=args.overwrite,
+            overwrite_stc=args.overwrite,
+            overwrite_labels_data=args.overwrite,
+            n_jobs=args.n_jobs
+        ))
+        meg.call_main(args)
+
+
 def post_analysis(args):
     import matplotlib.pyplot as plt
     from collections import defaultdict
-    atlas = 'darpa_atlas'
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     data_dic = np.load(op.join(res_fol, 'data_dictionary.npz'))
@@ -271,7 +306,7 @@ def post_analysis(args):
                 print('No folder data for {}'.format(subject))
                 continue
             for task in args.tasks:
-                mean_fname = op.join(res_fol, subject, '{}_{}_mean.npz'.format(task.lower(), atlas))
+                mean_fname = op.join(res_fol, subject, '{}_{}_mean.npz'.format(task.lower(), args.atlas))
                 if op.isfile(mean_fname):
                     d = utils.Bag(np.load(mean_fname))
                     mean_evo[group_id][task].append(d.data.mean())
@@ -354,6 +389,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='darpa_atlas')
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
