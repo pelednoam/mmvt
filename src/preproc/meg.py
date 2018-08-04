@@ -525,7 +525,7 @@ def calc_labels_connectivity(
     for cond_name, em in product(events_keys, extract_modes):
         output_fname = op.join(fol, '{}_{}_{}_{}.npz'.format(cond_name, em, con_method, con_mode))
         if op.isfile(output_fname) and not overwrite_connectivity:
-            # d = utils.Bag(np.load(output_fname))
+            print('{} already exist'.format(output_fname))
             continue
         if epochs is None:
             epo_cond_fname = get_cond_fname(epo_fname, cond_name)
