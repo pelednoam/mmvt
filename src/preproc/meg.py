@@ -507,26 +507,31 @@ def calc_labels_connectivity(
         extract_modes = [extract_modes]
     events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
     lambda2 = 1.0 / snr ** 2
-    labels = lu.read_labels(mri_subject, subjects_dir, atlas, surf_name=surf_name, n_jobs=n_jobs)
-    inverse_operator, src = get_inv_src(inv_fname, src)
     if bands is None or bands == '':
         bands = [[4, 8], [8, 15], [15, 30], [30, 55], [65, 200]]
     if cwt_frequencies is None or cwt_frequencies == '':
         cwt_frequencies = np.arange(4, 200, 2)
-    if raw is None:
-        raw_fname = get_raw_fname(raw_fname)
-        if not op.isfile(raw_fname):
-            print('Can\'t find the raw data! ({})'.format(raw_fname))
-            return False
-        raw = mne.io.read_raw_fif(raw_fname)
-        sfreq = raw.info['sfreq']
     fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'connectivity'))
     ret = True
+    first_time = True
     for cond_name, em in product(events_keys, extract_modes):
         output_fname = op.join(fol, '{}_{}_{}_{}.npz'.format(cond_name, em, con_method, con_mode))
         if op.isfile(output_fname) and not overwrite_connectivity:
             print('{} already exist'.format(output_fname))
             continue
+
+        if first_time:
+            first_time = False
+            labels = lu.read_labels(mri_subject, subjects_dir, atlas, surf_name=surf_name, n_jobs=n_jobs)
+            inverse_operator, src = get_inv_src(inv_fname, src)
+            if raw is None:
+                raw_fname = get_raw_fname(raw_fname)
+                if not op.isfile(raw_fname):
+                    print('Can\'t find the raw data! ({})'.format(raw_fname))
+                    return False
+                raw = mne.io.read_raw_fif(raw_fname)
+                sfreq = raw.info['sfreq']
+
         if epochs is None:
             epo_cond_fname = get_cond_fname(epo_fname, cond_name)
             if not op.isfile(epo_cond_fname):
