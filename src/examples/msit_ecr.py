@@ -270,6 +270,8 @@ def post_meg_preproc(args):
 def calc_meg_connectivity(args):
     inv_method, em = 'MNE', 'mean_flip'
     prepare_files(args)
+    good_subjects = get_good_subjects(args)
+    args.subject = good_subjects
     for task in args.tasks:
         # labels_data_name = 'labels_data_{}_{}_{}_{}_{}.npz'.format(task.lower(), args.atlas, inv_method, em, '{hemi}')
         args = meg.read_cmd_args(utils.Bag(
@@ -401,6 +403,54 @@ def is_significant(pval, t, two_tailed_test, alpha=0.05, is_greater=True):
     #         print('asdf')
     #
 
+
+def get_good_subjects(args):
+    data_dict_fname = op.join(args.remote_root_dir, 'data_dictionary.npz')
+    if not op.isfile(data_dict_fname):
+        ret = input('No data dict, do you want to continue? (y/n)')
+        if not au.is_true(ret):
+            return
+        msit_ecr_subjects = args.subject
+    else:
+        data_dic = np.load(op.join(args.remote_root_dir, 'data_dictionary.npz'))
+        meta_data = data_dic['noam_dict'].tolist()
+        msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
+        ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
+        msit_ecr_subjects = msit_subjects.intersection(ecr_subjects)
+
+    if not args.check_files:
+        good_subjects = args.subject
+    else:
+        good_subjects = []
+        for subject in args.subject:
+            if subject not in msit_ecr_subjects:
+                print('{} not in the meta data!'.format(subject))
+                continue
+            if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
+                print('{}: No recon-all files!'.format(subject))
+                continue
+            if args.anatomy_preproc:
+                anatomy_preproc(args, subject)
+            if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', args.atlas))):
+                anatomy_preproc(args, subject)
+            if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', args.atlas))):
+                print('Can\'t find the atlas {}!'.format(args.atlas))
+                continue
+            empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+            if empty_fnames == '' or cors == '' or days == '':
+                print('{}: Error with get_empty_fnames!'.format(subject))
+            if any([task not in cors for task in args.tasks]):
+                print('{}: one of the tasks is not in get_empty_fnames!'.format(subject))
+                continue
+            # for task in args.tasks:
+            #     print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
+            good_subjects.append(subject)
+        print('Good subjects: ({}):'.format(len(good_subjects)))
+        print(good_subjects)
+        bad_subjects = set(args.subject) - set(good_subjects)
+        print('Bad subjects: ({}):'.format(len(bad_subjects)))
+        print(bad_subjects)
+    return good_subjects
 
 
 if __name__ == '__main__':
