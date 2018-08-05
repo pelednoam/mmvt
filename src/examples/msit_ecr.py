@@ -170,7 +170,6 @@ def meg_preproc(args):
     print(good_subjects)
     print('Bad subjects from the meta data:')
     print(set(good_subjects) - set(good_subjects))
-    return
 
     for subject in good_subjects:
         args.subject = subject

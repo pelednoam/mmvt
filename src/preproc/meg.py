@@ -1123,7 +1123,10 @@ def get_evo_fname(evo_fname=''):
 
 
 def get_cor_fname(cor_fname=''):
-    return COR if cor_fname == '' else cor_fname
+    cor = COR if cor_fname == '' else cor_fname
+    if not op.isfile(cor):
+        print('get_cor_fname: cor_fname does not exist! ({})'.format(cor))
+    return cor
 
 
 def get_empty_fname(empty_fname=''):
