@@ -151,11 +151,11 @@ def meg_preproc(args):
         msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
         ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
         msit_ecr_subjects = msit_subjects.intersection(ecr_subjects)
-    good_subjects = []
 
     if not args.check_files:
         good_subjects = args.subject
     else:
+        good_subjects = []
         for subject in args.subject:
             if subject not in msit_ecr_subjects:
                 print('{} not in the meta data!'.format(subject))
@@ -170,16 +170,17 @@ def meg_preproc(args):
             empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
             if empty_fnames == '' or cors == '' or days == '':
                 print('{}: Error with get_empty_fnames!'.format(subject))
+            if any([task not in cors for task in args.tasks]):
+                print('{}: one of the tasks is not in get_empty_fnames!'.format(subject))
+                continue
             for task in args.tasks:
-                if task not in cors:
-                    print('{}: {} not in get_empty_fnames!'.format(subject, task))
-                    continue
                 print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
             good_subjects.append(subject)
         print('Good subjects: ({})'.format(len(good_subjects)))
         print(good_subjects)
         print('Bad subjects from the meta data:')
         print(set(good_subjects) - set(good_subjects))
+    return
 
     for subject in good_subjects:
         args.subject = subject
