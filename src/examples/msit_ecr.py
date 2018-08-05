@@ -176,10 +176,11 @@ def meg_preproc(args):
             for task in args.tasks:
                 print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
             good_subjects.append(subject)
-        print('Good subjects: ({})'.format(len(good_subjects)))
+        print('Good subjects: ({}):'.format(len(good_subjects)))
         print(good_subjects)
-        print('Bad subjects from the meta data:')
-        print(set(good_subjects) - set(good_subjects))
+        bad_subjects = set(args.subject) - set(good_subjects)
+        print('Bad subjects: ({}):'.format(len(bad_subjects)))
+        print(bad_subjects)
     return
 
     for subject in good_subjects:
