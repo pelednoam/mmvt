@@ -14,6 +14,7 @@ import scipy.io as sio
 import nibabel as nib
 from collections import Counter
 import inspect
+import copy
 
 try:
     import matplotlib.pyplot as plt
@@ -3792,7 +3793,8 @@ def init(subject, args, mri_subject='', remote_subject_dir=''):
     return fname_format, fname_format_cond, conditions
 
 
-def main(tup, remote_subject_dir, args, flags=None):
+def main(tup, remote_subject_dir, org_args, flags=None):
+    args = utils.Bag({k:copy.deepcopy(org_args[k]) for k in org_args.keys()})
     (subject, mri_subject), inverse_method = tup
     args.raw_fname = args.raw_fname.format(subject=subject)
     args.epo_fname = args.epo_fname.format(subject=subject)

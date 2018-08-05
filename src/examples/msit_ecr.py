@@ -251,6 +251,7 @@ def post_meg_preproc(args):
 
 def calc_meg_connectivity(args):
     inv_method, em = 'MNE', 'mean_flip'
+    prepare_files(args)
     for task in args.tasks:
         # labels_data_name = 'labels_data_{}_{}_{}_{}_{}.npz'.format(task.lower(), args.atlas, inv_method, em, '{hemi}')
         args = meg.read_cmd_args(utils.Bag(
