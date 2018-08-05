@@ -184,7 +184,6 @@ def meg_preproc(args):
         bad_subjects = set(args.subject) - set(good_subjects)
         print('Bad subjects: ({}):'.format(len(bad_subjects)))
         print(bad_subjects)
-    return
 
     for subject in good_subjects:
         args.subject = subject
