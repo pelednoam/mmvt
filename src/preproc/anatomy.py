@@ -6,6 +6,7 @@ import traceback
 from collections import defaultdict
 from tqdm import tqdm
 import csv
+import copy
 
 import mne
 import numpy as np
@@ -1138,7 +1139,7 @@ def check_bem(subject, remote_subject_dir, args):
     meg_args = meg.read_cmd_args(dict(subject=subject))
     meg_args.update(args)
     meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
-    args.remote_subject_dir = remote_subject_dir
+    # args.remote_subject_dir = remote_subject_dir
     return meg.check_bem(subject, remote_subject_dir, meg_args)
 
 
@@ -1450,7 +1451,8 @@ def call_main(args):
     pu.run_on_subjects(args, main)
 
 
-def main(subject, remote_subject_dir, args, flags):
+def main(subject, remote_subject_dir, org_args, flags):
+    args = utils.Bag({k: copy.deepcopy(org_args[k]) for k in org_args.keys()})
     copy_sphere_reg_files(subject)
 
     if utils.should_run(args, 'create_surfaces'):

@@ -161,10 +161,10 @@ def meg_preproc(args):
         if empty_fnames == '' or cors == '' or days == '':
             print('{}: Error with get_empty_fnames!'.format(subject))
         for task in args.tasks:
-            print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
             if task not in cors:
                 print('{}: {} not in get_empty_fnames!'.format(subject, task))
                 continue
+            print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
         good_subjects.append(subject)
     print('Good subjects: ({})'.format(len(good_subjects)))
     print(good_subjects)
