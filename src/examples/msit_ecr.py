@@ -86,7 +86,7 @@ def get_empty_fnames(subject, tasks, args):
         for task in tasks:
             if line[4].lower() == task.lower():
                 days[task] = line[2]
-    print(days)
+    # print(days)
     for line in utils.csv_file_reader(csv_fname, ' '):
         if line[4] == 'empty':
             for task in tasks:
@@ -166,7 +166,10 @@ def meg_preproc(args):
             if args.anatomy_preproc:
                 anatomy_preproc(args, subject)
             if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
+                anatomy_preproc(args, subject)
+            if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
                 print('Can\'t find the atlas {}!'.format(atlas))
+                continue
             empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
             if empty_fnames == '' or cors == '' or days == '':
                 print('{}: Error with get_empty_fnames!'.format(subject))

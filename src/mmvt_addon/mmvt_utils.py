@@ -2502,10 +2502,11 @@ def make_link(source, target, overwrite=False):
             print('{} already exist'.format(target))
         else:
             try:
-                os.remove(target)
+                if op.isfile(target):
+                    os.remove(target)
                 os.symlink(source, target)
             except:
-                print('Couldn\'t remove {}!'.format(target))
+                print(traceback.format_exc())
         return True
     except:
         return False
