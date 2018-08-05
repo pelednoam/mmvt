@@ -287,7 +287,7 @@ def calc_meg_connectivity(args):
             # empty_fname=empty_fnames[task],
             function='calc_labels_connectivity',
             conditions=task.lower(),
-            overwrite_connectivity=True,
+            overwrite_connectivity=args.overwrite,
             # cor_fname=cors[task].format(subject=subject),
             # ica_overwrite_raw=False,
             # normalize_data=False,
