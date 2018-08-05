@@ -2506,7 +2506,7 @@ def make_link(source, target, overwrite=False):
                     os.remove(target)
                 os.symlink(source, target)
             except:
-                print(traceback.format_exc())
+                print('Couldn\'t remove {}!'.format(target))
         return True
     except:
         return False
