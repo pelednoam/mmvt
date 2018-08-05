@@ -139,40 +139,51 @@ def meg_preproc(args):
     times = (-2, 4)
     subjects_with_error = []
 
-    data_dic = np.load(op.join(args.remote_root_dir, 'data_dictionary.npz'))
-    meta_data = data_dic['noam_dict'].tolist()
-    msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
-    ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
-    msit_ecr_subjects = msit_subjects.intersection(ecr_subjects)
+    data_dict_fname = op.join(args.remote_root_dir, 'data_dictionary.npz')
+    if not op.isfile(data_dict_fname):
+        ret = input('No data dict, do you want to continue? (y/n)')
+        if not au.is_true(ret):
+            return
+        msit_ecr_subjects = args.subject
+    else:
+        data_dic = np.load(op.join(args.remote_root_dir, 'data_dictionary.npz'))
+        meta_data = data_dic['noam_dict'].tolist()
+        msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
+        ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
+        msit_ecr_subjects = msit_subjects.intersection(ecr_subjects)
     good_subjects = []
 
-    for subject in args.subject:
-        if subject not in msit_ecr_subjects:
-            print('{} not in the meta data!'.format(subject))
-            continue
-        if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
-            print('{}: No recon-all files!'.format(subject))
-            continue
-        if args.anatomy_preproc:
-            anatomy_preproc(args, subject)
-        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
-            print('Can\'t find the atlas {}!'.format(atlas))
-        empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
-        if empty_fnames == '' or cors == '' or days == '':
-            print('{}: Error with get_empty_fnames!'.format(subject))
-        for task in args.tasks:
-            if task not in cors:
-                print('{}: {} not in get_empty_fnames!'.format(subject, task))
+    if not args.check_files:
+        good_subjects = args.subject
+    else:
+        for subject in args.subject:
+            if subject not in msit_ecr_subjects:
+                print('{} not in the meta data!'.format(subject))
                 continue
-            print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
-        good_subjects.append(subject)
-    print('Good subjects: ({})'.format(len(good_subjects)))
-    print(good_subjects)
-    print('Bad subjects from the meta data:')
-    print(set(good_subjects) - set(good_subjects))
+            if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
+                print('{}: No recon-all files!'.format(subject))
+                continue
+            if args.anatomy_preproc:
+                anatomy_preproc(args, subject)
+            if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
+                print('Can\'t find the atlas {}!'.format(atlas))
+            empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+            if empty_fnames == '' or cors == '' or days == '':
+                print('{}: Error with get_empty_fnames!'.format(subject))
+            for task in args.tasks:
+                if task not in cors:
+                    print('{}: {} not in get_empty_fnames!'.format(subject, task))
+                    continue
+                print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
+            good_subjects.append(subject)
+        print('Good subjects: ({})'.format(len(good_subjects)))
+        print(good_subjects)
+        print('Bad subjects from the meta data:')
+        print(set(good_subjects) - set(good_subjects))
 
     for subject in good_subjects:
         args.subject = subject
+        empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         for task in args.tasks:
             output_fname = op.join(
                 MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_minmax.npz'.format(
@@ -399,6 +410,7 @@ if __name__ == '__main__':
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
     parser.add_argument('--anatomy_preproc', required=False, default=True, type=au.is_true)
+    parser.add_argument('--check_files', required=False, default=True, type=au.is_true)
 
     parser.add_argument('--remote_root_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam')
