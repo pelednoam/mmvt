@@ -134,7 +134,7 @@ def get_empty_fnames(subject, tasks, args):
 def meg_preproc(args):
     inv_method, em = 'MNE', 'mean_flip'
     atlas = 'darpa_atlas'
-    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     prepare_files(args)
     times = (-2, 4)
     subjects_with_error = []
@@ -153,7 +153,8 @@ def meg_preproc(args):
         if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
             print('{}: No recon-all files!'.format(subject))
             continue
-        anatomy_preproc(args, subject)
+        if args.anatomy_preproc:
+            anatomy_preproc(args, subject)
         if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
             print('Can\'t find the atlas {}!'.format(atlas))
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
@@ -396,6 +397,8 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
+    parser.add_argument('--anatomy_preproc', required=False, default=True, type=au.is_true)
+
     parser.add_argument('--remote_root_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam')
     parser.add_argument('--meg_dir', required=False,
