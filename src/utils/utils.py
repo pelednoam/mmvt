@@ -952,8 +952,7 @@ def check_if_all_necessary_files_exist(subject, necessary_files, local_subject_d
                     print("{}: the file {} doesn't exist in the local subjects folder!!!".format(subject, file_name))
                 all_files_exists = False
                 break
-            file_size = op.getsize(full_fname)
-            if file_size == 0:
+            if op.isfile(full_fname) and op.getsize(full_fname) == 0:
                 if trace:
                     print("{}: the file {} size is 0!!!".format(subject, file_name))
                 os.remove(full_fname)
