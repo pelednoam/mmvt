@@ -630,23 +630,28 @@ def get_output_using_sftp(subject_to='colin27'):
             password = password_temp
 
 
-def prepare_files_for_subjects(subjects):
+def prepare_files_for_subjects(subjects, overwrite=False):
     necessary_files = {'surf': ['lh.inflated', 'rh.inflated', 'lh.pial', 'rh.pial', 'rh.white', 'lh.white',
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
                        'label': ['lh.aparc.annot', 'rh.aparc.annot']}
-    necessary_files = {'surf': ['rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
-                                'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H']}
+    # necessary_files = {'surf': ['rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
+    #                             'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H']}
 
-    remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
+    remote_subject_template1 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
+    remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/Recon/{subject}_SurferOutput'
+    remote_subject_templates = (remote_subject_template1, remote_subject_template2)
     # subjects = pu.decode_subjects(['MG*'], remote_subject_template)
     good_subjects = []
     for subject in subjects:
-        remote_subject_dir = utils.build_remote_subject_dir(remote_subject_template, subject)
-        all_files_exist = utils.prepare_subject_folder(
-            necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, overwrite_files=True, print_missing_files=False)
-        if all_files_exist:
-            good_subjects.append(subject)
+        for remote_subject_template in remote_subject_templates:
+            remote_subject_dir = utils.build_remote_subject_dir(remote_subject_template, subject)
+            all_files_exist = utils.prepare_subject_folder(
+                necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, overwrite_files=overwrite,
+                print_missing_files=False)
+            if all_files_exist:
+                good_subjects.append(subject)
+                break
     return good_subjects
 
 
@@ -672,7 +677,7 @@ if __name__ == '__main__':
 
     # get_output_using_sftp()
     subjects = get_all_subjects()
-    good_subjects = prepare_files_for_subjects(subjects)
+    good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
     print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
     print(good_subjects)
     # raise Exception('Done')
@@ -682,7 +687,7 @@ if __name__ == '__main__':
     # MG96, MG104, MG105, MG107, MG108, and MG111
     # subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
     # electrodes = read_all_electrodes(good_subjects, bipolar)
-    raise Exception('Done')
+    # raise Exception('Done')
 
     if use_apply_morph:
         cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
