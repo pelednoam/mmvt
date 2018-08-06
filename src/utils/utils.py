@@ -923,6 +923,7 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                 local_fname = op.join(local_subject_dir, fol, namebase_with_ext(remote_fname))
                             if remote_fname != local_fname:
                                 if op.isfile(local_fname) and op.getsize(remote_fname) != op.getsize(remote_fname):
+                                    print('Local file and remote file have different sizes!')
                                     os.remove(local_fname)
                                 if not op.isfile(local_fname):
                                     print('coping {} to {}'.format(remote_fname, local_fname))

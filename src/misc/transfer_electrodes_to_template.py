@@ -631,7 +631,6 @@ def get_output_using_sftp(subject_to='colin27'):
 
 
 def prepare_files_for_subjects(subjects):
-    from src.utils import preproc_utils as pu
     necessary_files = {'surf': ['lh.inflated', 'rh.inflated', 'lh.pial', 'rh.pial', 'rh.white', 'lh.white',
                                 'lh.smoothwm', 'rh.smoothwm', 'rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
                                 'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H'],
@@ -683,7 +682,6 @@ if __name__ == '__main__':
     raise Exception('Done')
 
     if use_apply_morph:
-        # good_subjects, bad_subjects = prepare_files(subjects, template_system)
         cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
                                  overwrite=False)
         # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
