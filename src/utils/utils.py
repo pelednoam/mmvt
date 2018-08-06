@@ -880,7 +880,7 @@ def build_remote_subject_dir(remote_subject_dir_template, subject):
 
 def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_subjects_dir,
         sftp=False, sftp_username='', sftp_domain='', sftp_password='',
-        overwrite_files=False, print_traceback=True, sftp_port=22, local_subject_dir=''):
+        overwrite_files=False, print_traceback=True, sftp_port=22, local_subject_dir='', print_missing_files=True):
     if local_subject_dir == '':
         local_subject_dir = op.join(local_subjects_dir, subject)
     mmvt_dir = get_link_dir(get_links_dir(), 'mmvt')
@@ -929,7 +929,8 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                     print('coping {} to {}'.format(remote_fname, local_fname))
                                     shutil.copyfile(remote_fname, local_fname)
                         else:
-                            print("Remote file can't be found! {}".format(remote_fname))
+                            if print_missing_files:
+                                print("Remote file can't be found! {}".format(remote_fname))
                 except:
                     if print_traceback:
                         print(traceback.format_exc())

@@ -641,7 +641,7 @@ def prepare_files_for_subjects(subjects):
     for subject in subjects:
         remote_subject_dir = utils.build_remote_subject_dir(remote_subject_template, subject)
         all_files_exist = utils.prepare_subject_folder(
-            necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, overwrite_files=True)
+            necessary_files, subject, remote_subject_dir, SUBJECTS_DIR, overwrite_files=True, print_missing_files=False)
         if all_files_exist:
             good_subjects.append(subject)
     return good_subjects
@@ -678,7 +678,7 @@ if __name__ == '__main__':
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
     # subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
-    electrodes = read_all_electrodes(good_subjects, bipolar)
+    # electrodes = read_all_electrodes(good_subjects, bipolar)
     raise Exception('Done')
 
     if use_apply_morph:
