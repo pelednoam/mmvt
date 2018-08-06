@@ -673,7 +673,7 @@ if __name__ == '__main__':
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
-    n_jobs=2
+    n_jobs=4
 
     # get_output_using_sftp()
     subjects = get_all_subjects()
