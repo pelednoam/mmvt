@@ -370,10 +370,11 @@ class ColorbarButton(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
-bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(items=[], description="colormap files", update=colormap_update)
+bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(items=[], description="lala", update=colormap_update)
 bpy.types.Scene.colorbar_max = bpy.props.FloatProperty(description="", update=colorbar_update)
 bpy.types.Scene.colorbar_min = bpy.props.FloatProperty(description="", update=colorbar_update)
-bpy.types.Scene.colorbar_title = bpy.props.StringProperty(description="", update=colorbar_update)
+bpy.types.Scene.colorbar_title = bpy.props.StringProperty(update=colorbar_update,
+    description='Renames the colorbar’s title in the display area.\n\nScript mmvt.colorbar.get_colorbar_title() and set_colorbar_title(val)')
 bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=15, description="", update=colorbar_update)
 bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
     default=True, description="show_cb_in_render", update=show_cb_in_render_update)

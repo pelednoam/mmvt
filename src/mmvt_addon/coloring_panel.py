@@ -1958,6 +1958,7 @@ class ColorConnectionsLabelsAvg(bpy.types.Operator):
 class ColorMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.color_meg_sensors"
     bl_label = "mmvt color_meg_sensors"
+    bl_description = 'Plots the MEG sensors activity according the selected condition.\n\nScript: mmvt.coloring.color_meg_sensors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -1969,6 +1970,7 @@ class ColorMEGSensors(bpy.types.Operator):
 class ColorEEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.color_eeg_sensors"
     bl_label = "mmvt color_eeg_sensors"
+    bl_description = 'Plots the EEG sensors activity according the selected condition.\n\nScript: mmvt.coloring.color_eeg_sensors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -1980,6 +1982,7 @@ class ColorEEGSensors(bpy.types.Operator):
 class ColorElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.electrodes_color"
     bl_label = "mmvt electrodes color"
+    bl_description = 'Plots the electrodes activity according the selected condition.\n\nScript: mmvt.coloring.color_electrodes()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2024,6 +2027,7 @@ class ColorElectrodesStim(bpy.types.Operator):
 class ColorManually(bpy.types.Operator):
     bl_idname = "mmvt.man_color"
     bl_label = "mmvt man color"
+    bl_description = 'Colors according the selected file.\n\nScript: mmvt.coloring.color_manually()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2068,6 +2072,7 @@ class ColorfMRIDynamics(bpy.types.Operator):
 class ColorMeg(bpy.types.Operator):
     bl_idname = "mmvt.meg_color"
     bl_label = "mmvt meg color"
+    bl_description = 'Plots MEG activity'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2085,6 +2090,7 @@ class ColorMeg(bpy.types.Operator):
 class ColorMegMax(bpy.types.Operator):
     bl_idname = "mmvt.meg_max_color"
     bl_label = "mmvt meg max color"
+    bl_description = 'Displays the time and location with the highest peak'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2108,6 +2114,7 @@ class ColorMegMax(bpy.types.Operator):
 class ColorMegLabels(bpy.types.Operator):
     bl_idname = "mmvt.meg_labels_color"
     bl_label = "mmvt meg labels color"
+    bl_description = 'Plots the MEG Labels activity according the selected condition.\n\nScript: mmvt.coloring.meg_labels_coloring()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2119,7 +2126,7 @@ class ColorMegLabels(bpy.types.Operator):
 class ColorfMRI(bpy.types.Operator):
     bl_idname = "mmvt.fmri_color"
     bl_label = "mmvt fmri color"
-    bl_description = 'Plot the current fMRI activity map.\n\nScript: mmvt.coloring.plot_fmri()'
+    bl_description = 'Plots the fMRI activity according the selected condition.\n\nScript: mmvt.coloring.plot_fmri()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2153,6 +2160,7 @@ class ColorClustersFmri(bpy.types.Operator):
 class ClearColors(bpy.types.Operator):
     bl_idname = "mmvt.colors_clear"
     bl_label = "mmvt colors clear"
+    bl_description = 'Clears all the plotted activity.\n\nScript: mmvt.coloring.clear_colors()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2361,29 +2369,40 @@ bpy.types.Scene.hide_connection_under_threshold = bpy.props.BoolProperty(
 bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
     items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
 bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
-    items=[('abs', 'Absolute peak', '', 0), ('pos', 'Positive peak', '', 1), ('neg', 'Negative peak', '', 2)])
-bpy.types.Scene.meg_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
-bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update)
-bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)
-bpy.types.Scene.electrodes_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update)
-bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description="MEG files")
-bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description="MEG labels coloring type")
+    items=[('abs', 'Absolute peak', '', 0), ('pos', 'Positive peak', '', 1), ('neg', 'Negative peak', '', 2)],
+    description='Absolute Peak – Finds the absolute peak.\nPositive Peak – Finds the positive peak.'
+                '\nNegative Peak - Finds the negative peak.\n\nCurrent mode')
+bpy.types.Scene.meg_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update,
+    description='Sets the min percentile that is being used to calculate the min & max colorbar’s values')
+bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update,
+    description='Sets the max percentile that is being used to calculate the min & max colorbar’s values')
+bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update,
+    description='Sets the min percentile that is being used to calculate the min & max colorbar')
+bpy.types.Scene.electrodes_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update,
+    description='Sets the max percentile that is being used to calculate the min & max colorbar’s values')
+bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description='Selects the condition to plot the MEG labels activity')
+bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description='Selects the condition to plot the MEG labels activity\nSelected condition')
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
-bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, min=0, description="lower threshold")
-bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="fMRI files")
+bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, min=0,
+    description="Sets the threshold to plot the activity.\n\nScript: mmvt.coloring.get_lower_threshold() and "
+                "set_lower_threshold(val)")
+bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True,
+    description='Plots only the activity with an absolute value above the threshold.'
+                '\n\nScript: mmvt.coloring.get_use_abs_threshold() and set_use_abs_threshold(val)')
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="lala")
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
 bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[])
 bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[])
 bpy.types.Scene.electrodes_conditions= bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
-bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="Coloring files")
+bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="lala")
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 # bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
-bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=False, description="")
-bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=False, description='Plots each cortical ROI as an object')
+bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False,
+    description='')
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 bpy.types.Scene.labels_color = bpy.props.FloatVectorProperty(
     name="labels_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
