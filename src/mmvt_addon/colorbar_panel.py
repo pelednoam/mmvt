@@ -370,20 +370,22 @@ class ColorbarButton(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
-bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(items=[], description="lala", update=colormap_update)
-bpy.types.Scene.colorbar_max = bpy.props.FloatProperty(description="", update=colorbar_update)
-bpy.types.Scene.colorbar_min = bpy.props.FloatProperty(description="", update=colorbar_update)
+bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(items=[], update=colormap_update,
+    description='Selects the colorbar color palette.\n\nCurrent palette')
+bpy.types.Scene.colorbar_max = bpy.props.FloatProperty(update=colorbar_update, description='Sets the maximum value of the colorbar')
+bpy.types.Scene.colorbar_min = bpy.props.FloatProperty(update=colorbar_update, description='Sets the minimum value of the colorbar')
 bpy.types.Scene.colorbar_title = bpy.props.StringProperty(update=colorbar_update,
     description='Renames the colorbar’s title in the display area.\n\nScript mmvt.colorbar.get_colorbar_title() and set_colorbar_title(val)')
-bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=15, description="", update=colorbar_update)
+bpy.types.Scene.colorbar_prec = bpy.props.IntProperty(min=0, default=2, max=15, update=colorbar_update,
+    description='Sets the number of the decimal places in the colorbar.\n\nScript: mmvt.colorbar.get_colorbar_prec() and set_colorbar_prec(val)')
 bpy.types.Scene.show_cb_in_render = bpy.props.BoolProperty(
     default=True, description="show_cb_in_render", update=show_cb_in_render_update)
 bpy.types.Scene.show_vertical_cb = bpy.props.BoolProperty(default=True, description="show_vertical_cb", update=show_vertical_cb_update)
-bpy.types.Scene.hide_cb_center = bpy.props.BoolProperty(default=False, update=hide_cb_center_update)
-bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.hide_cb_center = bpy.props.BoolProperty(default=False, update=hide_cb_center_update, description='Hides the center of the colorbar')
+bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False, description='Centers the colorbar position in the display area')
 bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
 bpy.types.Scene.colorbar_text_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_text_y_update)
-bpy.types.Scene.lock_min_max = bpy.props.BoolProperty(default=False, description="lock values")
+bpy.types.Scene.lock_min_max = bpy.props.BoolProperty(default=False, description='Locks the colorbar values')
 bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
 bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
@@ -434,7 +436,7 @@ def init(addon):
     ColorbarPanel.maps_names = files_names
     colorbar_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.colorbar_files = bpy.props.EnumProperty(
-        items=colorbar_items, description="colormaps files",update=colormap_update)
+        items=colorbar_items,update=colormap_update, description='Selects the colorbar color palette.\n\nCurrent palette')
     if not colorbar_values_are_locked():
         bpy.context.scene.colorbar_files = files_names[0]
     else:
