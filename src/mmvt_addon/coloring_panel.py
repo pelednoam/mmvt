@@ -1925,6 +1925,7 @@ class ColorEEGHelmet(bpy.types.Operator):
 class ColorConnections(bpy.types.Operator):
     bl_idname = "mmvt.connections_color"
     bl_label = "mmvt connections color"
+    bl_description = 'Plots the connections value.\n\nScript: mmvt.coloring.color_connections()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -2365,7 +2366,7 @@ def draw(self, context):
 
 
 bpy.types.Scene.hide_connection_under_threshold = bpy.props.BoolProperty(
-    default=True, description="Hide connections under threshold")
+    default=True, description='Hides the connections under the threshold')
 bpy.types.Scene.meg_activitiy_type = bpy.props.EnumProperty(
     items=[('diff', 'Conditions difference', '', 0)], description="MEG activity type")
 bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
@@ -2380,8 +2381,8 @@ bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, 
     description='Sets the min percentile that is being used to calculate the min & max colorbar')
 bpy.types.Scene.electrodes_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update,
     description='Sets the max percentile that is being used to calculate the min & max colorbar’s values')
-bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description='Selects the condition to plot the MEG labels activity')
-bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description='Selects the condition to plot the MEG labels activity\nSelected condition')
+bpy.types.Scene.meg_files = bpy.props.EnumProperty(items=[], description='Selects the condition to plot the MEG activity.\n\nCurrent condition')
+bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(items=[], description='Selects the condition to plot the MEG labels activity.\n\nCurrent condition')
 bpy.types.Scene.coloring_fmri = bpy.props.BoolProperty(default=True, description="Plot FMRI")
 bpy.types.Scene.coloring_electrodes = bpy.props.BoolProperty(default=False, description="Plot Deep electrodes")
 bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, min=0,
@@ -2390,14 +2391,19 @@ bpy.types.Scene.coloring_lower_threshold = bpy.props.FloatProperty(default=0.5, 
 bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True,
     description='Plots only the activity with an absolute value above the threshold.'
                 '\n\nScript: mmvt.coloring.get_use_abs_threshold() and set_use_abs_threshold(val)')
-bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="lala")
+bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)],
+    description='Selects the contrast to plot the fMRI activity.\n\nScript:mmvt.coloring.get_select_fMRI_contrast()\n\nCurrent contrast')
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
-bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[])
-bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[])
-bpy.types.Scene.electrodes_conditions= bpy.props.EnumProperty(items=[])
+bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[],
+    description='Selects the condition to plot the MEG sensors activity.\n\nCurrent condition')
+bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[],
+    description='Selects the condition to plot the EEG sensors activity.\n\nCurrent condition')
+bpy.types.Scene.electrodes_conditions= bpy.props.EnumProperty(items=[],
+    description='Selects the condition to plot the electrodes activity.\n\nCurrent condition')
 bpy.types.Scene.meg_max_t = bpy.props.IntProperty(default=0, min=0, description="MEG max t")
 bpy.types.Scene.electrodes_sources_files = bpy.props.EnumProperty(items=[], description="electrodes sources files")
-bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[], description="lala")
+bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=[],
+    description='Selects the file to color manually.\n\nCurrent file')
 bpy.types.Scene.vol_coloring_files = bpy.props.EnumProperty(items=[], description="Coloring volumetric files")
 # bpy.types.Scene.coloring_both_pial_and_inflated = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.color_rois_homogeneously = bpy.props.BoolProperty(default=False, description='Plots each cortical ROI as an object')
@@ -2406,10 +2412,10 @@ bpy.types.Scene.coloring_meg_subcorticals = bpy.props.BoolProperty(default=False
 bpy.types.Scene.conn_labels_avg_files = bpy.props.EnumProperty(items=[], description="Connectivity labels avg")
 bpy.types.Scene.labels_color = bpy.props.FloatVectorProperty(
     name="labels_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
-bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(items=[], description='Connectivity degree files.\n\nCurrent file')
 bpy.types.Scene.connectivity_degree_threshold = bpy.props.FloatProperty(
-    default=0.7, min=0, max=1, description="", update=update_connectivity_degree_threshold)
-bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description="")
+    default=0.7, min=0, max=1, update=update_connectivity_degree_threshold, description='Sets the connectivity degree threshold')
+bpy.types.Scene.connectivity_degree_threshold_use_abs = bpy.props.BoolProperty(default=False, description='Sets the connectivity degree threshold according to absolute value')
 bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.show_labels_plotted = bpy.props.BoolProperty(default=True, description="Show labels list")
 bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
@@ -2573,7 +2579,7 @@ def init_meg_activity_map():
         print('No MNE installed in Blender. Run python -m src.setup -f install_blender_reqs')
     if len(list_items) > 0:
         bpy.types.Scene.meg_files = bpy.props.EnumProperty(
-            items=list_items, description="MEG files", update=meg_files_update)
+            items=list_items, update=meg_files_update, description='Selects the condition to plot the MEG activity.\n\nCurrent condition')
         bpy.context.scene.meg_files = list_items[0][0]
     if ColoringMakerPanel.meg_activity_data_exist or ColoringMakerPanel.stc_file_exist:
         ColoringMakerPanel.activity_types.append('meg')
@@ -2635,7 +2641,8 @@ def init_electrodes():
         _, _, conditions = _addon().load_electrodes_data()
         items = [(c, c, '', ind + 1) for ind, c in enumerate(conditions)]
         items.append(('diff', 'Conditions difference', '', len(conditions) +1))
-        bpy.types.Scene.electrodes_conditions = bpy.props.EnumProperty(items=items, description="Electrodes")
+        bpy.types.Scene.electrodes_conditions = bpy.props.EnumProperty(items=items,
+            description='Selects the condition to plot the electrodes activity.\n\nCurrent condition')
         bpy.context.scene.electrodes_conditions = 'diff'
 
 
@@ -2661,7 +2668,8 @@ def init_meg_sensors():
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
         items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.meg_sensors_meta['conditions'])]
         items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.meg_sensors_meta['conditions']) +1))
-        bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=items, description="MEG sensors")
+        bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=items,
+            description='Selects the condition to plot the MEG sensors activity.\n\nCurrent condition')
         bpy.context.scene.meg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('meg_sensors')
 
@@ -2687,7 +2695,8 @@ def init_eeg_sensors():
         ColoringMakerPanel.eeg_sensors_data_minmax = (data_min, data_max)
         items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.eeg_sensors_meta['conditions'])]
         items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.eeg_sensors_meta['conditions']) +1))
-        bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items, description="EEG sensors")
+        bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items,
+            description='Selects the condition to plot the EEG sensors activity.\n\nCurrent condition')
         bpy.context.scene.eeg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('eeg_sensors')
 
@@ -2717,7 +2726,7 @@ def init_meg_labels_coloring_type():
             items = [('diff', 'Conditions difference', '', 0)]
             items.extend([(cond, cond, '', ind + 1) for ind, cond in enumerate(conditions)])
             bpy.types.Scene.meg_labels_coloring_type = bpy.props.EnumProperty(
-                items=items, description="meg_labels_coloring_type")
+                items=items, description='Selects the condition to plot the MEG labels activity.\n\nCurrent condition')
             bpy.context.scene.meg_labels_coloring_type = 'diff'
             ColoringMakerPanel.activity_types.append('meg_labels')
 
@@ -2747,7 +2756,8 @@ def init_fmri_files(current_fmri_file=''):
             mu.get_label_hemi_invariant_name(mu.namebase(fname)[5:]) for fname in fmri_files]
         clusters_items = [(c, c, '', ind) for ind, c in enumerate(ColoringMakerPanel.fMRI_contrasts_names )]
         bpy.types.Scene.fmri_files = bpy.props.EnumProperty(
-            items=clusters_items, description="fMRI files", update=fmri_files_update)
+            items=clusters_items, update=fmri_files_update,
+            description='Selects the contrast to plot the fMRI activity.\n\nScript:mmvt.coloring.get_select_fMRI_contrast()\n\nCurrent contrast')
         if current_fmri_file == '':
             bpy.context.scene.fmri_files = ColoringMakerPanel.fMRI_contrasts_names [0]
         else:
@@ -2767,7 +2777,7 @@ def init_static_conn():
         files_names = [name for name in files_names if 'backup' not in name]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.static_conn_files = bpy.props.EnumProperty(
-            items=items, description="static conn files", update=static_conn_files_update)
+            items=items, update=static_conn_files_update, description='Connectivity degree files.\n\nCurrent file')
         bpy.context.scene.static_conn_files = files_names[0]
 
 
@@ -2789,7 +2799,8 @@ def init_coloring_files():
     if len(manually_color_files) > 0:
         files_names = [mu.namebase(fname) for fname in manually_color_files]
         coloring_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=coloring_items, description="Coloring files")
+        bpy.types.Scene.coloring_files = bpy.props.EnumProperty(items=coloring_items,
+            description='Selects the file to color manually.\n\nCurrent file')
         bpy.context.scene.coloring_files = files_names[0]
 
 
