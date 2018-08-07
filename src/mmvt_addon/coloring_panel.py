@@ -1277,7 +1277,7 @@ def color_manually():
                 continue
             # Check if this is a label from another atlas
             if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
-                line_atlas = line[2] if len(line) >= 3 and isinstance(line[2], str) else atlas
+                line_atlas = line[2] if len(line) >= 3 and not mu.is_float(line[2]) else atlas
                 other_atals_labels, object_added = find_atlas_labels(
                     obj_name, line_atlas, color_rgb, other_atals_labels)
                 # labels_fol = mu.get_atlas_labels_fol(atlas)
