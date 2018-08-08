@@ -372,7 +372,8 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind + 1) for ind, c in enumerate(fMRIPanel.clusters)]
     bpy.types.Scene.fmri_clusters = bpy.props.EnumProperty(
-        items=clusters_items, description="fmri clusters", update=clusters_update)
+        items=clusters_items, update=clusters_update, description='Displays a list of clusters. The list can be sorted '
+        'and refined by the parameters below.\nEach cluster can be chosen to show detailed information below.\n\nSelected cluster')
     if len(fMRIPanel.clusters) > 0:
         bpy.context.scene.fmri_clusters = fMRIPanel.current_cluster = fMRIPanel.clusters[0]
         if bpy.context.scene.fmri_clusters in fMRIPanel.lookup[key]:
@@ -755,6 +756,7 @@ class FindfMRIFilesMinMax(bpy.types.Operator):
 class fmriClearColors(bpy.types.Operator):
     bl_idname = "mmvt.fmri_colors_clear"
     bl_label = "mmvt fmri colors clear"
+    bl_description = 'Clears all the plotted clusters\n\nScript: mmvt.fMRI.clear()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -809,6 +811,7 @@ class RefinefMRIClusters(bpy.types.Operator):
 class NearestCluster(bpy.types.Operator):
     bl_idname = "mmvt.nearest_cluster"
     bl_label = "Nearest Cluster"
+    bl_description = 'Finds the closest cluster to the cursor.\n\nScript: mmvt.fMRI.find_closest_cluster()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -819,6 +822,7 @@ class NearestCluster(bpy.types.Operator):
 class PlotAllBlobs(bpy.types.Operator):
     bl_idname = "mmvt.plot_all_blobs"
     bl_label = "Plot all blobs"
+    bl_description = 'Plots all the clusters in the list.\n\nScript: mmvt.fMRI.plot_all_blobs()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -839,23 +843,26 @@ try:
     bpy.types.Scene.plot_current_cluster = bpy.props.BoolProperty(
         default=True, description="Plot current cluster")
     bpy.types.Scene.plot_fmri_cluster_per_click = bpy.props.BoolProperty(
-        default=False, description="Plot cluster per left click")
+        default=False, description='Finds and selects the closest cluster to the cursor each time left mouse clicked')
     bpy.types.Scene.search_closest_cluster_only_in_filtered = bpy.props.BoolProperty(
         default=False, description="Plot current cluster")
     bpy.types.Scene.fmri_what_to_plot = bpy.props.EnumProperty(
         items=[('blob', 'Plot blob', '', 1)], description='What do plot') # ('cluster', 'Plot cluster', '', 1)
     bpy.types.Scene.fmri_how_to_sort = bpy.props.EnumProperty(
         items=[('tval', 't-val', '', 1), ('size', 'size', '', 2), ('name', 'name', '', 3)],
-        description='How to sort', update=fmri_how_to_sort_update)
-    bpy.types.Scene.fmri_clusters = bpy.props.EnumProperty(items=[], description="fMRI clusters")
+        update=fmri_how_to_sort_update, description='Sorts the clusters list by t-value, size or name.\n\nCurrent sorting')
+    bpy.types.Scene.fmri_clusters = bpy.props.EnumProperty(items=[],
+        description='Displays a list of clusters. The list can be sorted and refined by the parameters below. '
+                    'Each cluster can be chosen to show detailed information below.\n\nSelected cluster')
     bpy.types.Scene.fmri_cluster_val_threshold = bpy.props.FloatProperty(default=2,
-        description='clusters t-val threshold', min=0, max=20, update=fmri_clusters_update)
+        min=0, max=20, update=fmri_clusters_update, description='Sets the threshold for the t-value to sort the clusters list')
     bpy.types.Scene.fmri_cluster_size_threshold = bpy.props.FloatProperty(default=50,
-        description='clusters size threshold', min=1, max=2000, update=fmri_clusters_update)
+        min=1, max=2000, update=fmri_clusters_update, description='Sets the threshold for the size to sort the clusters list')
     bpy.types.Scene.fmri_clustering_threshold = bpy.props.FloatProperty(default=2,
         description='clustering threshold', min=0, max=20)
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
-        items=[], description="fMRI files", update=fmri_clusters_labels_files_update)
+        items=[], update=fmri_clusters_labels_files_update,
+        description='Selects the contrast for the cluster analysis.\n\nCurrent contrast')
     bpy.types.Scene.fmri_clusters_labels_parcs = bpy.props.EnumProperty(
         items=[], description="fMRI parcs")
     bpy.types.Scene.fmri_blobs_norm_by_percentile = bpy.props.BoolProperty(default=False)
@@ -863,15 +870,21 @@ try:
         default=1, min=0, max=100, update=fmri_blobs_percentile_min_update)
     bpy.types.Scene.fmri_blobs_percentile_max = bpy.props.FloatProperty(
         default=99, min=0, max=100, update=fmri_blobs_percentile_max_update)
-    bpy.types.Scene.fmri_show_filtering = bpy.props.BoolProperty(default=False)
-    bpy.types.Scene.plot_fmri_cluster_contours = bpy.props.BoolProperty(default=False)
+    bpy.types.Scene.fmri_show_filtering = bpy.props.BoolProperty(default=False,
+        description='Opens further options to refine the clusters list')
+    bpy.types.Scene.plot_fmri_cluster_contours = bpy.props.BoolProperty(default=False,
+        description='Plots the label contours of the selected clusters')
     bpy.types.Scene.fmri_cluster_contours_color = bpy.props.FloatVectorProperty(
-        name="contours_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
-    bpy.types.Scene.fmri_clustering_filter = bpy.props.StringProperty(update=fmri_clusters_update)
-    bpy.types.Scene.fmri_clustering_filter_lh = bpy.props.BoolProperty(default=True, update=fmri_clusters_update)
-    bpy.types.Scene.fmri_clustering_filter_rh = bpy.props.BoolProperty(default=True, update=fmri_clusters_update)
+        name="contours_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0,
+        description='Sets the color to plot the labels contours')
+    bpy.types.Scene.fmri_clustering_filter = bpy.props.StringProperty(update=fmri_clusters_update,
+        description='Finds clusters by name or the few first letters that their name starts with')
+    bpy.types.Scene.fmri_clustering_filter_lh = bpy.props.BoolProperty(default=True, update=fmri_clusters_update,
+        description='Shows only the clusters in the list from the left hemisphere')
+    bpy.types.Scene.fmri_clustering_filter_rh = bpy.props.BoolProperty(default=True, update=fmri_clusters_update,
+        description='Shows only the clusters in the list from the right hemisphere')
     bpy.types.Scene.fmri_only_clusters_with_electrodes = bpy.props.BoolProperty(
-        default=False, update=fmri_clusters_update)
+        default=False, update=fmri_clusters_update, description='Shows only clusters with electrodes')
     bpy.types.Scene.fmri_more_settings = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.show_only_electrodes_near_cluster = bpy.props.BoolProperty(
         default=False, update=show_only_electrodes_near_cluster_update)
@@ -928,7 +941,8 @@ def init(addon):
     # files_names = [mu.namebase(fname)[len('clusters_labels_'):] for fname in clusters_labels_files]
     fMRIPanel.clusters_labels_file_names = files_names
     bpy.types.Scene.fmri_clusters_labels_files = bpy.props.EnumProperty(
-        items=clusters_labels_items, description="fMRI files", update=fmri_clusters_labels_files_update)
+        items=clusters_labels_items, update=fmri_clusters_labels_files_update,
+        description='Selects the contrast for the cluster analysis.\n\nCurrent contrast')
     bpy.context.scene.fmri_clusters_labels_files = files_names[0]
     bpy.context.scene.fmri_blobs_norm_by_percentile = True
     bpy.context.scene.plot_fmri_cluster_contours = False
