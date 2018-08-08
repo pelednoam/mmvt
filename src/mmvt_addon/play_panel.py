@@ -13,17 +13,19 @@ import shutil
 
 HEMIS = mu.HEMIS
 
-bpy.types.Scene.play_from = bpy.props.IntProperty(default=0, min=0, description="When to filter from")
+bpy.types.Scene.play_from = bpy.props.IntProperty(default=0, min=0,
+    description='Sets the starting time point of the activity')
 bpy.types.Scene.play_to = bpy.props.IntProperty(default=bpy.context.scene.frame_end, min=0,
-                                                  description="When to filter to")
-bpy.types.Scene.play_dt = bpy.props.IntProperty(default=50, min=1, description="play dt (ms)")
+    description='Sets the ending time point of the activity')
+bpy.types.Scene.play_dt = bpy.props.IntProperty(default=50, min=1, description='Transition')
 bpy.types.Scene.play_time_step = bpy.props.FloatProperty(default=0.1, min=0,
                                                   description="How much time (s) to wait between frames")
-bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description="Render the movie")
-bpy.types.Scene.save_images = bpy.props.BoolProperty(default=False, description="Save images")
-
-bpy.types.Scene.rotate_brain_while_playing = bpy.props.BoolProperty(default=False, description="Render the movie")
-
+bpy.types.Scene.render_movie = bpy.props.BoolProperty(default=False, description='Renders each frame')
+bpy.types.Scene.save_images = bpy.props.BoolProperty(default=False,
+    description='Saves the played images in the subject’s ‘movies’ folder.'
+                '\nExample: ..mmvt_root/mmvt_blend/colin27/movies')
+bpy.types.Scene.rotate_brain_while_playing = bpy.props.BoolProperty(default=False,
+    description='Rotates the brain while playing according to the x,y,z axis set bellow')
 bpy.types.Scene.meg_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.electrodes_threshold = bpy.props.FloatProperty(default=2, min=0)
 bpy.types.Scene.connectivity_threshold = bpy.props.FloatProperty(default=2, min=0)
@@ -39,8 +41,8 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
        ("eeg_helmet", "EEG helmet"), ("meg_sensors", "MEG sensors"),
        ("eeg_sensors", "EEG sensors")]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
-bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Type pf data to play')
-bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description="frames num")
+bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Chooses the displayed modality\n\nCurrent modality')
+bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description='Sets the frames per second for the video')
 bpy.types.Scene.play_miscs = bpy.props.EnumProperty(
     items=[('inflating', 'inflating', '', 1), ('slicing', 'slicing', '', 2)])
 
@@ -597,6 +599,7 @@ def play_panel_draw(context, layout):
 class Play(bpy.types.Operator):
     bl_idname = "mmvt.play"
     bl_label = "play"
+    bl_description = 'Play'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -615,6 +618,7 @@ class Play(bpy.types.Operator):
 class Reverse(bpy.types.Operator):
     bl_idname = "mmvt.reverse"
     bl_label = "reverse"
+    bl_description = 'Reverse'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -629,6 +633,7 @@ class Reverse(bpy.types.Operator):
 class Pause(bpy.types.Operator):
     bl_idname = "mmvt.pause"
     bl_label = "pause"
+    bl_description = 'Pause'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -641,6 +646,7 @@ class Pause(bpy.types.Operator):
 class PrevKeyFrame(bpy.types.Operator):
     bl_idname = 'mmvt.prev_key_frame'
     bl_label = 'prevKeyFrame'
+    bl_description = 'Previous'
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
@@ -653,6 +659,7 @@ class PrevKeyFrame(bpy.types.Operator):
 class NextKeyFrame(bpy.types.Operator):
     bl_idname = "mmvt.next_key_frame"
     bl_label = "nextKeyFrame"
+    bl_description = 'Next'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -712,6 +719,7 @@ class ExportGraph(bpy.types.Operator):
 class CreateMovie(bpy.types.Operator):
     bl_idname = "mmvt.create_movie"
     bl_label = "mmvt create_movie"
+    bl_description = 'Concatenates the frames into a video'
     bl_options = {"UNDO"}
     running = False
 

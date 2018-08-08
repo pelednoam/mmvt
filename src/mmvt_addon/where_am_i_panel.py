@@ -728,6 +728,7 @@ class ChooseVoxelID(bpy.types.Operator):
 class ClipboardToTkreg(bpy.types.Operator):
     bl_idname = "mmvt.clipboard_to_tkreg"
     bl_label = "mmvt clipboard_to_tkreg"
+    bl_description = 'Paste\n\nScript: mmvt.where_am_i.clipboard_to_tkreg()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -739,6 +740,7 @@ class ClipboardToTkreg(bpy.types.Operator):
 class TkregToClipboard(bpy.types.Operator):
     bl_idname = "mmvt.tkreg_to_clipboard"
     bl_label = "mmvt tkreg_to_clipboard"
+    bl_description = 'Copy\n\nScript: mmvt.where_am_i.tkreg_to_clipboard()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -750,6 +752,8 @@ class TkregToClipboard(bpy.types.Operator):
 class ClosestLabel(bpy.types.Operator):
     bl_idname = "mmvt.closest_label"
     bl_label = "mmvt closest label"
+    bl_description = 'Finds the closest label to the cursor according to the chosen atlas above.' \
+                     '\n\nScript: mmvt.where_am_i.find_closest_label(plot_contour=bpy.context.scene.plot_closest_label_contour)'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -761,6 +765,7 @@ class ClosestLabel(bpy.types.Operator):
 class WhereAmI(bpy.types.Operator):
     bl_idname = "mmvt.where_i_am"
     bl_label = "mmvt where i am"
+    bl_description = 'Finds the closest object to the cursor'
     bl_options = {"UNDO"}
 
     where_am_I_selected_obj = None
@@ -798,6 +803,7 @@ class WhereAmI(bpy.types.Operator):
 class ClearWhereAmI(bpy.types.Operator):
     bl_idname = "mmvt.where_am_i_clear"
     bl_label = "where am i clear"
+    bl_description = 'Clears all the plotted labels'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -832,31 +838,42 @@ class ClearWhereAmI(bpy.types.Operator):
 
 bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest curve to cursor",
                                                       update=where_i_am_draw)
-bpy.types.Scene.ras_x = bpy.props.FloatProperty(update=ras_coo_update)
-bpy.types.Scene.ras_y = bpy.props.FloatProperty(update=ras_coo_update)
-bpy.types.Scene.ras_z = bpy.props.FloatProperty(update=ras_coo_update)
+bpy.types.Scene.ras_x = bpy.props.FloatProperty(update=ras_coo_update,
+    description='Sets the cursor according to X tmni305 coordinates (same as RAS coordinates in Free Surfer).'
+                '\n\nScript: mmvt.where_am_i.get_ras() and set_mni(coo)')
+bpy.types.Scene.ras_y = bpy.props.FloatProperty(update=ras_coo_update,
+    description='Sets the cursor according to Y tmni305 coordinates (same as RAS coordinates in Free Surfer).'
+                '\n\nScript: mmvt.where_am_i.get_ras() and set_mni(coo)')
+bpy.types.Scene.ras_z = bpy.props.FloatProperty(update=ras_coo_update,
+    description='Sets the cursor according to Z tmni305 coordinates (same as RAS coordinates in Free Surfer).'
+                '\n\nScript: mmvt.where_am_i.get_ras() and set_mni(coo)')
 bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty(update=tkras_coo_update,
-    description='Sets the cursor according to Free Surfers X tkreg coordinates'
+    description='Sets the cursor according to Free Surfers X tkreg coordinates.'
                 '\n\nScript: mmvt.where_am_i.get_tkreg_ras() and set_tkreg_ras(coo, move_cursor=True)')
 bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty(update=tkras_coo_update,
-    description='Sets the cursor according to Free Surfers X tkreg coordinates'
+    description='Sets the cursor according to Free Surfers Y tkreg coordinates.'
                 '\n\nScript: mmvt.where_am_i.get_tkreg_ras() and set_tkreg_ras(coo, move_cursor=True)')
 bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update,
-    description='Sets the cursor according to Free Surfers X tkreg coordinates'
+    description='Sets the cursor according to Free Surfers Z tkreg coordinates.'
                 '\n\nScript: mmvt.where_am_i.get_tkreg_ras() and set_tkreg_ras(coo, move_cursor=True)')
-bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update)
-bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update)
-bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update)
+bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update,
+    description='Sets the cursor according to X T1 Voxel coordinates')
+bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update,
+    description='Sets the cursor according to Y T1 Voxel coordinates')
+bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update,
+    description='Sets the cursor according to Z T1 Voxel coordinates')
 bpy.types.Scene.ct_voxel_x = bpy.props.IntProperty(update=ct_voxel_coo_update)
 bpy.types.Scene.ct_voxel_y = bpy.props.IntProperty(update=ct_voxel_coo_update)
 bpy.types.Scene.ct_voxel_z = bpy.props.IntProperty(update=ct_voxel_coo_update)
 bpy.types.Scene.where_am_i_str = bpy.props.StringProperty()
-bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(items=[], description='List of different atlases.\n\nCurrent atlas')
 bpy.types.Scene.closest_label_output = bpy.props.StringProperty()
 bpy.types.Scene.closest_label = bpy.props.StringProperty()
 bpy.types.Scene.cut_type = 'sagital'
-bpy.types.Scene.find_closest_label_on_click = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.plot_closest_label_contour = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.find_closest_label_on_click = bpy.props.BoolProperty(default=False,
+    description='Finds the closest label each time an area clicked (right click) on the brain')
+bpy.types.Scene.plot_closest_label_contour = bpy.props.BoolProperty(default=False,
+    description='Plots the selected label’s contour')
 
 # bpy.types.Scene.where_am_i_atlas = bpy.props.StringProperty()
 
@@ -919,7 +936,7 @@ def init(addon):
             if len(annot_files) > 0:
                 items = [(c, c, '', ind) for ind, c in enumerate(annot_files)]
                 bpy.types.Scene.subject_annot_files = bpy.props.EnumProperty(
-                    items=items, update=subject_annot_files_update)
+                    items=items, update=subject_annot_files_update, description='List of different atlases.\n\nCurrent atlas')
                 ind = mu.index_in_list(bpy.context.scene.atlas, annot_files, 0)
                 bpy.context.scene.subject_annot_files = annot_files[ind]
             else:
