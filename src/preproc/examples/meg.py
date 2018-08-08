@@ -207,6 +207,18 @@ def calc_rest(args):
     meg.call_main(args)
 
 
+def calc_power_spectrum(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        atlas='laus125',
+        function='calc_power_spectrum',
+        overwrite_labels_power_spectrum=True,
+        task='rest',
+    ))
+    meg.call_main(args)
+
+
 def load_fieldtrip_volumetric_data(args):
     # http://www.fieldtriptoolbox.org/reference/ft_sourceinterpolate
     # http://www.fieldtriptoolbox.org/reference/ft_sourceplot

@@ -76,6 +76,15 @@ def init(mmvt, modality, modality_data=None, colormap=None, subject='', mmvt_dir
     pial_vol_mask = np.load(pial_vol_mask_fname) if op.isfile(pial_vol_mask_fname) else None
     dural_vol_mask_fname = op.join(mmvt_dir, subject, 'freeview', 'dural_vol_mask.npy')
     dural_vol_mask = np.load(dural_vol_mask_fname) if op.isfile(dural_vol_mask_fname) else None
+    fmri_vol = load_fmri_vol_data(mmvt)
+    self = mu.Bag(dict(
+        data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r, colors_ratio=colors_ratio,
+        colormap=colormap, coordinates=[], modality=modality, extras=extras, pial_vol_mask=pial_vol_mask,
+        dural_vol_mask=dural_vol_mask, fmri_vol=fmri_vol, t1_ct_mask=t1_ct_mask))
+    return self
+
+
+def load_fmri_vol_data(mmvt):
     fmri_vol_fnames = glob.glob(op.join(mu.get_user_fol(), 'fmri', '{}.*'.format(mmvt.coloring.get_fmri_vol_fname())))
     fmri_vol = None
     if len(fmri_vol_fnames) > 0:
@@ -84,12 +93,7 @@ def init(mmvt, modality, modality_data=None, colormap=None, subject='', mmvt_dir
             fmri_vol = nib.load(fmri_vol_fname).get_data()
         elif mu.file_type(fmri_vol_fname) == 'npy':
             fmri_vol = np.load(fmri_vol_fname)
-
-    self = mu.Bag(dict(
-        data=data, affine=affine, order=order, sizes=sizes, flips=flips, clim=clim, r=r, colors_ratio=colors_ratio,
-        colormap=colormap, coordinates=[], modality=modality, extras=extras, pial_vol_mask=pial_vol_mask,
-        dural_vol_mask=dural_vol_mask, fmri_vol=fmri_vol, t1_ct_mask=t1_ct_mask))
-    return self
+    return fmri_vol
 
 
 def create_slices(mmvt, xyz, state=None, modalities='mri', modality_data=None, colormap=None, plot_cross=True,

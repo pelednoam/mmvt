@@ -639,6 +639,9 @@ def get_slicer_state(modality):
     return WhereAmIPanel.slicer_state.get(modality, None)
 
 
+# def load_slicer_fmri_vol_data():
+#     WhereAmIPanel.slicer_state['mri'].fmri_vol =
+
 def clipboard_to_coords():
     clipboard = bpy.context.window_manager.clipboard
     if ',' in clipboard:

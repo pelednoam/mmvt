@@ -2061,7 +2061,37 @@ def get_mmvt_code_root():
     return op.dirname(os.path.split(curr_dir)[0])
 
 
-def power_spectrum(x, fs):
+def power_spectrum(x, fs, scaling='spectrum'):
+    r'''
+    Estimate power spectral density using Welch's method.
+
+    Welch's method computes an estimate of the power spectral
+    density by dividing the data into overlapping segments, computing a
+    modified periodogram for each segment and averaging the
+    periodograms.
+
+    Parameters
+    ----------
+    x : array_like
+        Time series of measurement values
+    fs : float, optional
+        Sampling frequency of the `x` time series. Defaults to 1.0.
+
+    scaling : { 'density', 'spectrum' }, optional
+        Selects between computing the power spectral density ('density')
+        where `Pxx` has units of V**2/Hz and computing the power
+        spectrum ('spectrum') where `Pxx` has units of V**2, if `x`
+        is measured in V and `fs` is measured in Hz. Defaults to
+        'density'
+
+    Returns
+    -------
+    f : ndarray
+        Array of sample frequencies.
+    Pxx : ndarray
+        Power spectral density or power spectrum of x.
+    '''
+
     from scipy import signal
     frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling='spectrum') # 1024
     linear_spectrum = np.log(np.sqrt(Pxx_spec))

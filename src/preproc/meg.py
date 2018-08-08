@@ -15,6 +15,7 @@ import nibabel as nib
 from collections import Counter
 import inspect
 import copy
+import tqdm
 
 try:
     import matplotlib.pyplot as plt
@@ -2471,37 +2472,54 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
-def calc_power_spectrum(subject, events, args, do_plot=True):
+def calc_power_spectrum(subject, events, args, do_plot=False):
     info = get_info(args.info_fname, args.evo_fname, args.raw_fname)
     if info is None:
         print('calc_power_spectrum: Can\'t find the MEG info file!')
         return False
     if args.labels_data_template == '':
         args.labels_data_template = LBL
+    output_template = op.join(MMVT_DIR, subject, 'meg', 'labels_data_power_spectrum_{}_{}_{}_{}_{}.npz'.format(
+        args.task, args.atlas, '{em}', '{im}', '{hemi}'))
+    events_ids = [e - min(events.values()) for e in events.values()]
     for hemi, em, im in product(utils.HEMIS, args.extract_mode, args.inverse_method):
-        labels_fname = get_labels_fname(subject, hemi, em)
+        output_fname = output_template.format(hemi=hemi, em=em, im=im)
+        if op.isfile(output_fname) and not args.overwrite_labels_power_spectrum:
+            continue
+        labels_fname = get_labels_fname(subject, hemi, args)
         if not op.isfile(labels_fname):
             print('Can\'t find the labels file! {}'.format(labels_fname))
             continue
         labels_dict = utils.Bag(np.load(labels_fname))
         data = labels_dict.data[em] if isinstance(labels_dict.data, dict) else labels_dict.data
-        for (cond_name, cond_id) in events.items():
-            for label_ind, label_name in enumerate(labels_dict.names):
-                label_data = data[label_ind, :, cond_id] if data.ndim == 3 else data[label_ind, :]
-                frequencies, linear_spectrum = utils.power_spectrum(info.sfreq, label_data)
-                if do_plot:
-                    plt.figure()
-                    plt.plot(frequencies, linear_spectrum)
-                    plt.xlabel('frequency [Hz]')
-                    plt.ylabel('Linear spectrum [V RMS]')
-                    plt.title('Power spectrum (scipy.signal.welch)')
-                    plt.show()
-                pass
+        if data.ndim == 3 and data.shape[2] > len(events) or args.calc_spectrum_with_no_windows:
+            data = data.reshape((data.shape[0], -1))
+        first_time = True
+        now, N = time.time(), len(labels_dict.names) * len(events)
+        for cond_id, label_ind in product(events_ids, range(len(labels_dict.names))):
+            utils.time_to_go(now, label_ind, N, 10)
+            label_data = data[label_ind, :, cond_id] if data.ndim == 3 else data[label_ind, :]
+            frequencies, linear_spectrum = utils.power_spectrum(label_data, info.sfreq)
+            if first_time:
+                power_spectrum = np.zeros((data.shape[0], len(frequencies), len(events)))
+                first_time = False
+            power_spectrum[label_ind, :, cond_id] = linear_spectrum
+            if do_plot:
+                plt.figure()
+                plt.plot(frequencies, linear_spectrum)
+                plt.xlabel('frequency [Hz]')
+                plt.ylabel('Linear spectrum [V RMS]')
+                plt.title('Power spectrum (scipy.signal.welch)')
+                plt.show()
+        np.savez(output_fname, data=power_spectrum, frequencies=frequencies, names=labels_dict.names,
+                 conditions=labels_dict.conditions)
+    return np.all([utils.both_hemi_files_exist(output_template.format(em=em, im=im, hemi='{hemi}'))
+                   for em, im in product(args.extract_mode, args.inverse_method)])
 
 
-def get_labels_fname(subject, hemi, em):
+def get_labels_fname(subject, hemi, args):
     labels_fnames = glob.glob(op.join(MMVT_DIR, subject, 'meg', 'labels_data*{}*{}_{}.npz'.format(
-        args.atlas, em, hemi)))
+        args.atlas, args.extract_mode, hemi)))
     if args.task != '':
         labels_task_fnames = [l for l in labels_fnames if args.task.lower() in utils.namebase(l.lower())]
         if len(labels_task_fnames) > 0:
@@ -3956,6 +3974,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_data', help='overwrite_labels_data', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_power_spectrum', help='overwrite_labels_power_spectrum', required=False,
+                        default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)
@@ -4045,6 +4065,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--remove_artifacts_from_raw', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--ica_overwrite_raw', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--do_plot_ica', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--calc_spectrum_with_no_windows', help='', required=False, default=0, type=au.is_true)
     # Clusters
     parser.add_argument('--stc_name', required=False, default='')
     parser.add_argument('--threshold', required=False, default=75, type=float)

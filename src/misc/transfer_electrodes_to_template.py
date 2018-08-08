@@ -638,9 +638,10 @@ def prepare_files_for_subjects(subjects, overwrite=False):
     # necessary_files = {'surf': ['rh.sulc', 'lh.sulc', 'lh.sphere', 'rh.sphere',
     #                             'lh.inflated.K', 'rh.inflated.K', 'lh.inflated.H', 'rh.inflated.H']}
 
-    remote_subject_template1 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
-    remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/Recon/{subject}_SurferOutput'
-    remote_subject_templates = (remote_subject_template1, remote_subject_template2)
+    remote_subject_template1 = '/mnt/cashlab/projects/DARPA/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput_REDONE'
+    remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
+    remote_subject_template3 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/Recon/{subject}_SurferOutput'
+    remote_subject_templates = (remote_subject_template1, remote_subject_template2, remote_subject_template3)
     # subjects = pu.decode_subjects(['MG*'], remote_subject_template)
     good_subjects = []
     for subject in subjects:
@@ -666,7 +667,7 @@ if __name__ == '__main__':
     # root = [d for d in roots if op.isdir(d)][0]
     # csv_name = 'StimLocationsPatientList.csv'
     save_as_bipolar = False
-    template_system = 'mni'# ''ras' #'matt_hibert' # 'mni' # hc029
+    template_system = 'ras'# ''ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     atlas = 'aparc.DKTatlas40'
     bipolar = False
@@ -676,16 +677,17 @@ if __name__ == '__main__':
     n_jobs=4
 
     # get_output_using_sftp()
-    subjects = get_all_subjects()
+    # subjects = get_all_subjects()
+    subjects = ['mg96']
     good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
-    print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
-    print(good_subjects)
+    # print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
+    # print(good_subjects)
     # raise Exception('Done')
 
     # electrodes = read_csv_file(op.join(root, csv_name), save_as_bipolar)
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
-    # subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
+    # good_subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
     # electrodes = read_all_electrodes(good_subjects, bipolar)
     # raise Exception('Done')
 

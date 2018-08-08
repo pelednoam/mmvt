@@ -1636,6 +1636,7 @@ def _fmri_files_update(fmri_file_name):
         items = [(c, c, '', ind) for ind, c in enumerate(vol_fnames)]
         bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=items)
         bpy.context.scene.fmri_vol_files = vol_fnames[0]
+        _addon().where_am_i.set_slicer_state('mri')
     return True
 
 
