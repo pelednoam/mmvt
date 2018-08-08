@@ -285,7 +285,7 @@ def get_filter_functions():
             functions_names.append(file_name)
     bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(
         items=[(module_name, module_name, '', k + 1) for k, module_name in enumerate(functions_names)],
-        description="Filtering function")
+        description='List of functions.\n\nCurrent function')
 
 
 def subselect_update(self=None, context=None):
@@ -295,6 +295,7 @@ def subselect_update(self=None, context=None):
 class FindCurveClosestToCursor(bpy.types.Operator):
     bl_idname = "mmvt.curve_close_to_cursor"
     bl_label = "curve close to cursor"
+    bl_description = 'Shows the name of the closest curve to the cursor below the button.\n\nScript: mmvt.filter.find_obj_with_val()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -327,6 +328,7 @@ class GrabToFiltering(bpy.types.Operator):
 class ClearFiltering(bpy.types.Operator):
     bl_idname = "mmvt.filter_clear"
     bl_label = "filter clear"
+    bl_description = 'Clears the filtered curves'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -382,6 +384,7 @@ class ResetCurvesFilter(bpy.types.Operator):
 class Filtering(bpy.types.Operator):
     bl_idname = "mmvt.filter"
     bl_label = "Filter deep elctrodes"
+    bl_description = 'Filters the modality according the preferences set above'
     bl_options = {"UNDO"}
     topK = -1
     filter_from = 100000
@@ -555,24 +558,25 @@ bpy.types.Scene.closest_curve_str = ''
 bpy.types.Scene.filter_is_on = False
 
 bpy.types.Scene.closest_curve = bpy.props.StringProperty(description="Find closest curve to cursor")
-bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description="The top K elements to be shown")
+bpy.types.Scene.filter_topK = bpy.props.IntProperty(default=1, min=0, description='Sets the top curves number')
 bpy.types.Scene.filter_from = bpy.props.IntProperty(
-    default=0, min=0, description="When to filter from", update=filter_from_to_update)
+    default=0, min=0, update=filter_from_to_update, description='Sets the starting time point of the activity')
 bpy.types.Scene.filter_to = bpy.props.IntProperty(
-    default=bpy.context.scene.frame_end, min=0, description="When to filter to", update=filter_from_to_update)
+    default=bpy.context.scene.frame_end, min=0, update=filter_from_to_update, description='Sets the ending time point of the activity')
 bpy.types.Scene.filter_curves_type = bpy.props.EnumProperty(
     items=[("MEG", "MEG time course", "", 1), ('MEG_sensors', 'MEG sensors', '', 2),
            ("Electrodes", " Electrodes time course", "", 3), ("EEG", "EEG sensors", "", 4),
            ('fMRI', 'fMRI dynamics', '', 4)],
-    description="Type of curve to be filtered")
-bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[], description="Filtering function")
+    description='List of modalities.\n\nCurrent modality')
+bpy.types.Scene.filter_curves_func = bpy.props.EnumProperty(items=[], description='List of functions.\n\nCurrent function')
     # items=[("RMS", "RMS", "RMS between the two conditions", 1), ("SumAbs", "SumAbs", "Sum of the abs values", 2),
     #        ("threshold", "Above threshold", "", 3)],
-bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=True, description="Mark selected items")
+bpy.types.Scene.mark_filter_items = bpy.props.BoolProperty(default=True, description='Shows the filtered objects on the brain')
 bpy.types.Scene.filter_items = bpy.props.EnumProperty(items=[], description="Filtering items")
 bpy.types.Scene.filter_items_one_by_one = bpy.props.BoolProperty(
-    default=False, description="Show one by one", update=show_one_by_one_update)
-bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:", update=subselect_update)
+    default=False, update=show_one_by_one_update, description='Shows each curve separately')
+bpy.types.Scene.filter_fcurves = bpy.props.StringProperty(name="Subselect:", update=subselect_update,
+    description='Filters curves by name or first letters')
 
 
 class FilteringMakerPanel(bpy.types.Panel):
