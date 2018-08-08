@@ -464,7 +464,7 @@ def activity_map_coloring(map_type, clusters=False, threshold=None):
         else:
             ColoringMakerPanel.what_is_colored.add(WIC_FMRI_CLUSTERS)
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS, WIC_FMRI_DYNAMICS])
-        plot_subcorticals = False
+        plot_subcorticals = True
     elif map_type == 'FMRI_DYNAMICS':
         ColoringMakerPanel.what_is_colored.add(WIC_FMRI_DYNAMICS)
         mu.remove_items_from_set(ColoringMakerPanel.what_is_colored, [WIC_MEG, WIC_MEG_LABELS, WIC_FMRI, WIC_FMRI_CLUSTERS])
@@ -861,41 +861,24 @@ def plot_activity(map_type, faces_verts, threshold, meg_sub_activity=None,
                 bpy.data.scenes['Scene'].frame_preview_start = 0
                 bpy.data.scenes['Scene'].frame_preview_end = t
             f = f[:, t]
-
-        # # todo: should read default values from ini file
-        # if not (data_min == 0 and data_max == 0) and not _addon().colorbar_values_are_locked():
-        #     if data_min == 0:
-        #         _addon().set_colormap('YlOrRd')
-        #     else:
-        #         _addon().set_colormap('BuPu-YlOrRd')
-
         color_hemi_data(hemi, f, data_min, colors_ratio, threshold, override_current_mat)
-        # if bpy.context.scene.coloring_both_pial_and_inflated:
-        #     for cur_obj in [bpy.data.objects[hemi], mu.get_hemi_obj(hemi)]:
-        #         activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min,
-        #                                   colors_ratio)
-        # else:
-        #     if _addon().is_pial():
-        #         cur_obj = bpy.data.objects[hemi]
-        #     elif _addon().is_inflated():
-        #         cur_obj = mu.get_hemi_obj(hemi)
-        #     activity_map_obj_coloring(cur_obj, f, faces_verts[hemi], threshold, override_current_mat, data_min, colors_ratio)
 
-    if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical and not meg_sub_activity is None:
-        if map_type == 'MEG' and not bpy.data.objects['Subcortical_meg_activity_map'].hide:
-                if f is None:
-                    if _addon().colorbar_values_are_locked():
-                        data_max, data_min = _addon().get_colorbar_max_min()
-                        colors_ratio = 256 / (data_max - data_min)
-                    else:
-                        data_max, data_min = meg_sub_activity['data_minmax'], -meg_sub_activity['data_minmax']
-                        colors_ratio = 256 / (2 * data_max)
-                        _addon().set_colorbar_max_min(data_max, data_min)
-                        _addon().set_colorbar_title('Subcortical MEG')
-                color_objects_homogeneously(
-                    meg_sub_activity['data'], meg_sub_activity['names'], meg_sub_activity['conditions'], data_min,
-                    colors_ratio, threshold, '_meg_activity')
-                _addon().show_rois()
+    if plot_subcorticals and not bpy.context.scene.objects_show_hide_sub_cortical:
+        if map_type == 'MEG' and not bpy.data.objects['Subcortical_meg_activity_map'].hide and \
+                not meg_sub_activity is None:
+            if f is None:
+                if _addon().colorbar_values_are_locked():
+                    data_max, data_min = _addon().get_colorbar_max_min()
+                    colors_ratio = 256 / (data_max - data_min)
+                else:
+                    data_max, data_min = meg_sub_activity['data_minmax'], -meg_sub_activity['data_minmax']
+                    colors_ratio = 256 / (2 * data_max)
+                    _addon().set_colorbar_max_min(data_max, data_min)
+                    _addon().set_colorbar_title('Subcortical MEG')
+            color_objects_homogeneously(
+                meg_sub_activity['data'], meg_sub_activity['names'], meg_sub_activity['conditions'], data_min,
+                colors_ratio, threshold, '_meg_activity')
+            _addon().show_rois()
         elif map_type == 'FMRI' and not bpy.data.objects['Subcortical_fmri_activity_map'].hide:
             fmri_subcortex_activity_color(threshold, override_current_mat)
 
@@ -910,7 +893,7 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True, use_abs=
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     current_root_path = mu.get_user_fol() # bpy.path.abspath(bpy.context.scene.conf_path)
-    subcoticals = glob.glob(op.join(current_root_path, 'subcortical_fmri_activity', '*.npy'))
+    subcoticals = glob.glob(op.join(current_root_path, 'fmri', 'subcortical_fmri_activity', '*.npy'))
     for subcortical_file in subcoticals:
         subcortical = op.splitext(op.basename(subcortical_file))[0]
         cur_obj = bpy.data.objects.get('{}_fmri_activity'.format(subcortical))
@@ -918,10 +901,9 @@ def fmri_subcortex_activity_color(threshold, override_current_mat=True, use_abs=
             print("Can't find the object {}!".format(subcortical))
         else:
             lookup_file = op.join(current_root_path, 'subcortical', '{}_faces_verts.npy'.format(subcortical))
-            verts_file = op.join(current_root_path, 'subcortical_fmri_activity', '{}.npy'.format(subcortical))
-            if op.isfile(lookup_file) and op.isfile(verts_file):
+            if op.isfile(lookup_file):
                 lookup = np.load(lookup_file)
-                verts_values = np.load(verts_file)
+                verts_values = np.load(subcortical_file)
                 activity_map_obj_coloring(cur_obj, verts_values, lookup, threshold, override_current_mat,
                                           use_abs=use_abs)
 
@@ -1636,7 +1618,7 @@ def _fmri_files_update(fmri_file_name):
         items = [(c, c, '', ind) for ind, c in enumerate(vol_fnames)]
         bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=items)
         bpy.context.scene.fmri_vol_files = vol_fnames[0]
-        _addon().where_am_i.set_slicer_state('mri')
+        # _addon().where_am_i.set_slicer_state('mri')
     return True
 
 
