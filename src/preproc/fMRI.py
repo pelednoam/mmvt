@@ -429,48 +429,55 @@ def convert_fmri_file(input_fname_template, from_format='nii.gz', to_format='mgz
 
 
 def calc_subs_surface_activity(subject, fmri_file_template, template_brains, threshold=2, subcortical_codes_fname='',
-        aseg_stats_file_name='', method='max', k_points=100, format='mgz', do_plot=False):
+        aseg_stats_file_name='', method='max', k_points=100, format='mgz', overwrite=False, subcortical_regions=()):
     # todo: Should fix:
     # 1) morph the data to subject's space / read vertices from the template brain
     # 2) Solve issues if the data has time dim
     volume_fname = find_fmri_fname_template(
         subject, fmri_file_template, template_brains, only_volumes=True, format=format)
+    if not op.isfile(volume_fname):
+        print('Can\'t find the volume file! {}'.format(volume_fname))
+        return False
     x = nib.load(volume_fname)
     x_data = x.get_data()
-    seg_labels = get_subs_names(subcortical_codes_fname, aseg_stats_file_name)
+    vol_ras2vox = np.linalg.inv(x.header.get_vox2ras()) # todo: need to convert to mgz first
 
-    if do_plot:
-        fig = plt.figure()
-        ax = Axes3D(fig)
+    seg_labels = get_subs_names(subcortical_codes_fname, aseg_stats_file_name)
 
     sig_subs = []
     # Find the segmentation file
-    aseg = morph_aseg(subject, x_data, volume_fname)
-    out_folder = op.join(MMVT_DIR, subject, 'fmri', 'subcortical_fmri_activity')
-    if not op.isdir(out_folder):
-        os.mkdir(out_folder)
+    # aseg = morph_aseg(subject, x_data, volume_fname)
+    aseg = nib.load(op.join(SUBJECTS_DIR, subject, 'mri', 'aseg.mgz'))
+    aseg_vox2ras = aseg.header.get_vox2ras()
+    aseg_vox2tkr = aseg.header.get_vox2ras_tkr()
+
+    out_folder = utils.make_dir(op.join(MMVT_DIR, subject, 'fmri', 'subcortical_fmri_activity'))
     sub_cortical_generator = utils.sub_cortical_voxels_generator(aseg, seg_labels, spacing=5, use_grid=False)
-    for pts, seg_name, seg_id in sub_cortical_generator:
+    for pts_aseg_vox, seg_name, seg_id in sub_cortical_generator:
+        if len(subcortical_regions) > 0 and seg_name not in subcortical_regions:
+            continue
+        output_fname = op.join(out_folder, '{}.npy'.format(seg_name))
+        if op.isfile(output_fname) and not overwrite:
+            continue
         print(seg_name)
+        pts_ras = utils.apply_trans(aseg_vox2ras, pts_aseg_vox)
+        pts_vol_vox = np.rint(utils.apply_trans(vol_ras2vox, pts_ras)).astype(int)
         verts, _ = utils.read_ply_file(op.join(MMVT_DIR, subject, 'subcortical', '{}.npz'.format(seg_name)))
-        vals = np.array([x_data[i, j, k] for i, j, k in pts])
+        vals = np.array([x_data[i, j, k] for i, j, k in pts_vol_vox])
         is_sig = np.max(np.abs(vals)) >= threshold
         print(seg_name, seg_id, np.mean(vals), is_sig)
-        pts = utils.transform_voxels_to_RAS(aseg.header, pts)
+        # pts = utils.transform_voxels_to_RAS(aseg.header, pts)
         # plot_points(verts,pts)
-        verts_vals = calc_vert_vals(verts, pts, vals, method=method, k_points=k_points)
+        pts_aseg_tkr = utils.apply_trans(aseg_vox2tkr, pts_aseg_vox)
+        verts_vals = calc_vert_vals(verts, pts_aseg_tkr, vals, method=method, k_points=k_points)
         print('verts vals: {}+-{}'.format(verts_vals.mean(), verts_vals.std()))
         if sum(abs(verts_vals) > threshold) > 0:
             sig_subs.append(seg_name)
-        verts_colors = utils.arr_to_colors_two_colors_maps(verts_vals, threshold=2)
-        verts_data = np.hstack((np.reshape(verts_vals, (len(verts_vals), 1)), verts_colors))
-        np.save(op.join(out_folder, seg_name), verts_data)
-        if do_plot:
-            plot_points(verts, colors=verts_colors, fig_name=seg_name, ax=ax)
-        # print(pts)
-    if do_plot:
-        plt.savefig(op.join(MMVT_DIR, subject, 'fmri', 'subcorticals_surface_activity.png'))
-        plt.show()
+        # verts_colors = utils.arr_to_colors_two_colors_maps(verts_vals, threshold=2)
+        # verts_data = np.hstack((np.reshape(verts_vals, (len(verts_vals), 1)), verts_colors))
+        np.save(output_fname, verts_vals)
+    print('Subcortical regions with surface activity > {}:'.format(threshold))
+    print(sig_subs)
 
 
 def morph_fmri(morph_from, morph_to, nii_fname):
@@ -554,6 +561,7 @@ def calc_subs_activity(subject, fmri_file_template, measures=['mean'], subcortic
 
 def calc_vert_vals(verts, pts, vals, method='max', k_points=100):
     ball_tree = BallTree(pts)
+    k_points = min([k_points, len(pts)])
     dists, pts_inds = ball_tree.query(verts, k=k_points, return_distance=True)
     near_vals = vals[pts_inds]
     # sig_dists = dists[np.where(abs(near_vals)>2)]
@@ -1881,7 +1889,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['calc_subs_surface_activity'] = calc_subs_surface_activity(
             subject, args.fmri_file_template, args.template_brain, args.subs_threshold, args.subcortical_codes_file,
             args.aseg_stats_fname, method=args.calc_subs_surface_method, k_points=args.calc_subs_surface_points,
-            format='mgz', do_plot=False)
+            format='mgz', subcortical_regions=args.subcortical_regions)
 
     if 'calc_meg_activity' in args.function:
         meg_subject = args.meg_subject
@@ -1949,6 +1957,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--input_format', help='input format', required=False, default='nii.gz')
     parser.add_argument('--volume_type', help='volume type', required=False, default='mni305')
     parser.add_argument('--volume_name', help='volume file name', required=False, default='')
+    parser.add_argument('--subcortical_regions', help='list of subcortical_regions', required=False, default='',
+                        type=au.str_arr_type)
     parser.add_argument('--surface_name', help='surface_name', required=False, default='pial')
     parser.add_argument('--meg_subject', help='meg_subject', required=False, default='')
     parser.add_argument('--inverse_method', help='inverse method', required=False, default='dSPM')
