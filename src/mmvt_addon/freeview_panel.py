@@ -158,6 +158,7 @@ def get_electrodes_command(root):
 class FreeviewGotoCursor(bpy.types.Operator):
     bl_idname = "mmvt.freeview_goto_cursor"
     bl_label = "Goto Cursor"
+    bl_description = 'Changes the cursor position that was saved in Freeview.\n\nScript: mmvt.freeview.goto_cursor_position()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -168,6 +169,7 @@ class FreeviewGotoCursor(bpy.types.Operator):
 class FreeviewSaveCursor(bpy.types.Operator):
     bl_idname = "mmvt.freeview_save_cursor"
     bl_label = "Save Cursor"
+    bl_description = 'Saves the MMVT cursor position to be viewed on Freeview.\n\nScript: mmvt.freeview.freeview_save_cursor()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -232,6 +234,7 @@ def decode_freesurfer_output(fv_str):
 class FreeviewOpen(bpy.types.Operator):
     bl_idname = "mmvt.freeview_open"
     bl_label = "Open Freeview"
+    bl_description = 'Opens Freeview'
     bl_options = {"UNDO"}
     _updating = False
     _calcs_done = False
@@ -287,7 +290,8 @@ class FreeviewOpen(bpy.types.Operator):
 
 
 bpy.types.Scene.electrodes_exist = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=False, description='Load electrodes')
+bpy.types.Scene.freeview_load_electrodes = bpy.props.BoolProperty(default=False,
+    description='Loads the electrodes coordinates into Freeview')
 bpy.types.Scene.fMRI_files_exist = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.freeview_load_fMRI = bpy.props.BoolProperty(default=True, description='Load fMRI')
 bpy.types.Scene.freeview_load_CT = bpy.props.BoolProperty(default=True, description='Load CT')
