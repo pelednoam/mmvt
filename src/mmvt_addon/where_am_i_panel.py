@@ -835,9 +835,15 @@ bpy.types.Scene.where_am_i = bpy.props.StringProperty(description="Find closest 
 bpy.types.Scene.ras_x = bpy.props.FloatProperty(update=ras_coo_update)
 bpy.types.Scene.ras_y = bpy.props.FloatProperty(update=ras_coo_update)
 bpy.types.Scene.ras_z = bpy.props.FloatProperty(update=ras_coo_update)
-bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty(update=tkras_coo_update)
-bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty(update=tkras_coo_update)
-bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update)
+bpy.types.Scene.tkreg_ras_x = bpy.props.FloatProperty(update=tkras_coo_update,
+    description='Sets the cursor according to Free Surfers X tkreg coordinates'
+                '\n\nScript: mmvt.where_am_i.get_tkreg_ras() and set_tkreg_ras(coo, move_cursor=True)')
+bpy.types.Scene.tkreg_ras_y = bpy.props.FloatProperty(update=tkras_coo_update,
+    description='Sets the cursor according to Free Surfers X tkreg coordinates'
+                '\n\nScript: mmvt.where_am_i.get_tkreg_ras() and set_tkreg_ras(coo, move_cursor=True)')
+bpy.types.Scene.tkreg_ras_z = bpy.props.FloatProperty(update=tkras_coo_update,
+    description='Sets the cursor according to Free Surfers X tkreg coordinates'
+                '\n\nScript: mmvt.where_am_i.get_tkreg_ras() and set_tkreg_ras(coo, move_cursor=True)')
 bpy.types.Scene.voxel_x = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_y = bpy.props.IntProperty(update=voxel_coo_update)
 bpy.types.Scene.voxel_z = bpy.props.IntProperty(update=voxel_coo_update)
