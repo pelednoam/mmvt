@@ -386,9 +386,6 @@ bpy.types.Scene.update_cb_location = bpy.props.BoolProperty(default=False, descr
 bpy.types.Scene.colorbar_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_y_update)
 bpy.types.Scene.colorbar_text_y = bpy.props.FloatProperty(min=-2, max=2, default=0, update=colorbar_text_y_update)
 bpy.types.Scene.lock_min_max = bpy.props.BoolProperty(default=False, description='Locks the colorbar values')
-bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
-bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
 
 
 class ColorbarPanel(bpy.types.Panel):

@@ -332,6 +332,9 @@ bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
 bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.view_distance = bpy.props.FloatProperty(default=20, update=view_distance_update)
+bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
+bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
+bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
 
 
 class SaveColorbar(bpy.types.Operator):
