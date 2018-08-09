@@ -6,9 +6,9 @@ import time
 import traceback
 import shutil
 import numpy as np
+import re
 import mmvt_utils as mu
 import colors_utils as cu
-
 
 
 def _addon():
@@ -26,6 +26,21 @@ def contours_coloring_update(self, context):
     bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
     bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
     _addon().set_no_plotting(False)
+
+
+def labels_contours_filter_update(self, context):
+    filter_re = re.compile(bpy.context.scene.labels_contours_filter)
+    labels_contours_filter = []
+    # for hemi in mu.HEMIS:
+    #     labels_contours_filter[hemi]
+    items = []
+    labels_contours = LabelsPanel.labels_contours
+    for hemi_ind, hemi in enumerate(mu.HEMIS):
+        labels_contours_hemi = [l for l in labels_contours[hemi]['labels'] if filter_re.search(l)]
+        LabelsPanel.labels[hemi] = labels_contours_hemi
+        extra = 0 if hemi_ind == 0 else len(labels_contours[mu.HEMIS[0]]['labels'])
+        items.extend([(c, c, '', ind + extra ) for ind, c in enumerate(labels_contours_hemi)])
+    bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
 
 
 def load_labels_contours(atlas=''):
@@ -352,6 +367,9 @@ def labels_draw(self, context):
         row.operator(PrevLabelConture.bl_idname, text="", icon='PREV_KEYFRAME')
         row.prop(context.scene, 'labels_contours', '')
         row.operator(NextLabelConture.bl_idname, text="", icon='NEXT_KEYFRAME')
+        row = col.row(align=True)
+        row.prop(context.scene, 'labels_contours_filter', 'Filter')
+        row.operator(ResetContoursFilter.bl_idname, text="", icon='PANEL_CLOSE')
 
     col = layout.box().column()
     row = col.row(align=True)
@@ -379,6 +397,15 @@ class PlotLabelsFolder(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         plot_labels_folder()
+        return {'FINISHED'}
+    
+
+class ResetContoursFilter(bpy.types.Operator):
+    bl_idname = "mmvt.reset_contours_filter"
+    bl_label = "reset contours filter"
+
+    def execute(self, context):
+        bpy.context.scene.labels_contours_filter = ''
         return {'FINISHED'}
 
 
@@ -448,7 +475,11 @@ class ColorContours(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        color_contours(atlas=bpy.context.scene.contours_coloring)
+        if bpy.context.scene.labels_contours_filter == '':
+            color_contours(atlas=bpy.context.scene.contours_coloring)
+        else:
+            color_contours(LabelsPanel.labels['rh'] + LabelsPanel.labels['lh'],
+                           atlas=bpy.context.scene.contours_coloring)
         return {"FINISHED"}
 
 
@@ -516,6 +547,7 @@ bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new
 bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
 bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
+bpy.types.Scene.labels_contours_filter = bpy.props.StringProperty(update=labels_contours_filter_update)
 
 
 class LabelsPanel(bpy.types.Panel):
@@ -589,7 +621,7 @@ def register():
         bpy.utils.register_class(PlotLabelsData)
         bpy.utils.register_class(ChooseLabesDataFile)
         bpy.utils.register_class(ChooseLabelFile)
-
+        bpy.utils.register_class(ResetContoursFilter)
     except:
         print("Can't register Labels Panel!")
 
@@ -605,6 +637,6 @@ def unregister():
         bpy.utils.unregister_class(PlotLabelsData)
         bpy.utils.unregister_class(ChooseLabesDataFile)
         bpy.utils.unregister_class(ChooseLabelFile)
-
+        bpy.utils.unregister_class(ResetContoursFilter)
     except:
         pass
