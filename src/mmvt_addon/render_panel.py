@@ -15,7 +15,8 @@ import types
 
 
 bpy.types.Scene.output_path = bpy.props.StringProperty(
-    name="", default="", description="Define the path for the output files", subtype='DIR_PATH')
+    name="", default="", subtype='DIR_PATH', description='Sets the saved images location.'
+    '\n\nScript: mmvt.render.get_output_path() and set_output_path(new_path)')
 
 
 def _addon():
@@ -317,29 +318,43 @@ bpy.types.Scene.X_location = bpy.props.FloatProperty(description="Camera x locat
 bpy.types.Scene.Y_location = bpy.props.FloatProperty(description="Camera y lovation", update=update_camera)
 bpy.types.Scene.Z_location = bpy.props.FloatProperty(description="Camera z locationo", update=update_camera)
 bpy.types.Scene.quality = bpy.props.FloatProperty(
-    default=20, min=1, max=100,description="quality of figure in parentage")
+    default=20, min=1, max=100, description='Sets the image resolution (size of the image file)')
 bpy.types.Scene.smooth_figure = bpy.props.BoolProperty(
     name='Smooth image', description="This significantly affect rendering speed")
 bpy.types.Scene.render_background = bpy.props.BoolProperty(
-    name='Background rendering', description="Render in the background")
+    name='Background rendering', description='Renders via another Blender in the background.'
+    '\n\nScript: mmvt.render.get_rendering_in_the_background() and set_rendering_in_the_background(val)')
 bpy.types.Scene.lighting = bpy.props.FloatProperty(
-    default=1, min=0, max=2,description="lighting", update=lighting_update)
+    default=1, min=0, max=2, update=lighting_update,
+    description='Changes the light levels.\n*Tip: Very useful when rendering with white background. '
+                'Lower the light level to have a better contrast')
 bpy.types.Scene.camera_files = bpy.props.EnumProperty(items=[('default', 'camera.pkl', '', 0)], update=camera_files_update)
-bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_camera_props = bpy.props.BoolProperty(default=False,
+    description='Opens fields to change the axis value of the camera view')
 bpy.types.Scene.background_color = bpy.props.EnumProperty(
-    items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update)
+    items=[('black', 'Black', '', 1), ("white", 'White', '', 2)], update=background_color_update,
+    description='Sets the background color of the brain & colorbar\n\nCurrent color')
 bpy.types.Scene.in_camera_view = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view')
-bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.view_distance = bpy.props.FloatProperty(default=20, update=view_distance_update)
-bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True)
-bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2)
-bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16)
+bpy.types.Scene.save_selected_view = bpy.props.BoolProperty(default=True, name='Fit image into view',
+    description='Fits automatically the view on the brain when the image is saved')
+bpy.types.Scene.save_split_views = bpy.props.BoolProperty(default=False,
+    description='Saves both sides of the split brain in one image.'
+                '\n\nScript: mmvt.render.get_save_split_views() and set_save_split_views(val=True)')
+bpy.types.Scene.view_distance = bpy.props.FloatProperty(default=20, update=view_distance_update,
+    description='Changes the distance of the 3D brain modal from the front (changes the size of the brain).\nSame can be done by scrolling the MMB.'
+    '\n\nScript: mmvt.render.get_view_distance() and set_view_distance(val)')
+bpy.types.Scene.save_views_with_cb = bpy.props.BoolProperty(default=True,
+    description='Adds colorbar to the saved images (check this box before saving the images)')
+bpy.types.Scene.cb_ticks_num = bpy.props.IntProperty(min=2, default=2,
+    description='Sets the number of ticks in the colorbar')
+bpy.types.Scene.cb_ticks_font_size = bpy.props.IntProperty(min=1, default=16,
+    description='Sets the size of the ticks in the colorbar')
 
 
 class SaveColorbar(bpy.types.Operator):
     bl_idname = "mmvt.save_the_colorbar"
     bl_label = "mmvt save_the_colorbar"
+    bl_description = 'Saves an image only of the colorbar.\n\nScript: mmvt.render._addon().save_colorbar()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -351,6 +366,8 @@ class SaveColorbar(bpy.types.Operator):
 class SaveAllViews(bpy.types.Operator):
     bl_idname = "mmvt.save_all_views"
     bl_label = "mmvt save_all_views"
+    bl_description = 'Saves all the major perspectives of the brain (Anterior, Inferior, Superior, Posterior, Left, Right, Medial).' \
+                     '\n\nScript: mmvt.render.save_all_views()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -373,6 +390,7 @@ class MirrorCamera(bpy.types.Operator):
 class SaveImage(bpy.types.Operator):
     bl_idname = "mmvt.save_image"
     bl_label = "Save Image"
+    bl_description = 'Saves an image of the brain area.\n\nScript: mmvt.render._save_image()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -383,6 +401,8 @@ class SaveImage(bpy.types.Operator):
 class CameraMode(bpy.types.Operator):
     bl_idname = "mmvt.camera_mode"
     bl_label = "Camera Mode"
+    bl_description = 'Switches the appearance into Rendered Brain mode and captures all the presented objects in the ' \
+                     'camera view.\n\nScript: mmvt.render.camera_mode()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -413,6 +433,8 @@ class LoadCamera(bpy.types.Operator):
 class RenderFigure(bpy.types.Operator):
     bl_idname = "mmvt.rendering"
     bl_label = "Render figure"
+    bl_description = 'Saves the image in the subjects ‘figures’ folder.\nExample: ..mmvt_root/mmvt_blend/colin27/figures' \
+                     '\n\nScript: mmvt.render.render_image()'
     bl_options = {"UNDO"}
     update_camera = True
 
