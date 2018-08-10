@@ -442,6 +442,7 @@ def show_full_slice_update(self, context):
 class SliceBrainButton(bpy.types.Operator):
     bl_idname = "mmvt.slice_brain_button"
     bl_label = "Slice Brain button"
+    bl_description = 'Slices the brain according to the axis and the cross position.\n\nScript: mmvt.slicer.slice_brain()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -458,6 +459,7 @@ class SliceBrainButton(bpy.types.Operator):
 class SliceBrainClearButton(bpy.types.Operator):
     bl_idname = "mmvt.slice_brain_clear_button"
     bl_label = "Slice Brain Clear button"
+    bl_description = 'Resets the brain.\n\nScript: mmvt.slicer.clear_slice()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -499,31 +501,42 @@ class ExportElectrodes(bpy.types.Operator):
 
 items_names = [("axial", "Axial"), ("coronal", "Coronal"), ("sagital", 'Sagital')]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
-bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Type of slice')
+bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Sets the slicing axis.\n\nCurrent axis')
 # bpy.types.Scene.slice_using_left_click = bpy.props.BoolProperty(
 #     default=True, description="slice_using_left_click", update=show_cb_in_render_update)
-bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update)
+bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update,
+    description='Shows the full image of the slice')
 # bpy.types.Scene.show_full_slice = bpy.props.BoolProperty()
 bpy.types.Scene.slices_modality = bpy.props.EnumProperty(items=[('mri', 'mri', '', 1)])
 bpy.types.Scene.slices_modality_mix = bpy.props.FloatProperty(min=0, max=1, default=0, update=slices_modality_mix_update)
 bpy.types.Scene.new_electrode_lead = bpy.props.StringProperty()
 bpy.types.Scene.new_electrode_num = bpy.props.IntProperty(default=1, min=1)
-bpy.types.Scene.slices_zoom = bpy.props.FloatProperty(default=1, min=1, update=slices_zoom_update)
+bpy.types.Scene.slices_zoom = bpy.props.FloatProperty(default=1, min=1, update=slices_zoom_update,
+    description='Zooms in the slices view')
 bpy.types.Scene.ct_intensity = bpy.props.FloatProperty()
 bpy.types.Scene.t1_value = bpy.props.FloatProperty()
 bpy.types.Scene.t2_value = bpy.props.FloatProperty()
-bpy.types.Scene.slices_zoom_around_voxel = bpy.props.BoolProperty(default=False, update=slices_update)
-bpy.types.Scene.slices_zoom_voxels_num = bpy.props.IntProperty(default=30, min=1, update=slices_update)
-bpy.types.Scene.slices_zoom_interpolate = bpy.props.BoolProperty(default=False, update=slices_update)
-bpy.types.Scene.slices_x_max = bpy.props.FloatProperty(default=1, update=slices_update)
-bpy.types.Scene.slices_x_min = bpy.props.FloatProperty(default=1, update=slices_update)
-bpy.types.Scene.slices_plot_cross = bpy.props.BoolProperty(default=True, update=slices_update)
-bpy.types.Scene.slices_mark_voxel = bpy.props.BoolProperty(default=True, update=slices_update)
+bpy.types.Scene.slices_zoom_around_voxel = bpy.props.BoolProperty(default=False, update=slices_update,
+    description='Zooms around the center of the cross')
+bpy.types.Scene.slices_zoom_voxels_num = bpy.props.IntProperty(default=30, min=1, update=slices_update,
+    description='Sets the square number of voxels displayed in the slices view')
+bpy.types.Scene.slices_zoom_interpolate = bpy.props.BoolProperty(default=False, update=slices_update,
+    description='Smooths the slices view')
+bpy.types.Scene.slices_x_max = bpy.props.FloatProperty(default=1, update=slices_update,
+    description='Sets the white color intensity in the brain slices')
+bpy.types.Scene.slices_x_min = bpy.props.FloatProperty(default=1, update=slices_update,
+    description='Sets the black color intensity in the brain slices')
+bpy.types.Scene.slices_plot_cross = bpy.props.BoolProperty(default=True, update=slices_update,
+    description='Hides/Shows the cross in the slices view')
+bpy.types.Scene.slices_mark_voxel = bpy.props.BoolProperty(default=True, update=slices_update,
+    description='Hides/Shows the cross center')
 bpy.types.Scene.pial_vol_mask_exist = bpy.props.BoolProperty()
 bpy.types.Scene.dural_vol_mask_exist = bpy.props.BoolProperty()
-bpy.types.Scene.slices_show_pial = bpy.props.BoolProperty(default=False, update=slices_update)
+bpy.types.Scene.slices_show_pial = bpy.props.BoolProperty(default=False, update=slices_update,
+    description='Plots the Pial surface on the slices view')
 bpy.types.Scene.slices_show_pial_color = bpy.props.FloatVectorProperty(
-    name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
+    name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0,
+    description='Sets the color of the plotted Pial surface')
 bpy.types.Scene.slices_show_dural = bpy.props.BoolProperty(default=False, update=slices_update)
 bpy.types.Scene.slices_show_dural_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")

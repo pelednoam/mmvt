@@ -9,6 +9,7 @@ def _addon():
 class SearchFilter(bpy.types.Operator):
     bl_idname = "mmvt.selection_filter"
     bl_label = "selection filter"
+    bl_description = 'Search'
     bl_options = {"UNDO"}
     marked_objects_select = {}
     marked_objects = []
@@ -36,6 +37,7 @@ class SearchFilter(bpy.types.Operator):
 class SearchClear(bpy.types.Operator):
     bl_idname = "mmvt.selection_clear"
     bl_label = "selection clear"
+    bl_description = 'Clear'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -109,7 +111,7 @@ class SearchExport(bpy.types.Operator):
         return {"FINISHED"}
 
 
-bpy.types.Scene.labels_regex = bpy.props.StringProperty(default= '', description="labels regex")
+bpy.types.Scene.labels_regex = bpy.props.StringProperty(default= '', description='Searches all objects types in MMVT')
 
 
 class SearchPanel(bpy.types.Panel):

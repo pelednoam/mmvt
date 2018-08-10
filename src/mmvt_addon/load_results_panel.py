@@ -47,6 +47,7 @@ if IN_BLENDER:
     class LoadEvokesFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         bl_idname = "mmvt.load_evokes_file"
         bl_label = "Load evokes file"
+        bl_description = 'Loads an MNE evokes file by creating the sensors objects and importing the sensors level evoked response'
 
         filename_ext = '.fif'
         filter_glob = bpy.props.StringProperty(default='*.fif', options={'HIDDEN'}, maxlen=255)
@@ -60,6 +61,7 @@ if IN_BLENDER:
     class ChooseSTCFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         bl_idname = "mmvt.choose_stc_file"
         bl_label = "Choose STC file"
+        bl_description = 'Loads an MNE source estimate file'
 
         filename_ext = '.stc'
         filter_glob = bpy.props.StringProperty(default='*.stc', options={'HIDDEN'}, maxlen=255)
@@ -81,6 +83,7 @@ if IN_BLENDER:
     class ChooseNiftiiFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         bl_idname = "mmvt.choose_niftii_file"
         bl_label = "Choose niftii file"
+        bl_description = 'Loads surface NIfTI files (nii, nii.gz, and mgz)'
         filename_ext = '.*' # '.nii.gz'
         filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255) # nii.gz
 
