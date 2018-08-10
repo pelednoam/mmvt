@@ -96,18 +96,22 @@ def get_link_dir(links_dir, link_name, var_name='', default_val='', throw_except
     link = op.join(links_dir, link_name)
     # check if this is a windows folder shortcup
     if op.isfile('{}.lnk'.format(link)):
-        # try:
-        #     from src.mmvt_addon.scripts import windows_utils as wu
-        # except:
-        #     os.chdir(op.join(get_code_root_dir(), 'src', 'mmvt_addon', 'scripts'))
-        #     from . import windows_utils as wu
-        import importlib
-        add_fol_to_path(get_current_fol())
-        import windows_utils as wu
-        importlib.reload(wu)
+        try:
+            import importlib
+            add_fol_to_path(get_current_fol())
+            import windows_utils as wu
+            importlib.reload(wu)
+            sc = wu.MSShortcut('{}.lnk'.format(link))
+            return op.join(sc.localBasePath, sc.commonPathSuffix)
+        except:
+            print('Something is wrong with the windows links, trying to read the links.csv')
+            ret = get_link_dir_from_csv(links_dir, link_name)
+            if ret == '':
+                if throw_exception:
+                    raise Exception('No {} dir!'.format(link_name))
+                else:
+                    print('No {} dir!'.format(link_name))
 
-        sc = wu.MSShortcut('{}.lnk'.format(link))
-        return op.join(sc.localBasePath, sc.commonPathSuffix)
         # return read_windows_dir_shortcut('{}.lnk'.format(val))
     ret = op.realpath(link)
     if not op.isdir(ret) and default_val != '':
