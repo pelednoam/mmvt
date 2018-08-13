@@ -26,6 +26,11 @@ def prepare_files(args):
         for task in args.tasks:
             fol = utils.make_dir(op.join(MEG_DIR, task, subject))
             local_epo_fname = op.join(fol, '{}_{}_Onset-epo.fif'.format(subject, task))
+            local_raw_fname = op.join(fol, '{}_{}-raw.fif'.format(subject, task))
+            if not args.overwrite and (op.islink(local_epo_fname) or op.isfile(local_epo_fname)) and \
+                    (op.islink(local_raw_fname) or op.isfile(local_raw_fname)):
+                continue
+
             if op.islink(local_epo_fname) or op.isfile(local_epo_fname):
                 os.remove(local_epo_fname)
             remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
@@ -35,7 +40,6 @@ def prepare_files(args):
                 continue
             print('Creating a local link to {}'.format(remote_epo_fname))
             utils.make_link(remote_epo_fname, local_epo_fname)
-            local_raw_fname = op.join(fol, '{}_{}-raw.fif'.format(subject, task))
             if op.islink(local_raw_fname) or op.isfile(local_raw_fname):
                 os.remove(local_raw_fname)
             remote_raw_fname = op.join(
@@ -46,7 +50,8 @@ def prepare_files(args):
                 continue
             print('Creating a local link to {}'.format(remote_raw_fname))
             utils.make_link(remote_raw_fname, local_raw_fname)
-        ret[subject] = ret[subject] and op.isfile(local_epo_fname) and op.isfile(local_raw_fname)
+        ret[subject] = ret[subject] and (op.isfile(local_epo_fname) or op.islink(local_epo_fname)) and \
+                       (op.isfile(local_raw_fname) or op.islink(local_raw_fname))
     print('Good subjects:')
     print([s for s, r in ret.items() if r])
     print('Bad subjects:')
@@ -59,7 +64,7 @@ def anatomy_preproc(args, subject=''):
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
         high_level_atlas_name='darpa_atlas',
         function='create_annotation,create_high_level_atlas',
-        overwrite_fs_files=True,
+        overwrite_fs_files=args.overwrite,
         ignore_missing=False
     ))
     anat.call_main(args)
@@ -74,7 +79,7 @@ def get_empty_fnames(subject, tasks, args):
         utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(MEG_DIR, task, subject, 'bem'), overwrite=True)
     utils.make_link(op.join(MEG_DIR, subject, 'bem'), op.join(SUBJECTS_DIR, subject, 'bem'), overwrite=True)
 
-    remote_meg_fol = '/autofs/space/lilli_003/users/DARPA-TRANSFER/meg/{}'.format(subject)
+    remote_meg_fol = op.join(args.remote_meg_dir, subject)
     csv_fname = op.join(remote_meg_fol, 'cfg.txt')
     empty_fnames, cors, days = '', '', ''
 
@@ -132,58 +137,13 @@ def get_empty_fnames(subject, tasks, args):
 
 
 def meg_preproc(args):
-    inv_method, em = 'MNE', 'mean_flip'
-    atlas = 'darpa_atlas'
+    inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa_atlas'
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    # times = (-2, 4)
+    # subjects_with_error = []
+    good_subjects = get_good_subjects(args)
+    args.subject = good_subjects
     prepare_files(args)
-    times = (-2, 4)
-    subjects_with_error = []
-
-    data_dict_fname = op.join(args.remote_root_dir, 'data_dictionary.npz')
-    if not op.isfile(data_dict_fname):
-        ret = input('No data dict, do you want to continue? (y/n)')
-        if not au.is_true(ret):
-            return
-        msit_ecr_subjects = args.subject
-    else:
-        data_dic = np.load(op.join(args.remote_root_dir, 'data_dictionary.npz'))
-        meta_data = data_dic['noam_dict'].tolist()
-        msit_subjects = set(meta_data[0]['MSIT'].keys()) | set(meta_data[1]['MSIT'].keys())
-        ecr_subjects = set(meta_data[0]['ECR'].keys()) | set(meta_data[1]['ECR'].keys())
-        msit_ecr_subjects = msit_subjects.intersection(ecr_subjects)
-
-    if not args.check_files:
-        good_subjects = args.subject
-    else:
-        good_subjects = []
-        for subject in args.subject:
-            if subject not in msit_ecr_subjects:
-                print('{} not in the meta data!'.format(subject))
-                continue
-            if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
-                print('{}: No recon-all files!'.format(subject))
-                continue
-            if args.anatomy_preproc:
-                anatomy_preproc(args, subject)
-            if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
-                anatomy_preproc(args, subject)
-            if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', atlas))):
-                print('Can\'t find the atlas {}!'.format(atlas))
-                continue
-            empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
-            if empty_fnames == '' or cors == '' or days == '':
-                print('{}: Error with get_empty_fnames!'.format(subject))
-            if any([task not in cors for task in args.tasks]):
-                print('{}: one of the tasks is not in get_empty_fnames!'.format(subject))
-                continue
-            # for task in args.tasks:
-            #     print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
-            good_subjects.append(subject)
-        print('Good subjects: ({}):'.format(len(good_subjects)))
-        print(good_subjects)
-        bad_subjects = set(args.subject) - set(good_subjects)
-        print('Bad subjects: ({}):'.format(len(bad_subjects)))
-        print(bad_subjects)
 
     for subject in good_subjects:
         args.subject = subject
@@ -424,23 +384,24 @@ def get_good_subjects(args):
         good_subjects = []
         for subject in args.subject:
             if subject not in msit_ecr_subjects:
-                print('{} not in the meta data!'.format(subject))
+                print('*** {} not in the meta data!'.format(subject))
                 continue
-            if not op.isdir(args.remote_subject_dir.format(subject=subject)) or not op.isdir(op.join(SUBJECTS_DIR, subject)):
-                print('{}: No recon-all files!'.format(subject))
+            if not op.isdir(args.remote_subject_dir.format(subject=subject)) and not op.isdir(op.join(SUBJECTS_DIR, subject)):
+                print('*** {}: No recon-all files!'.format(subject))
                 continue
             if args.anatomy_preproc:
                 anatomy_preproc(args, subject)
             if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', args.atlas))):
                 anatomy_preproc(args, subject)
             if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', args.atlas))):
-                print('Can\'t find the atlas {}!'.format(args.atlas))
+                print('*** Can\'t find the atlas {}!'.format(args.atlas))
                 continue
             empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
             if empty_fnames == '' or cors == '' or days == '':
                 print('{}: Error with get_empty_fnames!'.format(subject))
             if any([task not in cors for task in args.tasks]):
-                print('{}: one of the tasks is not in get_empty_fnames!'.format(subject))
+                print('*** {}: one of the tasks does not have a cor transformation matrix!'.format(subject))
+                print(cors)
                 continue
             # for task in args.tasks:
             #     print('{}: empty: {}, cor: {}'.format(subject, empty_fnames[task], cors[task].format(subject=subject)))
@@ -473,6 +434,8 @@ if __name__ == '__main__':
                         # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
     parser.add_argument('--remote_subject_dir', required=False,
                         default='/autofs/space/lilli_001/users/DARPA-Recons/{subject}')
+    parser.add_argument('--remote_meg_dir', required=False,
+                        default='/autofs/space/lilli_003/users/DARPA-TRANSFER/meg')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
 
