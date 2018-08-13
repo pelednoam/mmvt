@@ -139,8 +139,8 @@ def get_empty_fnames(subject, tasks, args):
 def meg_preproc(args):
     inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa_atlas'
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-    # times = (-2, 4)
-    # subjects_with_error = []
+    times = (-2, 4)
+    subjects_with_error = []
     good_subjects = get_good_subjects(args)
     args.subject = good_subjects
     prepare_files(args)
@@ -203,6 +203,71 @@ def meg_preproc(args):
     print(subjects_with_error)
 
 
+def calc_source_band_induced_power(args):
+    inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa_atlas'
+    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    times = (-2, 4)
+    subjects_with_error = []
+    good_subjects = get_good_subjects(args)
+    args.subject = good_subjects
+    prepare_files(args)
+
+    for subject in good_subjects:
+        args.subject = subject
+        empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+        for task in args.tasks:
+            # for band, stc_band in bands.items():
+            #     print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
+                # band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
+
+            meg_args = meg.read_cmd_args(dict(
+                subject=args.subject, mri_subject=args.subject,
+                task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
+                # meg_dir=args.meg_dir,
+                remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
+                get_task_defaults=False,
+                fname_format='{}_{}_Onset'.format('{subject}', task),
+                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+                epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_Onset-epo.fif'.format(subject, task)),
+                # empty_fname=empty_fnames[task],
+                function='calc_labels_avg_per_condition',
+                calc_inducde_power_per_label=False,
+                conditions=task.lower(),
+                # cor_fname=cors[task].format(subject=subject),
+                # average_per_event=False,
+                # data_per_task=True,
+                # ica_overwrite_raw=False,
+                # normalize_data=False,
+                # t_min=times[0], t_max=times[1],
+                # read_events_from_file=False, stim_channels='STI001',
+                # use_empty_room_for_noise_cov=True,
+                # read_only_from_annot=False,
+                # pick_ori='normal',
+                # overwrite_evoked=args.overwrite,
+                # overwrite_fwd=args.overwrite,
+                # overwrite_inv=args.overwrite,
+                # overwrite_stc=args.overwrite,
+                # overwrite_labels_data=args.overwrite,
+                n_jobs=args.n_jobs
+            ))
+            ret = meg.call_main(meg_args)
+            if not ret:
+                if args.throw:
+                    raise Exception("errors!")
+                else:
+                    subjects_with_error.append(subject)
+
+    good_subjects = [s for s in good_subjects if
+           op.isfile(op.join(MMVT_DIR, subject, 'meg',
+                             'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
+           op.isfile(op.join(MMVT_DIR, subject, 'meg',
+                             'labels_data_ecr_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em)))]
+    print('Good subjects:')
+    print(good_subjects)
+    print('subjects_with_error:')
+    print(subjects_with_error)
+
+
 def post_meg_preproc(args):
     inv_method, em = 'MNE', 'mean_flip'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
@@ -221,7 +286,7 @@ def post_meg_preproc(args):
                 continue
             utils.make_dir(op.join(res_fol, subject))
             meg.calc_labels_func(subject, task, args.atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_mean_power_bands(subject, task, args.atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
+            meg.calc_labels_power_bands(subject, task, args.atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
 
         for fname in [f for f in glob.glob(op.join(MMVT_DIR, subject, 'labels', 'labels_data', '*')) if op.isfile(f)]:
             shutil.copyfile(fname, op.join(res_fol, subject, utils.namebase_with_ext(fname)))
