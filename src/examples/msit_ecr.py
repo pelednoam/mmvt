@@ -232,7 +232,7 @@ def calc_source_band_induced_power(args):
                 # empty_fname=empty_fnames[task],
                 function='calc_stc',
                 calc_source_band_induced_power=True,
-                calc_inducde_power_per_label=False,
+                calc_inducde_power_per_label=True,
                 conditions=task.lower(),
                 # cor_fname=cors[task].format(subject=subject),
                 # average_per_event=False,
