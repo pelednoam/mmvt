@@ -678,6 +678,8 @@ class RunELA(bpy.types.Operator):
 class ClearElectrodes(bpy.types.Operator):
     bl_idname = 'mmvt.electrodes_clear'
     bl_label = 'clearElectrodes'
+    bl_description = 'Clears all the plotted activity. \n*For deselecting the electrodes go to the ‘Selection Panel’ ' \
+                     'and press the ‘Deselect All’ button.\n\nScript: mmvt.electrodes._addon().clear_colors()'
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
@@ -771,6 +773,7 @@ def prev_lead():
 class ColorElectrodes(bpy.types.Operator):
     bl_idname = 'mmvt.color_electrodes'
     bl_label = 'color_electrodes'
+    bl_description = 'Colors all the electrodes with the selected color'
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
@@ -783,6 +786,7 @@ class ColorElectrodes(bpy.types.Operator):
 class KeyboardListener(bpy.types.Operator):
     bl_idname = 'mmvt.keyboard_listener'
     bl_label = 'keyboard_listener'
+    bl_description = 'Opens a window with instructions on how to use the keyboard to select electrodes'
     bl_options = {'UNDO'}
     press_time = time.time()
     funcs = {'LEFT_ARROW':prev_electrode, 'RIGHT_ARROW':next_electrode, 'UP_ARROW':prev_lead, 'DOWN_ARROW':next_lead}
@@ -809,39 +813,42 @@ class KeyboardListener(bpy.types.Operator):
 
 
 bpy.types.Scene.show_only_lead = bpy.props.BoolProperty(
-    default=False, description="Show only the current lead", update=show_only_current_lead_update)
+    default=False, update=show_only_current_lead_update, description='Shows only the last selected leads')
 bpy.types.Scene.color_lables = bpy.props.BoolProperty(
-    default=False, description="Color the relevant lables", update=color_labels_update)
+    default=False, update=color_labels_update,
+    description='Plots the labels with the highest probabilities the signal for the electrode was received from')
 bpy.types.Scene.electrodes_label_contours = bpy.props.BoolProperty(
     default=False, description="Color the relevant lables contours", update=color_labels_update)
 bpy.types.Scene.show_lh_electrodes = bpy.props.BoolProperty(
-    default=True, description="Left Hemi", update=show_lh_update)
+    default=True, update=show_lh_update, description='Shows only the electrodes in the left hemisphere')
 bpy.types.Scene.show_rh_electrodes = bpy.props.BoolProperty(
-    default=True, description="Right Hemi", update=show_rh_update)
+    default=True, update=show_rh_update, description='Shows only the electrodes in the right hemisphere')
 bpy.types.Scene.listen_to_keyboard = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.listener_is_running = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.current_lead = bpy.props.StringProperty()
 bpy.types.Scene.electrodes_color = bpy.props.FloatVectorProperty(
-    name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0, description="color picker")
+    name="object_color", subtype='COLOR', default=(0, 0.5, 0), min=0.0, max=1.0,
+    description='Selects the color to color the electrodes')
     # size=2, subtype='COLOR_GAMMA', min=0, max=1)
 bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
-    items=[], description='Labeling files', update=electrodes_labeling_files_update)
+    items=[], update=electrodes_labeling_files_update, description='List of electrodes labeling type.\n\nCurrent')
 bpy.types.Scene.electrodes = bpy.props.EnumProperty(
-    items=[], description="electrodes", update=electrodes_update)
-bpy.types.Scene.leads = bpy.props.EnumProperty(
-    items=[], description="leads", update=leads_update)
+    items=[], update=electrodes_update, description='Selects each electrode on the selected lead.\n\nCurrent electrode')
+bpy.types.Scene.leads = bpy.props.EnumProperty(items=[], update=leads_update,
+    description='Selects leads name.\n\nCurrent lead')
 bpy.types.Scene.electrodes_what_to_color = bpy.props.EnumProperty(
     items=[('probs', 'probabilities', '', 1), ('verts', 'vertices', '', 2)], description="what to color",
     update=what_to_color_update)
 bpy.types.Scene.elc_size = bpy.props.FloatProperty(description="", update=elc_size_update)
-bpy.types.Scene.show_electrodes_groups_leads = bpy.props.BoolProperty(
-    default=False, update=show_electrodes_groups_leads_update)
+bpy.types.Scene.show_electrodes_groups_leads = bpy.props.BoolProperty(default=False,
+    update=show_electrodes_groups_leads_update, description='Shows the leads connecting the electrodes')
 bpy.types.Scene.electrodes_leads_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(0.5, 0.175, 0.02), min=0.0, max=1.0, description="color picker")
 bpy.types.Scene.show_ela = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_bipolar = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.ela_atlas = bpy.props.EnumProperty(items=[])
-bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False,
+    description='Rotates the view of the brain to show the selected electrode')
 bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=False)
 
@@ -954,7 +961,7 @@ def init_leads_list(leads=None):
         ElecsPanel.leads = leads
     leads_items = [(lead, lead, '', ind) for ind, lead in enumerate(ElecsPanel.leads)]
     bpy.types.Scene.leads = bpy.props.EnumProperty(
-        items=leads_items, description="leads", update=leads_update)
+        items=leads_items, update=leads_update, description='Selects leads name.\n\nCurrent lead')
     if len(ElecsPanel.leads) > 0:
         bpy.context.scene.leads = ElecsPanel.current_lead = ElecsPanel.leads[0]
     else:
@@ -972,7 +979,7 @@ def init_electrodes_list():
     ElecsPanel.electrodes.sort(key=mu.natural_keys)
     electrodes_items = [(elec, elec, '', ind) for ind, elec in enumerate(ElecsPanel.electrodes)]
     bpy.types.Scene.electrodes = bpy.props.EnumProperty(
-        items=electrodes_items, description="electrodes", update=electrodes_update)
+        items=electrodes_items, update=electrodes_update, description='Selects each electrode on the selected lead.\n\nCurrent electrode')
     if ElecsPanel.electrodes[0] in ElecsPanel.groups:
         lead = ElecsPanel.groups[ElecsPanel.electrodes[0]]
         last_obj_name = bpy.context.active_object.name if bpy.context.active_object is not None else ''
@@ -995,7 +1002,8 @@ def init_electrodes_labeling(addon):
         files_names = [mu.namebase(fname) for fname in labling_files if mu.load(fname)]
         labeling_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.electrodes_labeling_files = bpy.props.EnumProperty(
-            items=labeling_items, description='Labeling files', update=electrodes_labeling_files_update)
+            items=labeling_items, update=electrodes_labeling_files_update,
+            description='List of electrodes labeling type.\n\nCurrent')
         bpy.context.scene.electrodes_labeling_files = files_names[0]
         # ElecsPanel.electrodes_locs = mu.load(labling_files[0])
         # ElecsPanel.lookup = create_lookup_table(ElecsPanel.electrodes_locs, ElecsPanel.electrodes)

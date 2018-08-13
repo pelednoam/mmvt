@@ -91,6 +91,7 @@ def scripts_draw(self, context):
 class RunScript(bpy.types.Operator):
     bl_idname = "mmvt.scripts_button"
     bl_label = "Scripts botton"
+    bl_description = 'Runs the selected script above.\n\nScript: mmvt.scripts.run_script()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -98,7 +99,8 @@ class RunScript(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
-bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=[], description="scripts files")
+bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=[],
+    description='List of script in the folder:\n..\mmvt_root\mmvtcode\src\examples\scripts\n\nCurrent script')
 bpy.types.Scene.scripts_overwrite = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.scripts_threshold = bpy.props.FloatProperty(default=0)
 bpy.types.Scene.scripts_cb_min = bpy.props.FloatProperty(default=0)
@@ -137,7 +139,8 @@ def init(addon):
     ScriptsPanel.scripts_names = files_names = [mu.namebase(fname).replace('_', ' ') for fname in scripts_files]
     scripts_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
     bpy.types.Scene.scripts_files = bpy.props.EnumProperty(
-        items=scripts_items, description="scripts files", update=scripts_items_update)
+        items=scripts_items, update=scripts_items_update,
+        description='List of script in the folder:\n..\mmvt_root\mmvtcode\src\examples\scripts\n\nCurrent script')
     bpy.context.scene.scripts_files = files_names[0]
     bpy.context.scene.scripts_overwrite = True
     try:

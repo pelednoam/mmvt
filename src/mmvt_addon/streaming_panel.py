@@ -352,6 +352,7 @@ class StimButton(bpy.types.Operator):
 class StreamButton(bpy.types.Operator):
     bl_idname = "mmvt.stream_button"
     bl_label = "Stream botton"
+    bl_description = 'Starts to listen to the streaming data'
     bl_options = {"UNDO"}
 
     _timer = None
@@ -492,11 +493,13 @@ bpy.types.Scene.multicast_group = bpy.props.StringProperty(name='multicast_group
 bpy.types.Scene.multicast = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.timeout = bpy.props.FloatProperty(default=0.1, min=0.001, max=1)
 bpy.types.Scene.streaming_server = bpy.props.StringProperty(name='streaming_server', default='localhost')
-bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update)
+bpy.types.Scene.electrodes_sep = bpy.props.FloatProperty(default=0, min=0, update=electrodes_sep_update,
+    description='Separates  the curves in the Y axis')
 bpy.types.Scene.streaming_electrodes_num = bpy.props.IntProperty(default=0)
-bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=[('', '', '', 1)], description='Type of stream listener')
-bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=[('', '', '', 1)], description='Streaming types.\n\nCurrent type')
+bpy.types.Scene.stream_edit = bpy.props.BoolProperty(default=False, description='Edits streaming setting')
+bpy.types.Scene.save_streaming = bpy.props.BoolProperty(default=False,
+    description='Records the streaming data.\n*Adds another option in the list to play the data under the term ‘offline’')
 bpy.types.Scene.good_channels_detector = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.logs_folders = bpy.props.EnumProperty(items=[], description='logs folder')
 bpy.types.Scene.stream_show_only_good_electrodes = bpy.props.BoolProperty(default=False)
@@ -568,7 +571,7 @@ def init(addon):
             items=[(f, f, '', ind + 1) for ind, f in enumerate(logs_dirs)], update=logs_folders_update)
         bpy.context.scene.logs_folders = logs_dirs[0]
     bpy.types.Scene.stream_type = bpy.props.EnumProperty(items=streaming_items,
-        description='Type of stream listener')
+        description='Streaming types.\n\nCurrent type')
     bpy.context.scene.stream_type = 'udp'
     bpy.context.scene.multicast = False
     bpy.context.scene.stim_length = 50

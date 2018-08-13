@@ -23,7 +23,8 @@ def contours_coloring_update(self, context):
         LabelsPanel.labels[hemi] = labels_contours[hemi]['labels']
         extra = 0 if hemi_ind == 0 else len(labels_contours[mu.HEMIS[0]]['labels'])
         items.extend([(c, c, '', ind + extra + 1) for ind, c in enumerate(labels_contours[hemi]['labels'])])
-    bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update)
+    bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=items, update=labels_contours_update,
+        description='List of all labels names. Plots selected label contour.\n\nCurrent label')
     bpy.context.scene.labels_contours = 'all labels' #d[hemi]['labels'][0]
     _addon().set_no_plotting(False)
 
@@ -415,6 +416,7 @@ class ResetContoursFilter(bpy.types.Operator):
 class ChooseLabesDataFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.choose_labels_npz_file"
     bl_label = "Choose labels data"
+    bl_description = 'Loads labels data file (npz/mat)'
 
     filename_ext = '.*'
     filter_glob = bpy.props.StringProperty(default='*.*', options={'HIDDEN'}, maxlen=255)
@@ -427,6 +429,7 @@ class ChooseLabesDataFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 class GrowLabel(bpy.types.Operator):
     bl_idname = "mmvt.grow_label"
     bl_label = "mmvt grow label"
+    bl_description = 'Creates the label according the features selected above'
     bl_options = {"UNDO"}
     running = False
 
@@ -464,6 +467,7 @@ class GrowLabel(bpy.types.Operator):
 class PlotLabelsData(bpy.types.Operator):
     bl_idname = "mmvt.plot_labels_data"
     bl_label = "plot_labels_data"
+    bl_description = 'Plots labels on the brain.\n\nScript: mmvt.labels.plot_labels_data()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -474,6 +478,7 @@ class PlotLabelsData(bpy.types.Operator):
 class ColorContours(bpy.types.Operator):
     bl_idname = "mmvt.color_contours"
     bl_label = "mmvt color contours"
+    bl_description = 'Plots the labels contours according the selected atlas above'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -489,6 +494,7 @@ class ColorContours(bpy.types.Operator):
 class ClearContours(bpy.types.Operator):
     bl_idname = "mmvt.clear_contours"
     bl_label = "mmvt clear contours"
+    bl_description = 'Clears the plotted contours.\n\nScript: mmvt.labels.clear_contours()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -533,6 +539,7 @@ class NextLabelConture(bpy.types.Operator):
 class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.plot_label_file"
     bl_label = "Plot label file"
+    bl_description = 'Plots label files of MNE type'
 
     filename_ext = '.label'
     filter_glob = bpy.props.StringProperty(default='*.label', options={'HIDDEN'}, maxlen=255)
@@ -544,13 +551,18 @@ class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
 
 
 bpy.types.Scene.cortical_labels_data_files = bpy.props.EnumProperty(
-    items=[], description="label files", update=labels_data_files_update)
-bpy.types.Scene.new_label_name = bpy.props.StringProperty()
-bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update)
-bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[], description="labels contours coloring")
-bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=[])
-bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description="")
-bpy.types.Scene.labels_contours_filter = bpy.props.StringProperty(update=labels_contours_filter_update)
+    items=[], update=labels_data_files_update, description='Selects labels file from the subject’s labels folder:'
+    '\n../mmvt_root/mmvt_blend/colin27/labels/labels_data\n\nCurrent file')
+bpy.types.Scene.new_label_name = bpy.props.StringProperty(description='Creates the labels name')
+bpy.types.Scene.new_label_r = bpy.props.IntProperty(min=1, default=5, update=new_label_r_update,
+    description='Selects the labels radius')
+bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=[],
+    description='Selects the atlas to plot the labels contour\n\nCurrent atlas')
+bpy.types.Scene.labels_contours = bpy.props.EnumProperty(items=[],
+    description='List of all labels names. Plots selected label contour.\n\nCurrent label')
+bpy.types.Scene.plot_label_contour = bpy.props.BoolProperty(default=False, description='Plots the labels as contours only')
+bpy.types.Scene.labels_contours_filter = bpy.props.StringProperty(update=labels_contours_filter_update,
+    description='Filters the labels list by a regular expression')
 
 
 class LabelsPanel(bpy.types.Panel):
@@ -591,7 +603,8 @@ def init_contours_coloring():
         LabelsPanel.existing_contoures = files_names = \
             [mu.namebase(fname)[:-len('_contours_lh')] for fname in contours_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=items, update=contours_coloring_update)
+        bpy.types.Scene.contours_coloring = bpy.props.EnumProperty(items=items, update=contours_coloring_update,
+            description='Selects the atlas to plot the labels contour\n\nCurrent atlas')
         bpy.context.scene.contours_coloring = files_names[0]
 
 
@@ -606,7 +619,9 @@ def init_labels_data_files():
             files_names = [mu.namebase(fname).replace('_', ' ') for fname in labels_data_files]
             labels_items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
             bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(
-                items=labels_items, description="label files",update=labels_data_files_update)
+                items=labels_items, update=labels_data_files_update,
+                description='Selects labels file from the subject’s labels folder:'
+                '\n../mmvt_root/mmvt_blend/colin27/labels/labels_data\n\nCurrent file')
             bpy.context.scene.cortical_labels_data_files = files_names[0]
     except:
         print('init_labels_data_files: Error!')
