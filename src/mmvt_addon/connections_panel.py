@@ -654,6 +654,7 @@ def create_connections():
 class CheckConnections(bpy.types.Operator):
     bl_idname = "mmvt.check_connections"
     bl_label = "mmvt check connections"
+    bl_description = 'Checks the connections number above the threshold.\n\nScript: mmvt.connections.check_connections()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -665,6 +666,7 @@ class CheckConnections(bpy.types.Operator):
 class CreateConnections(bpy.types.Operator):
     bl_idname = "mmvt.create_connections"
     bl_label = "mmvt create connections"
+    bl_description = 'Imports the connections objects.\n\nScript: mmvt.connections.create_connections()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -746,6 +748,8 @@ class FilterGraph(bpy.types.Operator):
 class UpdateNodesLocations(bpy.types.Operator):
     bl_idname = "mmvt.update_nodes_locations"
     bl_label = "mmvt update_nodes_locations"
+    bl_description = 'Updates the nodes and edges locations after morphing the brain.' \
+                     '\n\nScript: mmvt.connections.update_vertices_location()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -757,6 +761,7 @@ class UpdateNodesLocations(bpy.types.Operator):
 class FilterNodes(bpy.types.Operator):
     bl_idname = "mmvt.filter_nodes"
     bl_label = "mmvt filter nodes"
+    bl_description = 'Hides all the nodes with no edges'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -863,18 +868,20 @@ def connections_draw(self, context):
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
 
-bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(items=[('', '', '', 0)],
-        description="Connectivity files", update=connectivity_files_update)
-bpy.types.Scene.connections_threshold = bpy.props.FloatProperty(default=5, min=0, description="")
+bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(items=[('', '', '', 0)], update=connectivity_files_update,
+    description='Selects the connectivity file.\n\nCurrent file')
+bpy.types.Scene.connections_threshold = bpy.props.FloatProperty(default=5, min=0,
+    description='Sets the threshold to calculate the connections number')
 bpy.types.Scene.abs_threshold = bpy.props.BoolProperty(
     name='abs threshold', description="check if abs(val) > threshold")
 bpy.types.Scene.connections_type = bpy.props.EnumProperty(
         items=[("all", "All connections", "", 1), ("between", "Only between hemispheres", "", 2),
-               ("within", "Only within hemispheres", "", 3)], description="Connections type")
+               ("within", "Only within hemispheres", "", 3)],
+        description='Displays the connections within/between hemispheres.\n\nCurrent')
 bpy.types.Scene.above_below_threshold = bpy.props.EnumProperty(
         items=[("abs_above", "Abs above threshold", "", 1), ("above", "Above threshold", "", 2),
                ("abs_below", "Below threshold", "", 2), ("below", "Below threshold", "", 3)],
-        description="Threshold type")
+        description='Selects the method used to calculate the number of connections using the threshold.\n\n Current method')
 bpy.types.Scene.conditions = bpy.props.EnumProperty(items=[], description="Conditions")
 bpy.types.Scene.connections_file = bpy.props.StringProperty(default='', description="connection file")
 bpy.types.Scene.connections_threshold_type = bpy.props.EnumProperty(
@@ -935,8 +942,8 @@ def init(addon):
     conn_names = [mu.namebase(fname).replace('_', ' ') for fname in conn_files]
     conn_items = [(c, c, '', ind) for ind, c in enumerate(conn_names)]
     if len(conn_names) > 0:
-        bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(
-            items=conn_items, description="connectivity files", update=connectivity_files_update)
+        bpy.types.Scene.connectivity_files = bpy.props.EnumProperty(items=conn_items, update=connectivity_files_update,
+            description='Selects the connectivity file.\n\nCurrent file')
         ConnectionsPanel.conn_names = conn_names
         conn_obj_names = ['connections_{}'.format(con_name.replace(' ', '_')) for con_name in conn_names]
         for parent_obj in bpy.data.objects['Functional maps'].children:

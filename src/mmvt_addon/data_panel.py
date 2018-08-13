@@ -29,19 +29,25 @@ def bipolar_update(self, context):
 
 
 bpy.types.Scene.atlas = bpy.props.StringProperty(name='atlas', default='laus250')
-bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, description="Bipolar electrodes", update=bipolar_update)
-bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, description="Electrodes radius", min=0.01, max=1)
-bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description="Import unknown labels")
+bpy.types.Scene.bipolar = bpy.props.BoolProperty(default=False, update=bipolar_update,
+    description='Sets whether the electrodes are bipolar or not')
+bpy.types.Scene.electrodes_radius = bpy.props.FloatProperty(default=0.15, min=0.01, max=1,
+    description='Sets the electrodes/spheres radius')
+bpy.types.Scene.import_unknown = bpy.props.BoolProperty(default=False, description='Imports the data of all unknown labels')
 bpy.types.Scene.inflated_morphing = bpy.props.BoolProperty(default=True, description="inflated_morphing")
-bpy.types.Scene.meg_labels_data_files = bpy.props.EnumProperty(items=[], description="meg labels data files")
-bpy.types.Scene.add_meg_labels_data_to_parent = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.meg_labels_data_files = bpy.props.EnumProperty(items=[],
+    description='Selects the source estimated evoked response\n\nCurrent')
+bpy.types.Scene.add_meg_labels_data_to_parent = bpy.props.BoolProperty(default=True)
 bpy.types.Scene.add_meg_data_to_labels = bpy.props.BoolProperty(default=True, description="")
 bpy.types.Scene.add_meg_subcorticals_data = bpy.props.BoolProperty(default=False, description="")
 bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description="meg_evoked_files")
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
-bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[], description="electrodes_positions")
-bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=[], description="EEG data files")
-bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=[], description="MEG data files")
+bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[],
+    description='Selects the electrodes position file.\n\nCurrent file')
+bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=[],
+    description='Selects the EEG sensors data file.\n\nCurrent file')
+bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=[],
+    description='Selects the MEG sensors data file.\n\nCurrent file')
 bpy.types.Scene.fMRI_dynamic_files = bpy.props.EnumProperty(items=[], description="fMRI_dynamic")
 bpy.types.Scene.add_fmri_subcorticals_data = bpy.props.BoolProperty(default=True, description="")
 
@@ -49,8 +55,9 @@ bpy.types.Scene.brain_no_conds_stat = bpy.props.EnumProperty(items=[('diff', 'co
 bpy.types.Scene.subcortical_fmri_files = bpy.props.EnumProperty(items=[])
 bpy.types.Scene.meg_labels_extract_method = bpy.props.StringProperty()
 bpy.types.Scene.fmri_labels_extract_method = bpy.props.StringProperty(default='mean')
-bpy.types.Scene.add_meg_labels_data_overwrite = bpy.props.BoolProperty(default=True, description="")
-bpy.types.Scene.data_overwrite_electrodes = bpy.props.BoolProperty(default=True, description="")
+bpy.types.Scene.add_meg_labels_data_overwrite = bpy.props.BoolProperty(default=True,
+    description='Overwrites the existing evoked data')
+bpy.types.Scene.data_overwrite_electrodes = bpy.props.BoolProperty(default=True)
 
 
 def _addon():
@@ -265,6 +272,8 @@ def import_brain(context=None):
 class UpdateMMVT(bpy.types.Operator):
     bl_idname = "mmvt.update_mmvt"
     bl_label = "update mmvt"
+    bl_description = 'Updates the tool with the latest version.\n*Works on Linux only.' \
+                     '\n\nScript: mmvt.data.update_code()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -275,6 +284,8 @@ class UpdateMMVT(bpy.types.Operator):
 class ImportBrain(bpy.types.Operator):
     bl_idname = "mmvt.brain_importing"
     bl_label = "import2 brain"
+    bl_description = 'Imports all the brain objects created using the anatomy preprocessing pipeline (src.preproc.anatomy).' \
+                     '\n\nScript: mmvt.data.import_brain()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -587,6 +598,7 @@ def create_inflating_flat_morphing():
 class ImportElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.electrodes_importing"
     bl_label = "import2 electrodes"
+    bl_description = 'Imports the electrode objects'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -601,6 +613,7 @@ class ImportElectrodes(bpy.types.Operator):
 class ImportMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.import_meg_sensors"
     bl_label = "import meg sensors"
+    bl_description = 'Imports MEG Sensors objects.\n\nScript: mmvt.data.import_meg_sensore()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -611,6 +624,7 @@ class ImportMEGSensors(bpy.types.Operator):
 class ImportEEG(bpy.types.Operator):
     bl_idname = "mmvt.import_eeg_sensors"
     bl_label = "import eeg sensors"
+    bl_description = 'Imports EEG Sensors objects'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -827,6 +841,7 @@ def add_data_to_parent_obj(parent_obj, source_files, stat):
 class AddDataToBrain(bpy.types.Operator):
     bl_idname = "mmvt.brain_add_data"
     bl_label = "add_data brain"
+    bl_description = 'Adds the evoked data'
     bl_options = {"UNDO"}
     current_root_path = ''
 
@@ -1239,6 +1254,7 @@ def data_draw(self, context):
 class AddDataToEEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.eeg_add_data"
     bl_label = "add data eeg"
+    bl_description = 'Imports EEG Sensors objects\n\nScript: mmvt.data.add_data_to_eeg_sensors()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -1249,6 +1265,7 @@ class AddDataToEEGSensors(bpy.types.Operator):
 class AddDataToMEGSensors(bpy.types.Operator):
     bl_idname = "mmvt.meg_sensors_add_data"
     bl_label = "add meg sensors data"
+    bl_description = 'Adds MEG sensors data.\n\nScript: mmvt.data.add_data_to_meg_sensors()'
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
@@ -1259,6 +1276,7 @@ class AddDataToMEGSensors(bpy.types.Operator):
 class AddDataToElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.electrodes_add_data"
     bl_label = "add_data2 electrodes"
+    bl_description = 'Imports the electrode objects\n\nScript: mmvt.data.add_data_to_electrodes_and_parent()'
     bl_options = {"UNDO"}
     current_root_path = ''
 
@@ -1270,6 +1288,7 @@ class AddDataToElectrodes(bpy.types.Operator):
 class StartFlatProcess(bpy.types.Operator):
     bl_idname = "mmvt.start_flat_process"
     bl_label = "deselect all"
+    bl_description = 'Imports the flat brain.\n\nScript: mmvt.data.create_inflating_flat_morphing()'
     bl_options = {"UNDO"}
 
     @staticmethod
@@ -1281,6 +1300,7 @@ class StartFlatProcess(bpy.types.Operator):
 class ChooseElectrodesPositionsFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     bl_idname = "mmvt.load_electrodes_positions_file"
     bl_label = "Choose electrodes positions file (npz)"
+    bl_description = 'Imports the electrode objects'
 
     filename_ext = '.npz'
     filter_glob = bpy.props.StringProperty(default='*.npz', options={'HIDDEN'}, maxlen=255)
@@ -1350,7 +1370,8 @@ def init(addon):
         DataMakerPanel.meg_labels_data_exist = True
         files_names = [mu.namebase(fname)[len('labels_data_'):-3] for fname in labels_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.meg_labels_data_files = bpy.props.EnumProperty(items=items, description="labels data files")
+        bpy.types.Scene.meg_labels_data_files = bpy.props.EnumProperty(items=items,
+            description='Selects the source estimated evoked response\n\nCurrent')
         bpy.context.scene.meg_labels_data_files = files_names[0]
     if op.isfile(op.join(mu.get_user_fol(), 'meg', 'subcortical_meg_activity.npz')):
         DataMakerPanel.subcortical_meg_data_exist = True
@@ -1390,7 +1411,7 @@ def init_electrodes_positions_list():
         files_names = [mu.namebase(fname) for fname in electrodes_positions_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
         bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(
-            items=items, description="Electrodes positions")
+            items=items, description='Selects the electrodes position file.\n\nCurrent file')
         bpy.context.scene.electrodes_positions_files = files_names[0]
 
 
@@ -1426,7 +1447,8 @@ def init_eeg():
     if len(eeg_data_files) > 0:
         files_names = [mu.namebase(fname) for fname in eeg_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=items)
+        bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=items,
+            description='Selects the EEG sensors data file.\n\nCurrent file')
         bpy.context.scene.eeg_data_files = files_names[0]
 
 
@@ -1435,7 +1457,8 @@ def init_meg():
     if len(meg_data_files) > 0:
         files_names = [mu.namebase(fname) for fname in meg_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=items)
+        bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=items,
+            description='Selects the MEG sensors data file.\n\nCurrent file')
         bpy.context.scene.meg_sensors_data_files = files_names[0]
 
 
