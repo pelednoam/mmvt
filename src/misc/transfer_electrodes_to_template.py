@@ -678,7 +678,7 @@ if __name__ == '__main__':
 
     # get_output_using_sftp()
     # subjects = get_all_subjects()
-    subjects = ['mg96']
+    subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
     # print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
     # print(good_subjects)
@@ -688,17 +688,17 @@ if __name__ == '__main__':
     # subjects = electrodes.keys()
     # MG96, MG104, MG105, MG107, MG108, and MG111
     # good_subjects = ['mg96'] #['mg105', 'mg107', 'mg108', 'mg111']
-    # electrodes = read_all_electrodes(good_subjects, bipolar)
+    electrodes = read_all_electrodes(good_subjects, bipolar)
     # raise Exception('Done')
 
     if use_apply_morph:
         cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
                                  overwrite=False)
-        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
-        # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-        # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-        # export_into_csv(template_system, MMVT_DIR, prefix)
+        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
+        read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+        save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+        export_into_csv(template_system, MMVT_DIR, prefix)
     else:
         output_fname = op.join(MMVT_DIR, template, 'electrodes', '{}electrodes{}_positions.npz'.format(
             prefix, '_bipolar' if bipolar else '', postfix))

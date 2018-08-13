@@ -88,6 +88,7 @@ def run(root):
 
 
 if __name__ == '__main__':
-    root = '/cluster/neuromind/Natalia/electrodes'
-    root = '/home/npeled/Documents/finding_electrodes_in_ct/electrodes'
+    root = [d for d in ['/cluster/neuromind/Natalia/electrodes',
+                        '/home/npeled/Documents/finding_electrodes_in_ct/electrodes']
+            if op.isdir(d)][0]
     run(root)

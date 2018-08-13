@@ -178,7 +178,10 @@ def color_contours(specific_labels=[], specific_hemi='both', labels_contours=Non
 
 
 def load_labels_data(labels_data_fname):
-    d, labels, data, atlas, cb_title, labels_max, labels_min, cmap = _load_labels_data(labels_data_fname)
+    ret = _load_labels_data(labels_data_fname)
+    if isinstance(ret, bool):
+        return ret
+    d, labels, data, atlas, cb_title, labels_max, labels_min, cmap = ret
     _addon().color_labels_data(labels, data, atlas, cb_title, labels_max, labels_min, cmap)
     new_fname = op.join(mu.get_user_fol(), 'labels', 'labels_data', mu.namebase_with_ext(labels_data_fname))
     if 'atlas' not in d:
