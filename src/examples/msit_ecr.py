@@ -506,8 +506,9 @@ if __name__ == '__main__':
     args = utils.Bag(au.parse_parser(parser))
 
     if args.subject[0] == 'all':
-        args.subject = [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, '*')) if op.isdir(d) and
-                        op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-                        op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))]
+        args.subject = utils.shuffle(
+            [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, '*')) if op.isdir(d) and
+             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
+             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
         print('{} subjects were found with both tasks!'.format(len(args.subject)))
     locals()[args.function](args)

@@ -2061,6 +2061,14 @@ def get_mmvt_code_root():
     return op.dirname(os.path.split(curr_dir)[0])
 
 
+def shuffle(x):
+    from random import shuffle
+    import copy
+    new_x = copy.deepcopy(x)
+    shuffle(new_x)
+    return new_x
+
+
 def power_spectrum(x, fs, scaling='spectrum'):
     r'''
     Estimate power spectral density using Welch's method.
