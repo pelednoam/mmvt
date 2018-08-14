@@ -216,10 +216,11 @@ def calc_source_band_induced_power(args):
         args.subject = subject
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         for task in args.tasks:
-            # for band, stc_band in bands.items():
-            #     print('Saving the {} source estimate to {}.stc'.format(label.name, stc_fname))
-                # band_stc_fname = '{}_induced_power_{}'.format(stc_fname, band)
-
+            fol = utils.make_dir(op.join(MEG_DIR, task, subject, 'induced_power'))
+            output_fnames =  glob.glob(op.join(fol, '{}_*_*_induced_power.stc'.format(task)))
+            # If another thread is working on this subject / task, continue to another subject / task
+            if len(output_fnames) > 0:
+                continue
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
@@ -497,4 +498,12 @@ if __name__ == '__main__':
              op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
              op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
         print('{} subjects were found with both tasks!'.format(len(args.subject)))
+        print(sorted(args.subject))
+    elif '*'  in args.subject[0]:
+        args.subject = utils.shuffle(
+            [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, args.subject[0])) if op.isdir(d) and
+             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
+             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
+        print('{} subjects were found with both tasks:'.format(len(args.subject)))
+        print(sorted(args.subject))
     locals()[args.function](args)
