@@ -1233,8 +1233,8 @@ def get_ras_file(subject, args):
     local_fname = op.join(local_elecs_fol, '{}_RAS.xlsx'.format(subject))
     if args.remote_ras_fol != '' and not op.isfile(local_fname):
         remote_ras_fol = utils.build_remote_subject_dir(args.remote_ras_fol, subject)
-        remote_fnames = glob.glob(op.join(remote_ras_fol, '{}*RAS*.xlsx'.format(subject)))
-        print('glob.glob({}):'.format(op.join(remote_ras_fol, '{}*RAS*.xlsx'.format(subject))))
+        remote_fnames = glob.glob(op.join(remote_ras_fol, '{}*RAS*.xlsx'.format(subject.upper())))
+        print('glob.glob({}):'.format(op.join(remote_ras_fol, '{}*RAS*.xlsx'.format(subject.upper()))))
         print(remote_fnames)
         remote_fname = utils.select_one_file(remote_fnames)
         # remote_fname = op.join(remote_ras_fol, '{}_RAS.xlsx'.format(subject))
