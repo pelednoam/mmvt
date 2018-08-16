@@ -12,6 +12,15 @@ from src.utils import matlab_utils as mu
 ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
 
 
+def get_ras_from_mad(args):
+    args = elecs.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        function='get_ras_file',
+        remote_ras_fol='/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
+    ))
+    pu.run_on_subjects(args, elecs.main)
+
+
 def read_electrodes_coordiantes_from_specific_xlsx_sheet(subject, bipolar):
     args = elecs.read_cmd_args(['-s', subject, '-b', str(bipolar)])
     args.ras_xls_sheet_name = 'RAS_Snapped'
