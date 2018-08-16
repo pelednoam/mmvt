@@ -1897,7 +1897,7 @@ def check_for_freesurfer(func):
     def wrapper(*args, **kwargs):
         if os.environ.get('FREESURFER_HOME', '') == '':
             if is_windows:
-                print('You need Freesurfer (Linux/Mac) to run this function')
+                print('{}: You need Freesurfer (Linux/Mac) to run this function'.format(func.__name__))
                 retval = True
             else:
                 raise Exception('Source freesurfer and rerun')
