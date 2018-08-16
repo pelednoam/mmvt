@@ -104,6 +104,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
     chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, mmvt_dir, output_fname, overwrite, print_only)
               for chunk_indices in indices]
     utils.run_parallel(_morph_electrodes_parallel, chunks, n_jobs)
+    bad_subjects = []
     for subject_from in subjects:
         ret = op.isfile(output_fname.format(subject=subject_from))
         if not ret:
