@@ -10,6 +10,7 @@ from collections import defaultdict, OrderedDict, Iterable
 import matplotlib.pyplot as plt
 from datetime import datetime
 import traceback
+import glob
 import mne.io
 from mne.filter import notch_filter
 
@@ -1232,7 +1233,9 @@ def get_ras_file(subject, args):
     local_fname = op.join(local_elecs_fol, '{}_RAS.xlsx'.format(subject))
     if args.remote_ras_fol != '' and not op.isfile(local_fname):
         remote_ras_fol = utils.build_remote_subject_dir(args.remote_ras_fol, subject)
-        remote_fname = op.join(remote_ras_fol, '{}_RAS.xlsx'.format(subject))
+        remote_fnames = glob.glob(op.join(remote_ras_fol, '{}*RAS*.xlsx'.format(subject)))
+        remote_fname = utils.select_one_file(remote_fnames)
+        # remote_fname = op.join(remote_ras_fol, '{}_RAS.xlsx'.format(subject))
         if op.isfile(remote_fname):
             shutil.copyfile(remote_fname, local_fname)
     return op.isfile(local_fname)
