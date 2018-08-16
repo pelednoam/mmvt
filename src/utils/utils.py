@@ -994,6 +994,7 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
             for file_name in files:
                 try:
                     file_name = file_name.replace('{subject}', subject)
+                    remote_subject_dir = remote_subject_dir.replace('{subject}', subject)
                     local_fname = op.join(local_subject_dir, fol, file_name)
                     if not op.isfile(local_fname) or overwrite_files:
                         # with sftp.cd(op.join(remote_subject_dir, fol)):
@@ -1002,7 +1003,8 @@ def sftp_copy_subject_files(subject, necessary_files, username, domain, local_su
                                 print('sftp: getting {}'.format(file_name))
                                 sftp.get(file_name)
                         except FileNotFoundError:
-                            print('The file {} does not exist on the remote server!'.format(file_name))
+                            print('The file {} does not exist on the remote server! ({})'.format(
+                                file_name, remote_subject_dir + '/' + fol))
 
                     if op.isfile(local_fname) and op.getsize(local_fname) == 0:
                         os.remove(local_fname)
@@ -2067,6 +2069,17 @@ def shuffle(x):
     new_x = copy.deepcopy(x)
     shuffle(new_x)
     return new_x
+
+
+def insensitive_glob(pattern):
+    # https://stackoverflow.com/questions/8151300/ignore-case-in-glob-on-linux
+    def either(c):
+        return '[%s%s]' % (c.lower(), c.upper()) if c.isalpha() else c
+    if not is_windows:
+        return glob.glob(''.join(map(either, pattern)))
+    else:
+        print('Windowd does not support insensitive_glob!')
+        return glob.glob(pattern)
 
 
 def power_spectrum(x, fs, scaling='spectrum'):

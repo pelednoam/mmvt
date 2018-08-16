@@ -21,6 +21,14 @@ def get_ras_from_mad(args):
     pu.run_on_subjects(args, elecs.main)
 
 
+def get_ras_using_sftp(args):
+    for subject in args.subject:
+        necessary_files = {'electrodes':['{}_RAS.xlsx'.format(subject)]}
+        utils.prepare_subject_folder(
+            necessary_files, subject, args.remote_subject_dir, pu.SUBJECTS_DIR,
+            True, args.sftp_username, args.sftp_domain)
+
+
 def read_electrodes_coordiantes_from_specific_xlsx_sheet(subject, bipolar):
     args = elecs.read_cmd_args(['-s', subject, '-b', str(bipolar)])
     args.ras_xls_sheet_name = 'RAS_Snapped'
@@ -194,5 +202,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
     parser.add_argument('-f', '--function', help='function name', required=False)
+    parser.add_argument('-u', '--sftp_username', help='sftp username', required=False, default='npeled')
+    parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')
+    parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,
+                        default='/space/thibault/1/users/npeled/subjects/{subject}')
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](args)
