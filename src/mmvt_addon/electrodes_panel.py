@@ -1079,7 +1079,7 @@ def create_groups_electrodes_lookup(electrodes):
     groups = defaultdict(list)
     bipolar = '-' in electrodes[0]
     for elc in electrodes:
-        if bipolar:
+        if bipolar and '-' in elc:
             group, num, _ = mu.elec_group_number(elc, bipolar)
         else:
             group, num = mu.elec_group_number(elc, bipolar)

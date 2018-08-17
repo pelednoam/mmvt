@@ -1241,7 +1241,8 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                            overwrite_stc=False, stc_template='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
                            modality='meg', calc_stc_for_all=False, calc_stcs_diff=True,
-                           atlas='aparc.DKTatlas40', bands=None, calc_inducde_power_per_label=True, n_jobs=6):
+                           atlas='aparc.DKTatlas40', bands=None, calc_inducde_power_per_label=True,
+                           induced_power_normalize_proj=True, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     # Other options is to use calc_labels_avg_for_rest
     epo_fname = get_epo_fname(epo_fname)
@@ -1280,7 +1281,7 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                 if epochs is None:
                     epo_fname = epo_fname.format(cond=cond_name)
                     if not op.isfile(epo_fname):
-                        print('single_trial_stc and not epoch file was found!')
+                        print('single_trial_stc=True and no epochs file was found!')
                         return False, stcs, stcs_num
                     epo_cond = get_cond_fname(epo_fname, cond_name)
                     epochs = mne.read_epochs(epo_cond, apply_SSP_projection_vectors, add_eeg_ref)
@@ -1289,11 +1290,12 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                 except:
                     print('annot create EEG average reference projector (no EEG data found)')
                 if single_trial_stc or events_keys == ['rest']:
-                    stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, inverse_method,
-                        pick_ori=pick_ori, return_generator=True)
+                    stcs[cond_name] = mne.minimum_norm.apply_inverse_epochs(
+                        epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
                 if calc_source_band_induced_power:
                     calc_induced_power(epochs, atlas, task, bands, inverse_operator, lambda2, stc_fname,
-                                       calc_inducde_power_per_label, overwrite_stc=False, n_jobs=n_jobs)
+                                       calc_inducde_power_per_label, normalize_proj=induced_power_normalize_proj,
+                                       overwrite_stc=overwrite_stc, n_jobs=n_jobs)
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
@@ -1345,12 +1347,14 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
 
 
 def calc_induced_power(epochs, atlas, task, bands, inverse_operator, lambda2, stc_fname,
-                       calc_inducde_power_per_label=True, overwrite_stc=False, n_jobs=6):
+                       calc_inducde_power_per_label=True, normalize_proj=True, overwrite_stc=False, n_jobs=6):
     # https://martinos.org/mne/stable/auto_examples/time_frequency/plot_source_space_time_frequency.html
     from mne.minimum_norm import source_band_induced_power
     if bands is None or bands == '':
         bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     # atlas = 'high.level.atlas'
+    if normalize_proj:
+        epochs.info.normalize_proj()
     if calc_inducde_power_per_label:
         fol = utils.make_dir(op.join(SUBJECT_MEG_FOLDER, 'induced_power'))
         labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas)
@@ -2901,7 +2905,7 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
             args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw,
             raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff,
-            args.atlas, args.bands, args.calc_inducde_power_per_label, args.n_jobs)
+            args.atlas, args.bands, args.calc_inducde_power_per_label, args.induced_power_normalize_proj, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
 
@@ -4054,6 +4058,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--meg_root_fol', required=False, default='')
     parser.add_argument('--bands', required=False, default='')
     parser.add_argument('--calc_inducde_power_per_label', required=False, default=1, type=au.is_true)
+    parser.add_argument('--induced_power_normalize_proj', required=False, default=1, type=au.is_true)
+
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
     # **** ICA *****
