@@ -2,6 +2,7 @@ import colorsys
 # Blender and addon libs
 try:
     import bpy
+    import bmesh
     import mathutils
     import colors_utils as cu
 except:
@@ -2834,6 +2835,25 @@ def in_range(val, min_val, max_val):
 def in_mat(x, y, z, mat):
     X, Y, Z = mat.shape
     return in_range(x, 0, X - 1), in_range(y, 0, Y - 1), in_range(z, 0, Z - 1)
+
+
+def fix_normals(parent_name):
+    parent_obj =  bpy.data.objects.get(parent_name)
+    if parent_obj is None:
+        print('Can\'t find {}!'.format(parent_name))
+        return
+    for obj in bpy.data.objects:
+        obj.select = False
+    bm = bmesh.new()
+    for obj in bpy.data.objects[parent_name].children:
+        mesh = obj.data
+        bm.from_mesh(mesh)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(mesh)
+        bm.clear()
+        mesh.update()
+    bm.free()
+
 
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d

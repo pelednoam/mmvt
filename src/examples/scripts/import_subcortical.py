@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 import os.path as op
 import glob
 
@@ -24,6 +25,7 @@ def run(mmvt):
             curMat.name = '{}_mat'.format(cur_obj.name)
         cur_obj.active_material = bpy.data.materials[curMat.name]
         cur_obj.parent = bpy.data.objects[parent_name]
+    mmvt.utils.fix_normals(parent_name)
 
 
 bpy.types.Scene.import_plys_fol = bpy.props.StringProperty(subtype='DIR_PATH')
