@@ -681,6 +681,9 @@ def load_labels_vertices(atlas):
 def labels_coloring_hemi(labels_data, faces_verts, hemi, threshold=0, labels_coloring_type='diff',
                          override_current_mat=True, colors_min=None, colors_max=None, use_abs=None, cmap=None,
                          atlas=None):
+    if faces_verts is None:
+        print('faces_verts is None!')
+        return
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     if atlas is None:

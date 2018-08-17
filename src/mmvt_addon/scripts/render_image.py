@@ -10,7 +10,7 @@ except:
     sys.path.append(os.path.split(__file__)[0])
     import scripts_utils as su
 
-@su.timeit
+
 def wrap_blender_call():
     args = read_args()
     render_image(args.subject, args.atlas, args.image_name, args.output_path, args.quality, args.inflated,

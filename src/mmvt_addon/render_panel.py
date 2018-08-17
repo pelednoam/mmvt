@@ -559,7 +559,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
     else:
         images_names = [image_name] if isinstance(image_name, str) else image_name
     image_fol = bpy.path.abspath(bpy.context.scene.output_path) if image_fol == '' else image_fol
-    image_fname = op.join(image_fol, images_names[0])
+    image_fname = op.join(image_fol, '{}.{}'.format(images_names[0], get_figure_format()))
     if op.isfile(image_fname):
         files = glob.glob(op.join(image_fol, '{}_*.{}'.format(mu.namebase(image_fname), get_figure_format())))
         image_fname = op.join(image_fol, '{}_{}.{}'.format(mu.namebase(image_fname), len(files), get_figure_format()))
@@ -573,7 +573,7 @@ def render_image(image_name='', image_fol='', quality=0, use_square_samples=None
             print('file name: {}'.format(image_fname))
             bpy.context.scene.render.filepath = image_fname
             if overwrite or len(glob.glob('{}.*'.format(bpy.context.scene.render.filepath))) == 0:
-                _addon().load_camera(camera_fname)
+                # _addon().load_camera(camera_fname)
                 _addon().change_to_rendered_brain()
                 if hide_subcorticals:
                     _addon().show_hide_sub_corticals()

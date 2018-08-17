@@ -100,15 +100,17 @@ def view_all():
     # bpy.ops.view3d.localview(c)
 
 
-def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=False):
+def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=False, render_image=False):
     dx = bpy.context.scene.rotate_dx if dx is None else dx
     dy = bpy.context.scene.rotate_dy if dy is None else dy
     dz = bpy.context.scene.rotate_dz if dz is None else dz
     bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz = dx, dy, dz
     rv3d = mu.get_view3d_region()
     rv3d.view_rotation.rotate(mathutils.Euler((math.radians(d) for d in (dx, dy, dz))))
-    if bpy.context.scene.rotate_and_render or save_image:
+    if bpy.context.scene.rotate_and_save or save_image:
         _addon().save_image('rotation', view_selected=bpy.context.scene.save_selected_view)
+    if bpy.context.scene.rotate_and_render or render_image:
+        _addon().render_image('rotation')
     if keep_rotating:
         start_rotating()
 
@@ -660,13 +662,16 @@ class ShowHideObjectsPanel(bpy.types.Panel):
         #                 text="{} Brain".format('Maximize' if bpy.context.scene.brain_max_min else 'Minimize'),
         #                 icon='TRIA_UP' if bpy.context.scene.brain_max_min else 'TRIA_DOWN')
         if context.scene.show_hide_settings:
-            row = layout.row(align=True)
-            row.prop(context.scene, 'rotate_brain')
-            row.prop(context.scene, 'rotate_and_render')
-            row = layout.row(align=True)
+            col = layout.box().column()
+            col.prop(context.scene, 'rotate_brain')
+            row = col.row(align=True)
             row.prop(context.scene, 'rotate_dx')
             row.prop(context.scene, 'rotate_dy')
             row.prop(context.scene, 'rotate_dz')
+            # row = col.row(align=True)
+            col.prop(context.scene, 'rotate_and_save')
+            # col.prop(context.scene, 'rotate_and_render')
+
         # views_options = ['Camera', 'Ortho']
         # next_view = views_options[int(bpy.context.scene.in_camera_view)]
         # icons = ['SCENE', 'MANIPUL']
@@ -701,8 +706,12 @@ bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
 bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain',
     description='When the box is checked the brain starts to rotate according the values that were set to the x,y,x '
                 'axis below the check box')
-bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Save an image each rotation',
+bpy.types.Scene.rotate_and_save = bpy.props.BoolProperty(default=False, name='Save an image each rotation',
     description='Saves an image each rotation according the values that were set to the x,y,x axis below the check box. '
+                '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '
+                '\nExample:  ..\ mmvt\mmvt_root\mmvt_blend\colin27\\figures')
+bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Render an image each rotation',
+    description='Renders an image each rotation according the values that were set to the x,y,x axis below the check box. '
                 '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '
                 '\nExample:  ..\ mmvt\mmvt_root\mmvt_blend\colin27\\figures')
 bpy.types.Scene.brain_max_min = bpy.props.BoolProperty()
@@ -749,6 +758,7 @@ def init(addon):
     for fol in ['Cerebellum', 'Cerebellum_fmri_activity_map', 'Cerebellum_meg_activity_map']:
         show_hide_hierarchy(True, fol)
     bpy.context.scene.rotate_brain = False
+    bpy.context.scene.rotate_and_save = False
     bpy.context.scene.rotate_and_render = False
     bpy.context.scene.render_split = False
     bpy.context.scene.rotate_dz = 0
