@@ -3,7 +3,8 @@ import numpy as np
 from collections import defaultdict
 import nibabel as nib
 import glob
-from scipy.spatial.distance import cdist
+# from scipy.spatial.distance import cdist
+from src.utils import trans_utils as tut
 import csv
 import shutil
 
@@ -80,20 +81,6 @@ def _mri_cvs_register_parallel(p):
             rs(mri_cvs_register)
 
 
-
-# def morph_t1(subjects, template_system, subjects_dir, print_only=False):
-#     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-#     for subject in subjects:
-#         if not op.isfile(op.join(subjects_dir, subject, 'mri_cvs_register_to_colin27', 'final_CVSmorph_tocolin27.m3z')):
-#             print(f'The m3z morph matrix does not exist for subject {subject}!')
-#             continue
-#         output_fname = op.join(subjects_dir, subject, 'mri', 'T1_to_colin_csv_register.mgz')
-#         if not op.isfile(output_fname):
-#             rs = utils.partial_run_script(locals(), print_only=print_only)
-#             rs(mri_vol2vol)
-#         print(f'freeview -v {subjects_dir}/colin27/mri/T1.mgz {subjects_dir}/{subject}/mri/T1_to_colin_csv_register.mgz')
-
-
 def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False, print_only=False, n_jobs=4):
     subject_to = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     output_fname = op.join(mmvt_dir, '{subject}', 'electrodes','morphed_electrodes_file_name.txt')
@@ -141,13 +128,16 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     for subject in electrodes.keys():
         if subject == subject_to:
             continue
-        morphed_electrodes_file_name = 'electrodes_morph_to_{}'.format(subject_to)
-        input_fname = op.join(subjects_dir, subject, 'electrodes', morphed_electrodes_file_name)
+        morphed_electrodes_file_name = 'electrodes_morph_to_{}.txt'.format(subject_to)
+        input_fname = op.join(MMVT_DIR, subject, 'electrodes', morphed_electrodes_file_name)
         if not op.isfile(input_fname):
+            print('read_morphed_electrodes: Can\'t find {}!'.format(input_fname))
             bad_subjects.append(subject)
             continue
         print('Reading {} ({})'.format(input_fname, utils.file_modification_time(input_fname)))
         vox = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
+        if subject_to == 'fsaverage':
+            vox = tut.mni152_mni305(vox)
         tkregs = apply_trans(trans, vox)
         for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
             template_electrodes[subject].append(('{}_{}'.format(subject, elc_name), tkreg))
@@ -679,7 +669,7 @@ if __name__ == '__main__':
 
     # get_output_using_sftp()
     # subjects = get_all_subjects()
-    subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
+    subjects = ['mg105'] # ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
     # print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
     # print(good_subjects)
@@ -693,10 +683,10 @@ if __name__ == '__main__':
     # raise Exception('Done')
 
     if use_apply_morph:
-        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
-                                 overwrite=False)
-        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
+        # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
+        #                          overwrite=False)
+        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
         export_into_csv(template_system, MMVT_DIR, prefix)
