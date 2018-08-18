@@ -108,6 +108,9 @@ def _morph_electrodes_parallel(p):
     for subject_from in subjects:
         electrodes_to_morph_file_name = 'electrodes_to_morph'
         morphed_electrodes_file_name = 'electrodes_morph_to_{}'.format(subject_to)
+        output_fname = op.join(mmvt_dir, subject_from, 'electrodes', '{}.txt'.format(morphed_electrodes_file_name))
+        if op.isfile(output_fname) and not overwrite:
+            continue
         rs = utils.partial_run_script(locals(), print_only=print_only)
         if subject_to == 'fsaverage':
             rs(apply_morph_mni)
@@ -534,12 +537,16 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         # if op.isfile(csv_fname) and not overwrite:
         #     continue
         t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
+        brain_mask = nib.load(op.join(subjects_dir, subject, 'mri', 'brainmask.mgz')).get_data()
         trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
         print('create_electrodes_files: Writing to {}'.format(csv_fname))
         with open(csv_fname, 'w') as csv_file:
             wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE, delimiter=' ')
-            for _, coords in electrodes[subject]:
+            for elc_name, coords in electrodes[subject]:
                 vox = np.rint(apply_trans(trans, coords)).astype(int)
+                mask = brain_mask[vox[0], vox[1], vox[2]]
+                if mask == 0:
+                    print('{}: {} is outside the brain!'.format(subject, elc_name))
                 # wr.writerow([*['{:.2f}'.format(x) for x in vox]])
                 wr.writerow(vox)
 
@@ -632,7 +639,8 @@ def prepare_files_for_subjects(subjects, overwrite=False):
     remote_subject_template1 = '/mnt/cashlab/projects/DARPA/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput_REDONE'
     remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
     remote_subject_template3 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/Recon/{subject}_SurferOutput'
-    remote_subject_templates = (remote_subject_template1, remote_subject_template2, remote_subject_template3)
+    remote_subject_template4 = '/usr/local/freesurfer/dev/subjects/{subject}'
+    remote_subject_templates = (remote_subject_template1, remote_subject_template2, remote_subject_template3, remote_subject_template4)
     # subjects = pu.decode_subjects(['MG*'], remote_subject_template)
     good_subjects = []
     for subject in subjects:
@@ -670,7 +678,9 @@ if __name__ == '__main__':
     # get_output_using_sftp()
     # subjects = get_all_subjects()
     subjects = ['mg105'] # ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
+    subjects = ['cvs_avg35_inMNI152']
     good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
+    raise Exception('Done')
     # print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
     # print(good_subjects)
     # raise Exception('Done')
@@ -683,10 +693,10 @@ if __name__ == '__main__':
     # raise Exception('Done')
 
     if use_apply_morph:
-        # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
-        #                          overwrite=False)
-        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
+        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
+                                 overwrite=False)
+        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
         export_into_csv(template_system, MMVT_DIR, prefix)
