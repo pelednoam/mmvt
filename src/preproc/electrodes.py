@@ -1243,7 +1243,7 @@ def get_ras_file(subject, args):
     return op.isfile(local_fname)
 
 
-def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
+def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs=-1):
     mmvt_code_fol = utils.get_mmvt_code_root()
     ela_code_fol = op.join(utils.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
     if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'find_rois', 'find_rois.py')):
@@ -1266,7 +1266,7 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4):
         sys.path.append(ela_code_fol)
     from find_rois import find_rois
     importlib.reload(find_rois)
-    args = find_rois.get_args(['-s', subject, '-a', atlas, '-b', str(bipolar)])
+    args = find_rois.get_args(['-s', subject, '-a', atlas, '-b', str(bipolar), '--n_jobs', str(n_jobs)])
     find_rois.run_for_all_subjects(args)
     if not op.isfile(output_fname):
         return False
@@ -1333,7 +1333,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'run_ela' in args.function:
         flags['run_ela'] = run_ela(
-            subject, args.atlas, args.bipolar, args.overwrite_ela, args.error_radius, args.elc_length)
+            subject, args.atlas, args.bipolar, args.overwrite_ela, args.error_radius, args.elc_length, args.n_jobs)
 
     return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
