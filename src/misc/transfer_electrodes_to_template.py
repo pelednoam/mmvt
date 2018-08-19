@@ -111,11 +111,17 @@ def _morph_electrodes_parallel(p):
         output_fname = op.join(mmvt_dir, subject_from, 'electrodes', '{}.txt'.format(morphed_electrodes_file_name))
         if op.isfile(output_fname) and not overwrite:
             continue
-        rs = utils.partial_run_script(locals(), print_only=print_only)
         if subject_to == 'fsaverage':
+            subject_to = 'cvs_avg35_inMNI152'
+        rs = utils.partial_run_script(locals(), print_only=print_only)
+        if subject_to == 'cvs_avg35_inMNI152':
             rs(apply_morph_mni)
         else:
             rs(apply_morph)
+        if op.isfile(output_fname):
+            print('{}: electrodes file was morphed successfuly! -> {}'.format(subject_from, output_fname))
+        else:
+            print('{}: Couldn\'t morph the electrodes file!'.format(subject_from))
 
 
 def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwrite=False):
@@ -124,7 +130,9 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
     output_fname = op.join(fol, 'template_electrodes.pkl')
     if op.isfile(output_fname) and not overwrite:
         return
-    t1_header = nib.load(op.join(subjects_dir, subject_to, 'mri', 'T1.mgz')).header
+    subject_to_mri = 'cvs_avg35_inMNI152' if subject_to == 'fsaverage' else subject_to
+    t1_header = nib.load(op.join(subjects_dir, subject_to_mri, 'mri', 'T1.mgz')).header
+    brain_mask = nib.load(op.join(subjects_dir, subject_to_mri, 'mri', 'brainmask.mgz')).get_data()
     trans = t1_header.get_vox2ras_tkr()
     template_electrodes = defaultdict(list)
     bad_subjects, good_subjects = [], []
@@ -138,10 +146,16 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
             bad_subjects.append(subject)
             continue
         print('Reading {} ({})'.format(input_fname, utils.file_modification_time(input_fname)))
-        vox = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
-        if subject_to == 'fsaverage':
-            vox = tut.mni152_mni305(vox)
-        tkregs = apply_trans(trans, vox)
+        voxels = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
+        for vox, (elc_name, _) in zip(voxels, electrodes[subject]):
+            vox = np.rint(vox).astype(int)
+            mask = brain_mask[vox[0], vox[1], vox[2]]
+            if mask == 0:
+                print('{}: {} is outside the brain!'.format(subject, elc_name))
+
+        # if subject_to == 'fsaverage':
+        #     vox = tut.mni152_mni305(vox)
+        tkregs = apply_trans(trans, voxels)
         for tkreg, (elc_name, _) in zip(tkregs, electrodes[subject]):
             template_electrodes[subject].append(('{}_{}'.format(subject, elc_name), tkreg))
         good_subjects.append(subject)
@@ -678,9 +692,9 @@ if __name__ == '__main__':
     # get_output_using_sftp()
     # subjects = get_all_subjects()
     subjects = ['mg105'] # ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
-    subjects = ['cvs_avg35_inMNI152']
+    # subjects = ['cvs_avg35_inMNI152']
     good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
-    raise Exception('Done')
+    # raise Exception('Done')
     # print('{} good subjects out of {}:'.format(len(good_subjects), len(subjects)))
     # print(good_subjects)
     # raise Exception('Done')
@@ -694,9 +708,9 @@ if __name__ == '__main__':
 
     if use_apply_morph:
         cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
-                                 overwrite=False)
-        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs)
+                                 overwrite=True)
+        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
         export_into_csv(template_system, MMVT_DIR, prefix)
