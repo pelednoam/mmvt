@@ -687,7 +687,8 @@ if __name__ == '__main__':
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
-    n_jobs=4
+    print_only=True
+    n_jobs=1
 
     # get_output_using_sftp()
     # subjects = get_all_subjects()
@@ -707,10 +708,11 @@ if __name__ == '__main__':
     # raise Exception('Done')
 
     if use_apply_morph:
-        cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=False,
-                                 overwrite=True)
-        # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs)
+        # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
+        #                          overwrite=True)
+        create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
+                         print_only=print_only)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
         export_into_csv(template_system, MMVT_DIR, prefix)
