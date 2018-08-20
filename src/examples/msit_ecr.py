@@ -211,16 +211,18 @@ def calc_source_band_induced_power(args):
     good_subjects = get_good_subjects(args)
     args.subject = good_subjects
     prepare_files(args)
+    done_subjects = []
 
     for subject in good_subjects:
         args.subject = subject
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         for task in args.tasks:
             fol = utils.make_dir(op.join(MEG_DIR, task, subject, 'induced_power'))
-            output_fnames =  glob.glob(op.join(fol, '{}_*_*_induced_power.stc'.format(task)))
+            output_fnames = glob.glob(op.join(fol, '{}*induced_power*.stc'.format(task)))
             # If another thread is working on this subject / task, continue to another subject / task
-            # if len(output_fnames) > 0:
-            #     continue
+            if len(output_fnames) > 0:
+                done_subjects.append(subject)
+                continue
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
@@ -247,6 +249,7 @@ def calc_source_band_induced_power(args):
                 else:
                     subjects_with_error.append(subject)
 
+    print('#done_subjects: {}'.format(len(set(done_subjects))))
     good_subjects = [s for s in good_subjects if
            op.isfile(op.join(MMVT_DIR, subject, 'meg',
                              'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
