@@ -692,7 +692,7 @@ if __name__ == '__main__':
 
     # get_output_using_sftp()
     # subjects = get_all_subjects()
-    subjects = ['mg105'] # ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
+    subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     # subjects = ['cvs_avg35_inMNI152']
     good_subjects = prepare_files_for_subjects(subjects, overwrite=False)
     # raise Exception('Done')
