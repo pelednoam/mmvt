@@ -1,8 +1,11 @@
 import os.path as op
 import numpy as np
-import mne
 import nibabel as nib
 from src.utils import utils
+
+LINKS_DIR = utils.get_links_dir()
+SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
+FREESURFER_HOME = utils.get_link_dir(LINKS_DIR, 'freesurfer', 'FREESURFER_HOME')
 
 
 def get_vox2ras(fname):
@@ -100,8 +103,38 @@ def mni305_to_mni152(points):
     return apply_trans(mni305_to_mni152_matrix(), points)
 
 
-def mni152_mni305(points):
-    return apply_trans(np.linalg.inv(mni305_to_mni152_matrix()), points)
+# def mni152_mni305(points):
+#     return apply_trans(np.linalg.inv(mni305_to_mni152_matrix()), points)
+
+
+def mni152_mni305(voxels):
+    mni152_header, mni305_header = get_mni152_and_305_headers()
+    ras = apply_trans(mni152_header.get_vox2ras(), voxels)
+    mni305 = np.rint(apply_trans(np.linalg.inv(mni305_header.get_vox2ras()), ras)).astype(int)
+    return mni305
+
+
+def mni305_mni152(voxels):
+    mni152_header, mni305_header = get_mni152_and_305_headers()
+    ras = apply_trans(np.linalg.inv(mni305_header.get_vox2ras()), voxels)
+    mni152 = np.rint(apply_trans(np.linalg.inv(mni152_header.get_vox2ras()), ras)).astype(int)
+    return mni152
+
+
+def get_mni152_and_305_headers():
+    nmi152_t1_fname = op.join(SUBJECTS_DIR, 'cvs_avg35_inMNI152', 'mri', 'T1.mgz')
+    if not op.isfile(nmi152_t1_fname):
+        nmi152_t1_fname = op.join(FREESURFER_HOME, 'subjects', 'cvs_avg35_inMNI152', 'mri', 'T1.mgz')
+    if not op.isfile(nmi152_t1_fname):
+        raise Exception('Can\'t find cvs_avg35_inMNI152 T1.mgz!')
+    mni305_t1_fname = op.join(SUBJECTS_DIR, 'fsaverage',  'mri', 'T1.mgz')
+    if not op.isfile(mni305_t1_fname):
+        mni305_t1_fname = op.join(FREESURFER_HOME, 'subjects', 'fsaverage', 'mri', 'T1.mgz')
+    if not op.isfile(mni305_t1_fname):
+        raise Exception('Can\'t find fsaverage T1.mgz!')
+    mni152_header = nib.load(nmi152_t1_fname).header
+    mni305_header = nib.load(mni305_t1_fname).header
+    return mni152_header, mni305_header
 
 
 def tkras_to_vox(points, subject_orig_header=None, subject='', subjects_dir=''):

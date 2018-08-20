@@ -495,18 +495,16 @@ if __name__ == '__main__':
     args = utils.Bag(au.parse_parser(parser))
 
     if args.subject[0] == 'all':
-        msit_subjects = [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'MSIT', '*')) if op.isdir(d) and \
-                         op.isfile(op.join(d, '{}_msit_nTSSS-ica-raw-epo.fif'.format(utils.namebase(d))))]
-        ecr_subjects = [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'ECR', '*')) if op.isdir(d) and \
-                        op.isfile(op.join(d, '{}_ecr_nTSSS-ica-raw-epo.fif'.format(utils.namebase(d))))]
-        subjects =  utils.shuffle(list(set(msit_subjects) & set(ecr_subjects)))
+        # msit_subjects = [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'MSIT', '*')) if op.isdir(d) and \
+        #                  op.isfile(op.join(d, '{}_msit_nTSSS-ica-raw-epo.fif'.format(utils.namebase(d))))]
+        # ecr_subjects = [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'ECR', '*')) if op.isdir(d) and \
+        #                 op.isfile(op.join(d, '{}_ecr_nTSSS-ica-raw-epo.fif'.format(utils.namebase(d))))]
+        # subjects =  utils.shuffle(list(set(msit_subjects) & set(ecr_subjects)))
 
         # args.subject = utils.shuffle(
         #     [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'MSIT', '**', '*_msit_nTSSS-ica-raw-epo.fif')) if op.isdir(d) and
         #      op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
         #      op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
-        print('{} subjects were found with both tasks!'.format(len(args.subject)))
-        print(sorted(args.subject))
 
 
         args.subject = utils.shuffle(
