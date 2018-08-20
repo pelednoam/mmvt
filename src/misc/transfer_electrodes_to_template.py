@@ -711,7 +711,7 @@ if __name__ == '__main__':
         # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
         #                          overwrite=True)
         create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
+        morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True, n_jobs=n_jobs,
                          print_only=print_only)
         read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
         save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
