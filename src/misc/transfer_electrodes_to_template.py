@@ -132,7 +132,9 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
         return
     subject_to_mri = 'cvs_avg35_inMNI152' if subject_to == 'fsaverage' else subject_to
     t1_header = nib.load(op.join(subjects_dir, subject_to_mri, 'mri', 'T1.mgz')).header
-    brain_mask = nib.load(op.join(subjects_dir, subject_to_mri, 'mri', 'brainmask.mgz')).get_data()
+    brain_mask_fname = op.join(subjects_dir, subject_to_mri, 'mri', 'brainmask.mgz')
+    if op.isfile(brain_mask_fname):
+        brain_mask = nib.load().get_data()
     trans = t1_header.get_vox2ras_tkr()
     template_electrodes = defaultdict(list)
     bad_subjects, good_subjects = [], []
@@ -149,9 +151,10 @@ def read_morphed_electrodes(electrodes, template_system, subjects_dir, mmvt_dir,
         voxels = np.genfromtxt(input_fname,  dtype=np.float, delimiter=' ')
         for vox, (elc_name, _) in zip(voxels, electrodes[subject]):
             vox = np.rint(vox).astype(int)
-            mask = brain_mask[vox[0], vox[1], vox[2]]
-            if mask == 0:
-                print('{}: {} is outside the brain!'.format(subject, elc_name))
+            if op.isfile(brain_mask_fname):
+                mask = brain_mask[vox[0], vox[1], vox[2]]
+                if mask == 0:
+                    print('{}: {} is outside the brain!'.format(subject, elc_name))
 
         # if subject_to == 'fsaverage':
         #     vox = tut.mni152_mni305(vox)
