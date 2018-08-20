@@ -556,7 +556,7 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
         brain_mask_fname = op.join(subjects_dir, subject, 'mri', 'brainmask.mgz')
         if op.isfile(brain_mask_fname):
-            brain_mask = nib.load().get_data()
+            brain_mask = nib.load(brain_mask_fname).get_data()
         trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
         print('create_electrodes_files: Writing to {}'.format(csv_fname))
         with open(csv_fname, 'w') as csv_file:
