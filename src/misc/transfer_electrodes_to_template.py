@@ -554,16 +554,19 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         # if op.isfile(csv_fname) and not overwrite:
         #     continue
         t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
-        brain_mask = nib.load(op.join(subjects_dir, subject, 'mri', 'brainmask.mgz')).get_data()
+        brain_mask_fname = op.join(subjects_dir, subject, 'mri', 'brainmask.mgz')
+        if op.isfile(brain_mask_fname):
+            brain_mask = nib.load().get_data()
         trans = np.linalg.inv(t1_header.get_vox2ras_tkr())
         print('create_electrodes_files: Writing to {}'.format(csv_fname))
         with open(csv_fname, 'w') as csv_file:
             wr = csv.writer(csv_file, quoting=csv.QUOTE_NONE, delimiter=' ')
             for elc_name, coords in electrodes[subject]:
                 vox = np.rint(apply_trans(trans, coords)).astype(int)
-                mask = brain_mask[vox[0], vox[1], vox[2]]
-                if mask == 0:
-                    print('{}: {} is outside the brain!'.format(subject, elc_name))
+                if op.isfile(brain_mask_fname):
+                    mask = brain_mask[vox[0], vox[1], vox[2]]
+                    if mask == 0:
+                        print('{}: {} is outside the brain!'.format(subject, elc_name))
                 # wr.writerow([*['{:.2f}'.format(x) for x in vox]])
                 wr.writerow(vox)
 
