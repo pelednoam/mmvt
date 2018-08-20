@@ -687,7 +687,7 @@ if __name__ == '__main__':
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
-    print_only=True
+    print_only=False
     n_jobs=1
 
     # get_output_using_sftp()
