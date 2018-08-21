@@ -232,8 +232,8 @@ def render_draw(self, context):
     if view == 'CAMERA':
         # layout.label(text='Output Path:')
         layout.prop(context.scene, "quality", text='Quality')
-        # layout.prop(context.scene.render, 'resolution_x')
-        # layout.prop(context.scene.render, 'resolution_y')
+        layout.prop(context.scene.render, 'resolution_x')
+        layout.prop(context.scene.render, 'resolution_y')
 
         # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
         # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
