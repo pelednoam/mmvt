@@ -546,7 +546,7 @@ def main(subjects, template_system, remote_subject_templates=(), bipolar=False, 
 
 if __name__ == '__main__':
     save_as_bipolar = False
-    template_system = 'ras'# ''ras' #'matt_hibert' # 'mni' # hc029
+    template_system = 'mni'# ''ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     bipolar = False
     use_apply_morph = True
@@ -554,9 +554,9 @@ if __name__ == '__main__':
     overwrite=False
     print_only=False
     n_jobs=1
-    subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
+    # subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
-    # get_all_subjects(remote_subject_template)
+    subjects = get_all_subjects(remote_subject_template)
 
     remote_subject_template1 = '/mnt/cashlab/projects/DARPA/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput_REDONE'
     remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
