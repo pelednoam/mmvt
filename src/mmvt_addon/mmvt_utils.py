@@ -144,6 +144,10 @@ numeric_const_pattern = r"""
 numeric_pattern_rx = re.compile(numeric_const_pattern, re.VERBOSE)
 
 
+def get_hemis_objs():
+    return [bpy.data.objects[obj_name] for obj_name in INF_HEMIS]
+
+
 def read_floats_rx(str):
     return floats_pattern_rx.findall(str)
 
