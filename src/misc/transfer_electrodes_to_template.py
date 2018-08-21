@@ -376,28 +376,28 @@ def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatl
     # print(errors)
 
 
-def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
-                           elc_labeling_template_rois_probs):
-    no_errors = True
-    err = ''
-    if roi not in elc_labeling_template_rois:
-        if prob > 0.05:
-            err = f'{subject},{elc},{roi} ({prob}) not in {template}'
-            print(err)
-            no_errors = False
-    else:
-        roi_ind = elc_labeling_template_rois.index(roi)
-        template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
-        if abs(prob - template_roi_prob) > 0.05:
-            err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
-            print(err)
-            no_errors = False
-    for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
-        if roi not in elc_labeling_rois and prob > 0.05:
-            err = f'{subject},{elc},{roi} ({prob}) only in {template}'
-            print(err)
-            no_errors = False
-    return no_errors, err
+# def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
+#                            elc_labeling_template_rois_probs):
+#     no_errors = True
+#     err = ''
+#     if roi not in elc_labeling_template_rois:
+#         if prob > 0.05:
+#             err = f'{subject},{elc},{roi} ({prob}) not in {template}'
+#             print(err)
+#             no_errors = False
+#     else:
+#         roi_ind = elc_labeling_template_rois.index(roi)
+#         template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
+#         if abs(prob - template_roi_prob) > 0.05:
+#             err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
+#             print(err)
+#             no_errors = False
+#     for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
+#         if roi not in elc_labeling_rois and prob > 0.05:
+#             err = f'{subject},{elc},{roi} ({prob}) only in {template}'
+#             print(err)
+#             no_errors = False
+#     return no_errors, err
 
 
 def prepare_files(subjects, template_system):
