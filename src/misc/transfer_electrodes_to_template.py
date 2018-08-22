@@ -376,28 +376,28 @@ def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatl
     # print(errors)
 
 
-def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
-                           elc_labeling_template_rois_probs):
-    no_errors = True
-    err = ''
-    if roi not in elc_labeling_template_rois:
-        if prob > 0.05:
-            err = f'{subject},{elc},{roi} ({prob}) not in {template}'
-            print(err)
-            no_errors = False
-    else:
-        roi_ind = elc_labeling_template_rois.index(roi)
-        template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
-        if abs(prob - template_roi_prob) > 0.05:
-            err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
-            print(err)
-            no_errors = False
-    for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
-        if roi not in elc_labeling_rois and prob > 0.05:
-            err = f'{subject},{elc},{roi} ({prob}) only in {template}'
-            print(err)
-            no_errors = False
-    return no_errors, err
+# def compare_rois_and_probs(subject, template, elc, roi, prob, elc_labeling_rois, elc_labeling_template_rois,
+#                            elc_labeling_template_rois_probs):
+#     no_errors = True
+#     err = ''
+#     if roi not in elc_labeling_template_rois:
+#         if prob > 0.05:
+#             err = f'{subject},{elc},{roi} ({prob}) not in {template}'
+#             print(err)
+#             no_errors = False
+#     else:
+#         roi_ind = elc_labeling_template_rois.index(roi)
+#         template_roi_prob = elc_labeling_template_rois_probs[roi_ind]
+#         if abs(prob - template_roi_prob) > 0.05:
+#             err = f'{subject},{elc},{roi} prob ({prob} != {template} prob ({template_roi_prob})'
+#             print(err)
+#             no_errors = False
+#     for roi, prob in zip(elc_labeling_template_rois, elc_labeling_template_rois_probs):
+#         if roi not in elc_labeling_rois and prob > 0.05:
+#             err = f'{subject},{elc},{roi} ({prob}) only in {template}'
+#             print(err)
+#             no_errors = False
+#     return no_errors, err
 
 
 def prepare_files(subjects, template_system):
@@ -533,30 +533,29 @@ def get_all_subjects(remote_subject_template):
 def main(subjects, template_system, remote_subject_templates=(), bipolar=False, save_as_bipolar=False, prefix='', print_only=False, n_jobs=4):
     good_subjects = prepare_files_for_subjects(subjects, remote_subject_templates, overwrite=False)
     electrodes = read_all_electrodes(good_subjects, bipolar)
-    # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
-    #                          overwrite=True)
-    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-    # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
-    #                  print_only=print_only)
-    # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
-    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-    # export_into_csv(template_system, MMVT_DIR, prefix)
+    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
+                             overwrite=True)
+    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+    morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
+                     print_only=print_only)
+    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+    save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+    export_into_csv(template_system, MMVT_DIR, prefix)
     create_mmvt_coloring_file(template_system, electrodes)
 
 
 if __name__ == '__main__':
-    save_as_bipolar = False
-    template_system = 'ras'# ''ras' #'matt_hibert' # 'mni' # hc029
+    template_system = 'mni'# ''ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    bipolar = False
+    bipolar, save_as_bipolar = True, True
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
     print_only=False
-    n_jobs=1
-    subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
+    n_jobs=4
+    # subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
-    # get_all_subjects(remote_subject_template)
+    subjects = get_all_subjects(remote_subject_template)
 
     remote_subject_template1 = '/mnt/cashlab/projects/DARPA/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput_REDONE'
     remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
