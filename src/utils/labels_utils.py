@@ -864,11 +864,13 @@ def get_lh_rh_indices(labels):
     return indices
 
 
-def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_jobs=6):
+def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_jobs=6, labels_fol=''):
     new_label = mne.grow_labels(subject, vertice_indice, new_label_r, 0 if hemi == 'lh' else 1, SUBJECTS_DIR,
                                 n_jobs, names=new_label_name, surface='pial')[0]
-    utils.make_dir(op.join(MMVT_DIR, subject, 'labels'))
-    new_label_fname = op.join(MMVT_DIR, subject, 'labels', '{}.label'.format(new_label_name))
+    if labels_fol == '':
+        labels_fol = op.join(MMVT_DIR, subject, 'labels')
+    utils.make_dir(labels_fol)
+    new_label_fname = op.join(labels_fol, '{}.label'.format(new_label_name))
     new_label.save(new_label_fname)
     return new_label
 

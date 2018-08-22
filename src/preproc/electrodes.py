@@ -13,12 +13,14 @@ import traceback
 import glob
 import mne.io
 from mne.filter import notch_filter
+from scipy.spatial.distance import cdist
 
 from src.utils import utils
 from src.mmvt_addon import colors_utils as cu
 from src.utils import matlab_utils as mu
 from src.utils import preproc_utils as pu
 from src.utils import geometry_utils as gu
+from src.utils import labels_utils as lu
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
@@ -596,7 +598,6 @@ def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
         print('check_if_electrodes_inside_the_dura: No dura surface!')
         return None
 
-    from scipy.spatial.distance import cdist
     in_dural = {}
     dural_verts, _, dural_normals = gu.get_dural_surface(op.join(SUBJECTS_DIR, subject), do_calc_normals=True)
     if dural_verts is None:
@@ -1275,6 +1276,22 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
         return True
 
 
+def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='electrodes_labels',
+                                    new_atlas_name='electrodes_atlas', label_r=5, n_jobs=4):
+    names, pos = read_electrodes_file(subject, bipolar)
+    labels_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', labels_fol_name))
+    verts = {}
+    for hemi in utils.HEMIS:
+        verts[hemi], _ = utils.read_pial(subject, MMVT_DIR, hemi)
+    for elc_name, elc_pos in zip(names, pos):
+        label_name = '{}_label'.format(elc_name)
+        dists = cdist([elc_pos], verts[hemi])
+        elc_vert = np.argmin(dists)
+        lu.grow_label(subject, elc_vert, hemi, label_name, label_r, n_jobs, labels_fol)
+    ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, labels_fol)
+    return ret
+
+
 def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(ELECTRODES_DIR, subject))
     utils.make_dir(op.join(MMVT_DIR, subject))
@@ -1334,6 +1351,11 @@ def main(subject, remote_subject_dir, args, flags):
     if 'run_ela' in args.function:
         flags['run_ela'] = run_ela(
             subject, args.atlas, args.bipolar, args.overwrite_ela, args.error_radius, args.elc_length, args.n_jobs)
+
+    if 'create_labels_around_electrodes' in args.function:
+        flags['create_labels_around_electrodes'] = create_labels_around_electrodes(
+            subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_atlas_name,
+            args.electrodes_label_r, args.n_jobs)
 
     return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
@@ -1396,6 +1418,10 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_ela', required=False, default=0, type=au.is_true)
     parser.add_argument('--error_radius', help='error radius', required=False, default=3)
     parser.add_argument('--elc_length', help='elc length', required=False, default=4)
+
+    parser.add_argument('--electrodes_labels_fol_name', required=False, default='electrodes_labels')
+    parser.add_argument('--electrodes_atlas_name', required=False, default='electrodes_atlas')
+    parser.add_argument('--electrodes_label_r', required=False, default=5)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
