@@ -1140,7 +1140,8 @@ def check_bem(subject, remote_subject_dir, args):
     meg_args.update(args)
     meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
     # args.remote_subject_dir = remote_subject_dir
-    return meg.check_bem(subject, remote_subject_dir, meg_args)
+    bem_exist, _ = meg.check_bem(subject, remote_subject_dir, meg_args)
+    return bem_exist
 
 
 def full_extent(ax, pad=0.0):

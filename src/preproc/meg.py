@@ -260,7 +260,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  power_line_freq=60, epo_fname='', task='', windows_length=1000, windows_shift=500,
                  windows_num=0, overwrite_epochs=False, eve_template='*eve.fif', raw_fname='',
                  using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
-                 ar_n_interpolates=None, bad_ar_threshold = 0.5, n_jobs=6):
+                 ar_n_interpolates=None, bad_ar_threshold = 0.5, use_demi_events=False, n_jobs=6):
     epo_fname = get_epo_fname(epo_fname)
     if op.isfile(epo_fname) and not overwrite_epochs:
         epochs = mne.read_epochs(epo_fname)
@@ -287,21 +287,20 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
             # events_fname = events_fname if events_fname != '' else EVE
             print('read events from {}'.format(events_fname))
             events = mne.read_events(events_fname)
-    else:
-        if events is None:
-            try:
-                print('Finding events in {}'.format(stim_channels))
-                events = mne.find_events(raw, stim_channel=stim_channels)
-            except:
-                print('No stim channels found!')
-                events = np.array([])
-    if events.shape[0] == 0:
+    elif use_demi_events or events.shape[0] == 0:
         if task != 'rest':
             ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
             if ans != 'y':
                 return None
         events, conditions = create_demi_events(raw, windows_length, windows_shift, windows_num)
         tmax = windows_length / 1000.0
+    elif events is None:
+        try:
+            print('Finding events in {}'.format(stim_channels))
+            events = mne.find_events(raw, stim_channel=stim_channels)
+        except:
+            raise Exception('No stim channels found!')
+            # events = np.array([])
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
@@ -434,7 +433,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
         args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template,
         args.using_auto_reject, args.ar_compute_thresholds_method, args.ar_consensus_percs,
-        args.ar_n_interpolates, args.bad_ar_threshold, args.n_jobs)
+        args.ar_n_interpolates, args.bad_ar_threshold, args.use_demi_events, args.n_jobs)
 
 
 def calc_epochs_wrapper(
@@ -444,7 +443,7 @@ def calc_epochs_wrapper(
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
         windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname='', eve_template='*eve.fif',
         using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
-        ar_n_interpolates=None, bad_ar_threshold=0.5, n_jobs=6):
+        ar_n_interpolates=None, bad_ar_threshold=0.5, use_demi_events=False, n_jobs=6):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
@@ -475,7 +474,7 @@ def calc_epochs_wrapper(
                 pick_eeg, pick_eog, reject, reject_grad, reject_mag, reject_eog, remove_power_line_noise,
                 power_line_freq, epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
                 eve_template, raw_fname, using_auto_reject, ar_compute_thresholds_method, ar_consensus_percs,
-                ar_n_interpolates, bad_ar_threshold, n_jobs)
+                ar_n_interpolates, bad_ar_threshold, use_demi_events, n_jobs)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -612,7 +611,7 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
         events_keys = list(events.keys())
         if epochs is None:
             epochs = mne.read_epochs(EPO)
-        if average_per_event:
+        if average_per_event and not (len(events_keys) == 1 and events_keys[0] == 'rest'):
             if any([event not in epochs.event_id for event in events_keys]):
                 print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
                 events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
@@ -802,15 +801,16 @@ def check_bem(mri_subject, remote_subject_dir, args={}):
         prepare_subject_folder(
             mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
             {'bem': ['*-bem-sol.fif']}, args, use_subject_anat_folder=True)
+        bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.fif')
     if not op.isfile(bem_fname):
-        prepare_bem_surfaces(mri_subject, remote_subject_dir)
+        prepare_bem_surfaces(mri_subject, remote_subject_dir, args)
         model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
         bem = mne.make_bem_solution(model)
         mne.write_bem_solution(BEM, bem)
-    return op.isfile(bem_fname)
+    return op.isfile(bem_fname), bem_fname
 
 
-def prepare_bem_surfaces(mri_subject, remote_subject_dir):
+def prepare_bem_surfaces(mri_subject, remote_subject_dir, args):
     bem_files = ['brain.surf', 'inner_skull.surf', 'outer_skin.surf', 'outer_skull.surf']
     watershed_files = ['{}_brain_surface', '{}_inner_skull_surface', '{}_outer_skin_surface',
                        '{}_outer_skull_surface']
@@ -820,9 +820,17 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir):
         prepare_subject_folder(
             mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
             {'bem': [f for f in bem_files]}, args)
+    bem_files_exist = np.all([op.isfile(op.join(bem_fol, bem_fname)) for bem_fname in bem_files])
     watershed_files_exist = np.all(
         [op.isfile(op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
          watershed_files])
+    if not watershed_files_exist:
+        remote_bem_fol = op.join(remote_subject_dir, 'bem')
+        watershed_files_exist = np.all(
+            [op.isfile(op.join(remote_bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
+             watershed_files])
+        if watershed_files_exist:
+            utils.make_link(op.join(remote_bem_fol, 'watershed'), op.join(bem_fol, 'watershed'))
     if not bem_files_exist and not watershed_files_exist:
         err_msg = '''BEM files don't exist, you should create it first using mne_watershed_bem.
             For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
@@ -832,7 +840,7 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir):
         raise Exception(err_msg)
     if not bem_files_exist and watershed_files_exist:
         for bem_file, watershed_file in zip(bem_files, watershed_files):
-            utils.remove_file(bem_file)
+            utils.remove_file(op.join(bem_fol, bem_file))
             shutil.copy(op.join(bem_fol, 'watershed', watershed_file.format(mri_subject)),
                         op.join(bem_fol, bem_file))
     return [op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject)) for watershed_fname in watershed_files]
@@ -852,12 +860,13 @@ def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', 
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing, recreate_src_surface,
                         remote_subject_dir, n_jobs)
         check_src_ply_vertices_num(src)
-        check_bem(mri_subject, remote_subject_dir, args)
+        bem_exist, bem_fname = check_bem(mri_subject, remote_subject_dir, args)
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in evo_fname:
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
-                    fwd = _make_forward_solution(src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs)
+                    fwd = _make_forward_solution(
+                        src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem_fname=bem_fname)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
@@ -932,12 +941,13 @@ def make_forward_solution_to_specific_points(events, pts, region_name, epo_fname
     return fwd
 
 
-def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6):
-    bem = BEM
-    if not op.isfile(BEM):
-        bem = utils.select_one_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
-        if op.isfile(bem):
-            shutil.copy(bem, BEM)
+def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6, bem_fname=''):
+    if bem_fname == '':
+        bem_fname = BEM
+    if not op.isfile(bem_fname):
+        bem_fname = utils.select_one_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
+        if op.isfile(bem_fname):
+            shutil.copy(bem_fname, BEM)
         else:
             raise Exception("Can't find the BEM file!")
     if op.isfile(epo_fname):
@@ -949,9 +959,17 @@ def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, 
         else:
             raise Exception("Can't find info object for make_forward_solution!")
 
-    fwd = mne.make_forward_solution(info=info, trans=cor_fname, src=src, bem=bem, # mri=MRI
-                                    meg=usingMEG, eeg=usingEEG, mindist=5.0,
-                                    n_jobs=n_jobs, overwrite=True)
+    try:
+        fwd = mne.make_forward_solution(
+            info=info, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=usingEEG, mindist=5.0,
+            n_jobs=n_jobs, overwrite=True)
+    except:
+        utils.print_last_error_line()
+        print('Trying to create fwd only with MEG')
+        fwd = mne.make_forward_solution(
+            info=info, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=False, mindist=5.0,
+            n_jobs=n_jobs, overwrite=True)
+
     return fwd
 
 
@@ -2607,16 +2625,21 @@ def find_trans_file(trans_file='', remote_subject_dir='', subject='', subjects_d
     subject_dir = SUBJECTS_MRI_DIR if subjects_dir == '' else subjects_dir
     trans_file = COR if trans_file == '' else trans_file
     if not op.isfile(trans_file):
-        trans_files = glob.glob(op.join(subject_dir, subject, '**', '*COR*.fif'), recursive=True)
+        # trans_files = glob.glob(op.join(subject_dir, subject, '**', '*COR*.fif'), recursive=True)
+        trans_files = utils.find_recursive(op.join(subject_dir, subject), '*COR*.fif')
         if len(trans_files) == 0 and remote_subject_dir != '':
-            trans_files = glob.glob(op.join(remote_subject_dir, '**', '*COR*.fif'), recursive=True)
+            # trans_files = glob.glob(op.join(remote_subject_dir, '**', '*COR*.fif'), recursive=True)
+            trans_files = utils.find_recursive(op.join(remote_subject_dir), '*COR*.fif')
         if len(trans_files) == 0:
-            trans_files = glob.glob(op.join(utils.get_parent_fol(trans_file), '**', '*COR*.fif'), recursive=True)
-        bem_trans_files = glob.glob(op.join(subjects_dir, subject, 'bem', '*-head.fif'))
+            # trans_files = glob.glob(op.join(utils.get_parent_fol(trans_file), '**', '*COR*.fif'), recursive=True)
+            trans_files = utils.find_recursive(op.join(utils.get_parent_fol(trans_file)), '*COR*.fif')
+        # bem_trans_files = glob.glob(op.join(subjects_dir, subject, 'bem', '*-head.fif'))
+        bem_trans_files = utils.find_recursive(op.join(subjects_dir, subject, 'bem'), '*-head.fif')
         if len(bem_trans_files):
             trans_files += bem_trans_files
         else:
-            trans_files += glob.glob(op.join(remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
+            # trans_files += glob.glob(op.join(remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
+            trans_files += utils.find_recursive(op.join(remote_subject_dir, 'bem'), '*-head.fif')
         ok_trans_files = filter_trans_files(trans_files)
         trans_file = utils.select_one_file(
             ok_trans_files, template='*COR*.fif', files_desc='MRI-Head transformation',
@@ -3982,6 +4005,7 @@ def read_cmd_args(argv=None):
                         default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
+    parser.add_argument('--use_demi_events', help='use_demi_events', required=False, default=0, type=au.is_true)
     parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
     parser.add_argument('--windows_num', help='', required=False, default=0, type=int)
@@ -4096,7 +4120,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--cwt_n_cycles', required=False, default=7, type=int)
     parser.add_argument('--overwrite_connectivity', required=False, default=0, type=au.is_true)
     # AutoReject
-    parser.add_argument('--using_auto_reject', required=False, default=True, type=au.is_true)
+    parser.add_argument('--using_auto_reject', required=False, default=0, type=au.is_true)
     parser.add_argument('--ar_compute_thresholds_method', required=False, default='random_search',
                         choices=['random_search', 'bayesian_optimization'])
     parser.add_argument('--bad_ar_threshold', required=False, default=0.5, type=float)

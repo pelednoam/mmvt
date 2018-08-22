@@ -572,8 +572,11 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
                 annotations_exist = fu.create_annotation_file(
                     subject, atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME,
                     overwrite_annot_file=True)
-            if not annotations_exist:
-                raise Exception("Can't recreate {}!".format(atlas))
+                if not annotations_exist:
+                    print("Can't recreate {}!".format(atlas))
+            else:
+                print('Can\'t find any labels for {} {}!'.format(hemi, atlas))
+                return []
             labels = mne.read_labels_from_annot(
                 subject, atlas, subjects_dir=subjects_dir, surf_name=surf_name, hemi=hemi)
             if len(labels) == 0:

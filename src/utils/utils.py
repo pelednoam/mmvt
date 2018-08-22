@@ -1780,7 +1780,7 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
         exist = op.isfile(fname)
     if not exist:
         glob_pattern = [op.join(parent_fol, g) if get_parent_fol(g) == '' else g for g in glob_pattern]
-        lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_pattern]
+        lists = [glob.glob(op.join(parent_fol, '**', namebase_with_ext(gb)), recursive=True) for gb in glob_pattern]
         files = list(itertools.chain.from_iterable(lists))
         if exclude_pattern != '':
             exclude_glob_patterns = [op.join(parent_fol, exclude_pattern) if get_parent_fol(g) == '' else g for g in glob_pattern]
@@ -2080,6 +2080,15 @@ def insensitive_glob(pattern):
     else:
         print('Windowd does not support insensitive_glob!')
         return glob.glob(pattern)
+
+
+def find_recursive(fol, name):
+    if not is_windows():
+        res = run_script('find {} -name "{}"'.format(fol, name))
+        files = [f for f in res.decode(sys.getfilesystemencoding(), 'ignore').split('\n') if op.isfile(f)]
+    else:
+        files = glob.glob(op.join(fol, '**', name), recursive=True)
+    return files
 
 
 def power_spectrum(x, fs, scaling='spectrum'):
