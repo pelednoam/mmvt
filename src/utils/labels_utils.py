@@ -90,7 +90,7 @@ def _morph_labels_parallel(p):
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True, labels=[],
-                    fix_unknown=True):
+                    fix_unknown=True, print_error=False):
 
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
@@ -124,7 +124,8 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
                                   subjects_dir=subjects_dir)
     except:
         print('Error in writing annot file!')
-        # print(traceback.format_exc())
+        if print_error:
+            print(traceback.format_exc())
         return False
     return utils.both_hemi_files_exist(op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
 
@@ -578,9 +579,8 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
             if len(labels) == 0:
                 if not annotations_exist:
                     raise Exception("Can't read the {} labels!".format(atlas))
-        if exclude is None:
-            exclude = []
-        labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
+        if exclude is not None:
+            labels = [l for l in labels if not np.any([e in l.name for e in exclude])]
         if rh_then_lh or lh_then_rh:
             rh_labels = [l for l in labels if l.hemi == 'rh']
             lh_labels = [l for l in labels if l.hemi == 'lh']
@@ -609,7 +609,12 @@ def read_labels(subject, subjects_dir, atlas, try_first_from_annotation=True, on
 def read_labels_parallel(subject, subjects_dir, atlas, hemi='', labels_fol='', n_jobs=1):
     try:
         labels_fol = op.join(subjects_dir, subject, 'label', atlas) if labels_fol == '' else labels_fol
-        if hemi != '':
+        if not op.isdir(labels_fol):
+            labels_fol = op.join(MMVT_DIR, subject, 'labels', atlas)
+        if not op.isdir(labels_fol):
+            print('Can\'t find the atlas ({}) folder!'.format(atlas))
+            return []
+        if hemi in ['rh', 'lh']:
             labels_files = glob.glob(op.join(labels_fol, '*{}.label'.format(hemi)))
             labels_files.extend(glob.glob(op.join(labels_fol, '{}.*label'.format(hemi))))
         else:
@@ -864,15 +869,17 @@ def get_lh_rh_indices(labels):
     return indices
 
 
-def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_jobs=6, labels_fol=''):
-    new_label = mne.grow_labels(subject, vertice_indice, new_label_r, 0 if hemi == 'lh' else 1, SUBJECTS_DIR,
-                                n_jobs, names=new_label_name, surface='pial')[0]
+def grow_label(subject, vertice_indice, hemi, new_label_name, new_label_r=5, n_jobs=6, labels_fol='', overwrite=False):
     if labels_fol == '':
         labels_fol = op.join(MMVT_DIR, subject, 'labels')
-    utils.make_dir(labels_fol)
     new_label_fname = op.join(labels_fol, '{}.label'.format(new_label_name))
+    if not overwrite and op.isfile(new_label_fname):
+        return new_label_fname
+    new_label = mne.grow_labels(subject, vertice_indice, new_label_r, 0 if hemi == 'lh' else 1, SUBJECTS_DIR,
+                                n_jobs, names=new_label_name, surface='pial')[0]
+    utils.make_dir(labels_fol)
     new_label.save(new_label_fname)
-    return new_label
+    return new_label_fname
 
 
 def find_clusters_overlapped_labeles(subject, clusters, data, atlas, hemi, verts,

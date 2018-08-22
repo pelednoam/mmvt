@@ -2320,7 +2320,7 @@ def get_atlas_labels_fol(atlas):
 
 def check_if_atlas_exist(labels_fol, atlas):
     return both_hemi_files_exist(op.join(labels_fol, '{}.{}.annot'.format('{hemi}', atlas))) or \
-        len(glob.glob(op.join(labels_fol, '*.label'))) > 0
+        len(glob.glob(op.join(labels_fol, atlas, '*.label'))) > 0
 
 
 def find_annot_labels(subjects_dir='', atlas='aparc.DKTatlas40'):

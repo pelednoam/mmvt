@@ -614,7 +614,6 @@ def elecs_draw(self, context):
             layout.prop(context.scene, "electrode_rotate", text="Rotate view on click")
 
         # layout.prop(context.scene, "elc_size", text="")
-        # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
         row = layout.row(align=True)
         row.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
         leads_obj = bpy.data.objects.get('leads', None)
@@ -643,6 +642,8 @@ def elecs_draw(self, context):
             mu.add_box_line(col, 'Up', 'Next lead')
         row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
         row.prop(context.scene, 'electrodes_color', text='')
+        layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
+
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
     layout.prop(context.scene, 'electrodes_more_settings', text='More settings')
 

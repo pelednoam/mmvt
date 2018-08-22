@@ -43,6 +43,8 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Chooses the displayed modality\n\nCurrent modality')
 bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description='Sets the frames per second for the video')
+bpy.types.Scene.add_reverse_frames = bpy.props.BoolProperty(
+    default=False, description='Add reverse frames to the end of the movie')
 bpy.types.Scene.play_miscs = bpy.props.EnumProperty(
     items=[('inflating', 'inflating', '', 1), ('slicing', 'slicing', '', 2)])
 
@@ -283,8 +285,9 @@ def create_movie():
     output_file = op.join(bpy.context.scene.output_path, 'combine_images_cmd.txt')
     if op.isfile(output_file):
         os.remove(output_file)
-    flags = '--fol {} --copy_files 1 --frame_rate {}'.format(
-        bpy.context.scene.output_path, bpy.context.scene.frames_num)
+    flags = '--fol {} --copy_files 1 --frame_rate {} --add_reverse_frames {}'.format(
+        bpy.context.scene.output_path, bpy.context.scene.frames_num,
+        bpy.context.scene.add_reverse_frames)
     mu.run_mmvt_func('src.utils.movies_utils', 'combine_images', flags=flags)
 
 
@@ -489,9 +492,12 @@ def init_stim():
 def inflating_movie():
     _addon().hide_subcorticals()
     if _addon().flat_map_exists():
-        for inflating in np.arange(-1, 1, 0.01):
-            bpy.context.scene.inflating = inflating
-            _addon().save_image('inflating', bpy.context.scene.save_selected_view)
+        inf_range = np.arange(-1, 1, 0.01)
+    else:
+        inf_range = np.arange(-1, 0, 0.01)
+    for inflating in inf_range:
+        bpy.context.scene.inflating = inflating
+        _addon().save_image('inflating', bpy.context.scene.save_selected_view)
 
 
 def slicing_movie():
@@ -579,10 +585,10 @@ def play_panel_draw(context, layout):
         row.prop(context.scene, 'rotate_dy')
         row.prop(context.scene, 'rotate_dz')
 
-    # row = layout.row(align=0)
-    # row.prop(context.scene, 'play_miscs', text='')
-    # row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
-    # layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
+    row = layout.row(align=0)
+    row.prop(context.scene, 'play_miscs', text='')
+    row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
+    layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
     files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
                               glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(
@@ -592,6 +598,7 @@ def play_panel_draw(context, layout):
             layout.operator(CreateMovie.bl_idname, text="Create Movie", icon='RENDER_ANIMATION')
             layout.label(text='From images in {}'.format(mu.namebase(bpy.context.scene.output_path)))
             layout.prop(context.scene, 'frames_num', text="frames per second")
+            layout.prop(context.scene, 'add_reverse_frames', text='add reverse loop')
         else:
             layout.label(text='Rendering the movie...')
 
@@ -745,7 +752,7 @@ class CreateMovie(bpy.types.Operator):
                 if len(movies) > 0:
                     output_fname = op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
                         mu.namebase(bpy.context.scene.output_path)))
-                    if output_fname != movies[0]:
+                    if output_fname != movies[0] and op.isfiel(movies[0]):
                         shutil.copy(movies[0], output_fname)
                 #     temp_fol = op.join(bpy.context.scene.output_path, 'new_images')
                 #     if op.isdir(temp_fol):

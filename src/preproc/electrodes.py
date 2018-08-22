@@ -592,6 +592,18 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
     return True
 
 
+def get_electrodes_hemis(subject):
+    fname = op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl')
+    if op.isfile(fname):
+        return utils.load(fname)
+    else:
+        return None
+
+
+def get_group_hemi(group, electrodes_hemis):
+    return 'lh' if group in electrodes_hemis['lh'] else 'rh' if group in electrodes_hemis['rh'] else 'uh'
+
+
 def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
 
     if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.dural')):
@@ -1277,18 +1289,25 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
 
 
 def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='electrodes_labels',
-                                    new_atlas_name='electrodes_atlas', label_r=5, n_jobs=4):
+        label_r=5, overwrite=False, n_jobs=4):
     names, pos = read_electrodes_file(subject, bipolar)
     labels_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', labels_fol_name))
     verts = {}
     for hemi in utils.HEMIS:
         verts[hemi], _ = utils.read_pial(subject, MMVT_DIR, hemi)
+    electrodes_hemis = get_electrodes_hemis(subject)
     for elc_name, elc_pos in zip(names, pos):
+        group = utils.elec_group(elc_name, bipolar)
+        elc_hemi = get_group_hemi(group, electrodes_hemis)
         label_name = '{}_label'.format(elc_name)
+        new_label_fname = op.join(labels_fol, '{}-{}.label'.format(label_name, elc_hemi))
+        if not overwrite and op.isfile(new_label_fname):
+            continue
         dists = cdist([elc_pos], verts[hemi])
         elc_vert = np.argmin(dists)
         lu.grow_label(subject, elc_vert, hemi, label_name, label_r, n_jobs, labels_fol)
-    ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, labels_fol)
+    # ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, labels_fol, print_error=True)
+    ret = lu.create_atlas_coloring(subject, labels_fol_name, n_jobs)
     return ret
 
 
@@ -1354,8 +1373,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'create_labels_around_electrodes' in args.function:
         flags['create_labels_around_electrodes'] = create_labels_around_electrodes(
-            subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_atlas_name,
-            args.electrodes_label_r, args.n_jobs)
+            subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_label_r,
+            args.overwrite_electrodes_labels, args.n_jobs)
 
     return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
@@ -1420,8 +1439,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--elc_length', help='elc length', required=False, default=4)
 
     parser.add_argument('--electrodes_labels_fol_name', required=False, default='electrodes_labels')
-    parser.add_argument('--electrodes_atlas_name', required=False, default='electrodes_atlas')
     parser.add_argument('--electrodes_label_r', required=False, default=5)
+    parser.add_argument('--overwrite_electrodes_labels', help='', required=False, default=False, type=au.is_int)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
