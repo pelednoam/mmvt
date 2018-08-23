@@ -489,6 +489,65 @@ def calc_epochs_wrapper(
 
 
 @utils.tryit()
+def calc_labels_power_spectrum(
+        subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'], mri_subject='', subjects_dir='',
+        mmvt_dir='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
+        add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial',
+        epochs=None, src=None, overwrite=False, n_jobs=6):
+    if mri_subject == '':
+        mri_subject = subject
+    if subjects_dir == '':
+        subjects_dir = SUBJECTS_MRI_DIR
+    if mmvt_dir == '':
+        mmvt_dir = MMVT_DIR
+    if inv_fname == '':
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    epo_fname = get_epo_fname(epo_fname)
+    if isinstance(extract_modes, str):
+        extract_modes = [extract_modes]
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
+    lambda2 = 1.0 / snr ** 2
+    fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'meg'))
+    power_spectrum = None
+    first_time = True
+    for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        output_fname = op.join(fol, '{}_{}_power_spectrum.npz'.format(cond_name, em))
+        if op.isfile(output_fname) and not overwrite:
+            print('{} already exist'.format(output_fname))
+            continue
+
+        if first_time:
+            first_time = False
+            labels = lu.read_labels(mri_subject, subjects_dir, atlas, surf_name=surf_name, n_jobs=n_jobs)
+            inverse_operator, src = get_inv_src(inv_fname, src)
+
+        if epochs is None:
+            epo_cond_fname = get_cond_fname(epo_fname, cond_name)
+            if not op.isfile(epo_cond_fname):
+                print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
+                return False
+            epochs = mne.read_epochs(epo_cond_fname, apply_SSP_projection_vectors, add_eeg_ref)
+        sfreq = epochs.info['sfreq']
+        try:
+            mne.set_eeg_reference(epochs, ref_channels=None)
+            epochs.apply_proj()
+        except:
+            print('annot create EEG average reference projector (no EEG data found)')
+        if inverse_operator is None:
+            inverse_operator, src = get_inv_src(inv_fname, src, cond_name)
+        stcs = mne.minimum_norm.apply_inverse_epochs(
+            epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
+        labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
+        for epoch_ind, label_ts in enumerate(labels_ts):
+            frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
+            if power_spectrum is None:
+                power_spectrum = np.zeros((len(epochs), len(labels), len(frequencies), len(events)))
+            power_spectrum[epoch_ind, :, :, cond_ind] = linear_spectrum
+        np.savez(output_fname, power_spectrum=power_spectrum, frequencies=frequencies)
+    return True
+
+
+@utils.tryit()
 def calc_labels_connectivity(
         subject, atlas, events, mri_subject='', subjects_dir='', mmvt_dir='', inverse_method='dSPM',
         epo_fname='', inv_fname='', raw_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
@@ -3955,6 +4014,13 @@ def main(tup, remote_subject_dir, org_args, flags=None):
             args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.extract_mode, args.surf_name,
             args.con_method, args.con_mode, args.cwt_n_cycles, args.overwrite_connectivity, n_jobs=args.n_jobs)
 
+    if 'calc_labels_power_spectrum' in args.function:
+        flags['calc_labels_power_spectrum'] = calc_labels_power_spectrum(
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, MRI_SUBJECT, SUBJECTS_MRI_DIR,
+            MMVT_DIR, args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
+            args.apply_SSP_projection_vectors, args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.surf_name,
+            overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
+
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
             subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file,
@@ -4001,8 +4067,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_data', help='overwrite_labels_data', required=False, default=0, type=au.is_true)
-    parser.add_argument('--overwrite_labels_power_spectrum', help='overwrite_labels_power_spectrum', required=False,
-                        default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_power_spectrum', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--use_demi_events', help='use_demi_events', required=False, default=0, type=au.is_true)
