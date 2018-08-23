@@ -511,7 +511,7 @@ def calc_labels_power_spectrum(
     power_spectrum = None
     first_time = True
     for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
-        output_fname = op.join(fol, '{}_{}_power_spectrum.npz'.format(cond_name, em))
+        output_fname = op.join(fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
         if op.isfile(output_fname) and not overwrite:
             print('{} already exist'.format(output_fname))
             continue

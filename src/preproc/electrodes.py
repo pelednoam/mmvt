@@ -12,6 +12,8 @@ from datetime import datetime
 import traceback
 import glob
 import mne.io
+import math
+from tqdm import tqdm
 from mne.filter import notch_filter
 from scipy.spatial.distance import cdist
 
@@ -769,8 +771,13 @@ def fix_channles_names(edf_raw, data_channels):
         edf_raw.ch_names[ch_ind] = edf_raw.info['chs'][ch_ind]['ch_name'] = new_name
 
 
-def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
+def create_raw_data_from_edf(subject, args, stat=STAT_DIFF, do_plot=False, overwrite=False):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
+    meta_fname_exist = len(glob.glob(op.join(fol, 'electrodes_meta_data*.npz'))) > 0
+    data_fname_exist = len(glob.glob(op.join(fol, 'electrodes_data*.npy'))) > 0
+    if meta_fname_exist and data_fname_exist and not overwrite:
+        return True
+
     edf_fname, _ = utils.locating_file(args.raw_fname, '*.edf', op.join(ELECTRODES_DIR, subject))
     if not op.isfile(edf_fname):
         raise Exception('The EDF file cannot be found in {}!'.format(edf_fname))
@@ -818,7 +825,7 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
         if 'from_t' in cond:
             cond_data, times = edf_raw[channels_indices, int(cond['from_t']*hz):int(cond['to_t']*hz)]
         else:
-            cond_data, times = edf_raw[:]
+            cond_data, times = edf_raw[channels_indices, :]
         if args.ref_elec != '':
             ref_data, _ = edf_raw[ref_ind, int(cond['from_t'] * hz):int(cond['to_t'] * hz)]
             cond_data -= np.tile(ref_data, (cond_data.shape[0], 1))
@@ -844,8 +851,9 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
             data[:, :, cond_id] = cond_data
             cond_id = cond_id + 1
 
-    plt.psd(data, Fs=hz)
-    plt.show()
+    if do_plot:
+        plt.psd(data, Fs=hz)
+        plt.show()
     if 'baseline' in conditions and args.remove_baseline:
         for c in range(data.shape[2]):
             data[:, :, c] -= np.tile(baseline_mean, (T, 1)).T
@@ -873,11 +881,11 @@ def create_raw_data_for_blender(subject, args, stat=STAT_DIFF, do_plot=False):
             '_{}'.format(STAT_NAME[stat]) if len(conditions) > 1 else ''))
         np.savez(meta_fname, names=labels, conditions=conditions, times=times)
         np.save(data_fname, data)
-        return op.isfile(data_fname) and op.isfile(meta_fname) and data_electrodes_to_bipolar(subject)
-        # if args.bipolar:
-        #     return data_electrodes_to_bipolar(subject)
-        # else:
-        #     return op.isfile(data_fname) and op.isfile(meta_fname)
+        # return op.isfile(data_fname) and op.isfile(meta_fname) and data_electrodes_to_bipolar(subject)
+        if args.bipolar:
+            return data_electrodes_to_bipolar(subject)
+        else:
+            return op.isfile(data_fname) and op.isfile(meta_fname)
 
 
 def data_electrodes_to_bipolar(subject):
@@ -961,6 +969,53 @@ def plot_power(data, time_step):
     idx = np.argsort(freqs)
     plt.plot(freqs[idx], ps[idx])
     plt.show()
+
+
+def get_data_and_meta(subject):
+    fol = op.join(MMVT_DIR, subject, 'electrodes')
+    meta_fnames = glob.glob(op.join(fol, 'electrodes_meta_data*.npz'))
+    data_fnames = glob.glob(op.join(fol, 'electrodes_data*.npy'))
+    if len(meta_fnames) != 1 and len(data_fnames) != 1:
+        print('Couldn\'t find the data and met')
+        return None, None
+    else:
+        # names=labels, conditions=conditions, times=times
+        meta_data = utils.Bag(np.load(meta_fnames[0])) 
+        data = np.load(data_fnames[0])
+        return data, meta_data
+    
+    
+def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epoches_nun=-1, overwrite=False):
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz')
+    if op.isfile(output_fname) and not overwrite:
+        return True
+    
+    data, meta_data = get_data_and_meta(subject)
+    if data is None or meta_data is None:
+        return False
+
+    power_spectrum = None
+    data = data.squeeze()
+    sfreq = 1 / (meta_data.times[1] - meta_data.times[0])
+    T = data.shape[1] / sfreq #meta_data.times[-1] - meta_data.times[0]
+    electrodes_num = data.shape[0]
+    if epoches_nun == -1:
+        epoches_nun = math.floor((T - windows_length) / windows_shift + 1)
+    demi_epochs = np.zeros((epoches_nun, 2), dtype=np.uint32)
+    for win_ind in range(epoches_nun):
+        demi_epochs[win_ind] = [int(win_ind * windows_shift * sfreq), int(sfreq * (win_ind * windows_shift + windows_length))]
+
+    for epoch_ind, demi_epoch in tqdm(enumerate(demi_epochs)):
+        frequencies, linear_spectrum = utils.power_spectrum(data[:, demi_epoch[0]:demi_epoch[1]], sfreq)
+        if power_spectrum is None:
+            power_spectrum = np.zeros((len(demi_epochs), electrodes_num, len(frequencies)))
+        try:
+            power_spectrum[epoch_ind] = linear_spectrum
+        except:
+            print('asdf')
+    # power_spectrum = np.mean(power_spectrum, axis=0)
+    np.savez(output_fname, power_spectrum=power_spectrum, frequencies=frequencies)
+    return op.isfile(output_fname)
 
 
 def electrodes_2d_scatter_plot(pos):
@@ -1311,6 +1366,10 @@ def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='ele
     return ret
 
 
+def call_main(args):
+    return pu.run_on_subjects(args, main)
+
+
 def main(subject, remote_subject_dir, args, flags):
     utils.make_dir(op.join(ELECTRODES_DIR, subject))
     utils.make_dir(op.join(MMVT_DIR, subject))
@@ -1360,8 +1419,9 @@ def main(subject, remote_subject_dir, args, flags):
         legend_name = 'electrodes{}_coloring_legend.jpg'.format('_bipolar' if args.bipolar else '')
         flags['show_image'] = utils.show_image(op.join(MMVT_DIR, subject, 'coloring', legend_name))
 
-    if 'create_raw_data_for_blender' in args.function:# and not args.task is None:
-        flags['create_raw_data_for_blender'] = create_raw_data_for_blender(subject, args)
+    if 'create_raw_data_from_edf' in args.function:# and not args.task is None:
+        flags['create_raw_data_from_edf'] = create_raw_data_from_edf(
+            subject, args, overwrite=args.overwrite_raw_data)
 
     if 'electrodes_inside_the_dura' in args.function:
         flags['electrodes_inside_the_dura'] = check_how_many_electrodes_inside_the_dura(
@@ -1375,6 +1435,10 @@ def main(subject, remote_subject_dir, args, flags):
         flags['create_labels_around_electrodes'] = create_labels_around_electrodes(
             subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_label_r,
             args.overwrite_electrodes_labels, args.n_jobs)
+
+    if 'calc_epochs_power_spectrum' in args.function:
+        flags['calc_epochs_power_spectrum'] = calc_epochs_power_spectrum(
+            subject, args.windows_length, args.windows_shift, args.epoches_nun, args.overwrite_epochs_power_spectrum)
 
     return flags
     # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
@@ -1425,6 +1489,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--factor', help='', required=False, default=1, type=float)
     parser.add_argument('--calc_zscore', help='calc_zscore', required=False, default=0, type=au.is_true)
     parser.add_argument('--channels_names_mismatches', required=False, default='', type=au.str_arr_type)
+    parser.add_argument('--overwrite_raw_data', required=False, default=0, type=au.is_true)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
@@ -1441,6 +1506,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--electrodes_labels_fol_name', required=False, default='electrodes_labels')
     parser.add_argument('--electrodes_label_r', required=False, default=5)
     parser.add_argument('--overwrite_electrodes_labels', help='', required=False, default=False, type=au.is_int)
+
+    parser.add_argument('--windows_length', help='windows length', required=False, default=1000, type=int)
+    parser.add_argument('--windows_shift', help='windows shift', required=False, default=500, type=int)
+    parser.add_argument('--epoches_nun', help='epoches nun', required=False, default=-1, type=int)
+    parser.add_argument('--overwrite_epochs_power_spectrum', help='', required=False, default=False, type=au.is_true)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
