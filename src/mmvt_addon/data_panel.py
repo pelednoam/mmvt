@@ -1139,8 +1139,8 @@ def add_data_to_electrodes_and_parent():
     # self.current_root_path = bpy.path.abspath(bpy.context.scene.conf_path)
     parent_obj = bpy.data.objects['Deep_electrodes']
     base_path = mu.get_user_fol()
-    source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npz'.format(
-        '_bipolar' if bpy.context.scene.bipolar else ''))
+    source_file = glob.glob(op.join(base_path, 'electrodes', 'electrodes{}_data*.npz'.format(
+        '_bipolar' if bpy.context.scene.bipolar else '')))[0]
     # 'avg' if bpy.context.scene.selection_type == 'conds' else 'diff'))
     data, meta = DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_meta_data
     if not data is None and not meta is None:
@@ -1417,10 +1417,11 @@ def init_electrodes_positions_list():
 
 def init_electrodes_data():
     base_path = mu.get_user_fol()
-    source_file = op.join(base_path, 'electrodes', 'electrodes{}_data.npz'.format(
-        '_bipolar' if bpy.context.scene.bipolar else ''))
-    if op.isfile(source_file):
-        DataMakerPanel.electrodes_meta_data = np.load(source_file)
+    source_files = glob.glob(op.join(base_path, 'electrodes', 'electrodes{}_data*.npz'.format(
+        '_bipolar' if bpy.context.scene.bipolar else '')))
+    if len(source_files) > 0:
+        # todo: show all the options
+        DataMakerPanel.electrodes_meta_data = np.load(source_files[0])
         DataMakerPanel.electrodes_data = DataMakerPanel.electrodes_meta_data['data']
         DataMakerPanel.electrodes_data_exist = True
     else:

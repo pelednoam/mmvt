@@ -220,9 +220,9 @@ def calc_source_band_induced_power(args):
             fol = utils.make_dir(op.join(MEG_DIR, task, subject, 'induced_power'))
             output_fnames = glob.glob(op.join(fol, '{}*induced_power*.stc'.format(task)))
             # If another thread is working on this subject / task, continue to another subject / task
-            if len(output_fnames) > 0:
-                done_subjects.append(subject)
-                continue
+            # if len(output_fnames) > 0:
+            #     done_subjects.append(subject)
+            #     continue
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,

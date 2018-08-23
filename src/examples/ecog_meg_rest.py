@@ -18,40 +18,47 @@ def create_electrodes_labels(subject, bipolar=False, labels_fol_name='electrodes
         subject, bipolar, labels_fol_name, label_r, overwrite, n_jobs)
 
 
+def meg_remove_artifcats(subject, raw_fname):
+    meg_args = meg.read_cmd_args(dict(
+        subject=subject, mri_subject=subject,
+        function='remove_artifacts',
+        raw_fname=raw_fname,
+        overwrite_ica=True
+    ))
+    return meg.call_main(meg_args)
+
+
 def meg_preproc(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
-                 meg_remote_dir='', raw_fname='', empty_fname='', cor_fname='', overwrite=False, n_jobs=-1):
+                meg_remote_dir='', empty_fname='', cor_fname='', overwrite=False, n_jobs=-1):
     meg_args = meg.read_cmd_args(dict(
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         remote_subject_meg_dir=meg_remote_dir,
         remote_subject_dir=remote_subject_dir,
-        raw_fname=raw_fname,
         empty_fname=empty_fname,
         cor_fname=cor_fname,
-        function='make_forward_solution,calc_inverse_operator,calc_stc,' + # calc_epochs,calc_evokes
-                 'calc_labels_avg_per_condition,calc_labels_min_max',
+        function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator',
         use_demi_events=True,
         windows_length=10000,
         windows_shift=5000,
+        power_line_notch_widths=5,
         using_auto_reject=False,
-        reject=False,
+        # reject=False,
         use_empty_room_for_noise_cov=True,
         read_only_from_annot=False,
+        overwrite_epochs=overwrite,
         overwrite_evoked=overwrite,
-        overwrite_fwd=overwrite,
-        overwrite_inv=overwrite,
-        overwrite_stc=overwrite,
-        overwrite_labels_data=overwrite,
         n_jobs=n_jobs
     ))
     return meg.call_main(meg_args)
 
 
-def calc_electrodes_labels_power_spectrum(subject, atlas, inv_method, em, overwrite=False, n_jobs=-1):
+def calc_meg_power_spectrum(subject, atlas, inv_method, em, overwrite=False, n_jobs=-1):
     meg_args = meg.read_cmd_args(dict(
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         function='calc_labels_power_spectrum',
+        max_epochs_num=20,
         overwrite_labels_power_spectrum=overwrite,
         n_jobs=n_jobs
     ))
@@ -76,25 +83,42 @@ def calc_electrodes_power_spectrum(subject, edf_name, overwrite=False):
     electrodes.call_main(elecs_args)
 
 
-def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mean_flip'):
-    meg_ps_dict = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'meg', 'rest_{}_{}_power_spectrum.npz'.format(
-        inv_method, em))))
-    elecs_ps_dict = utils.Bag(np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(
-        inv_method, em))))
+def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mean_flip', low_freq=None, high_freq=None,
+                                              do_plot=True, overwrite=False):
+    # https://martinos.org/mne/dev/generated/mne.time_frequency.psd_array_welch.html
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_data_power_spectrum_comparison.npz')
+    # if op.isfile(output_fname) and not overwrite:
+    #     return True
 
+    meg_ps_dict = utils.Bag(
+        np.load(op.join(MMVT_DIR, subject, 'meg', 'rest_{}_{}_power_spectrum.npz'.format(inv_method, em))))
+    elecs_ps_dict = utils.Bag(
+        np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(inv_method, em))))
     meg_ps = meg_ps_dict.power_spectrum.squeeze().mean(axis = 0)
     elecs_ps = elecs_ps_dict.power_spectrum.squeeze().mean(axis=0)
     meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps, kind='cubic')
     elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps, kind='cubic')
 
-    min_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies)]))
-    max_freq = int(min([max(meg_ps_dict.frequencies), max(elecs_ps_dict.frequencies)]))
-    freqs_num = max_freq - min_freq + 1
-    frequencies = np.linspace(min_freq, max_freq, num=freqs_num, endpoint=True)
+    if low_freq is None:
+        low_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies)]))
+    if high_freq is None:
+        high_freq = int(min([max(meg_ps_dict.frequencies), max(elecs_ps_dict.frequencies)]))
+    freqs_num = high_freq - low_freq + 1
+    frequencies = np.linspace(low_freq, high_freq, num=freqs_num, endpoint=True)
 
     meg_ps_inter = meg_func(frequencies)
     elecs_ps_inter = elecs_func(frequencies)
-    plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter)
+    if do_plot:
+        plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter)
+
+    electrodes_meta_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_meta_data.npz')
+    elecs_dict = utils.Bag(np.load(electrodes_meta_fname))
+    labels = elecs_dict.names
+
+    data = np.zeros((len(labels), len(frequencies), 2))
+    data[:, :, 0] = elecs_ps_inter
+    data[:, :, 1] = meg_ps_inter
+    np.savez(output_fname, data=data, names=labels, conditions=['grid_rest', 'meg_rest'])
 
 
 def plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter):
@@ -134,25 +158,28 @@ if __name__ == '__main__':
     cor_fname = op.join(remote_subject_dir, 'mri', 'T1-neuromag', 'sets', 'COR-naoro-171130.fif') # Can be found automatically
     empty_fname = op.join(meg_remote_dir, 'empty_room_raw.fif')
     inv_method, em = 'MNE', 'mean_flip'
-    overwrite_meg, overwrite_electrodes_labels, overwrite_labels_power_spectrum = False, False, False
+    overwrite_meg, overwrite_electrodes_labels, overwrite_labels_power_spectrum = True, False, True
 
     bipolar = False
     labels_fol_name = atlas = 'electrodes_labels'
     label_r = 5
 
     edf_name = 'SDohaseIIday2'
+    low_freq, high_freq = 0, 80
 
     if args.function == 'create_electrodes_labels':
         create_electrodes_labels(
             args.subject, bipolar, labels_fol_name, label_r, overwrite_electrodes_labels, args.n_jobs)
+    elif args.function == 'meg_remove_artifcats':
+        meg_remove_artifcats(args.subject, raw_fname)
     elif args.function == 'meg_preproc':
         meg_preproc(
-            args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir,raw_fname, empty_fname,
+            args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir, empty_fname,
             cor_fname, overwrite_meg, args.n_jobs)
-    elif args.function == 'calc_electrodes_labels_power_spectrum':
-        calc_electrodes_labels_power_spectrum(
+    elif args.function == 'calc_meg_power_spectrum':
+        calc_meg_power_spectrum(
             args.subject, atlas, inv_method, em, overwrite_labels_power_spectrum, args.n_jobs)
     elif args.function == 'calc_electrodes_power_spectrum':
         calc_electrodes_power_spectrum(args.subject, edf_name)
     elif args.function == 'combine_meg_and_electrodes_power_spectrum':
-        combine_meg_and_electrodes_power_spectrum(args.subject, inv_method, em)
+        combine_meg_and_electrodes_power_spectrum(args.subject, inv_method, em, low_freq, high_freq)

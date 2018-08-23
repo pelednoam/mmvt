@@ -260,7 +260,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  power_line_freq=60, epo_fname='', task='', windows_length=1000, windows_shift=500,
                  windows_num=0, overwrite_epochs=False, eve_template='*eve.fif', raw_fname='',
                  using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
-                 ar_n_interpolates=None, bad_ar_threshold = 0.5, use_demi_events=False, n_jobs=6):
+                 ar_n_interpolates=None, bad_ar_threshold = 0.5, use_demi_events=False, notch_widths=None, n_jobs=6):
     epo_fname = get_epo_fname(epo_fname)
     if op.isfile(epo_fname) and not overwrite_epochs:
         epochs = mne.read_epochs(epo_fname)
@@ -279,7 +279,8 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         reject_dict = None
     # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
     if remove_power_line_noise:
-        raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
+        raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq),
+                         notch_widths=notch_widths, picks=picks)
         # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
     if read_events_from_file:
         events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
@@ -433,7 +434,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
         args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template,
         args.using_auto_reject, args.ar_compute_thresholds_method, args.ar_consensus_percs,
-        args.ar_n_interpolates, args.bad_ar_threshold, args.use_demi_events, args.n_jobs)
+        args.ar_n_interpolates, args.bad_ar_threshold, args.use_demi_events, args.power_line_notch_widths, args.n_jobs)
 
 
 def calc_epochs_wrapper(
@@ -443,7 +444,7 @@ def calc_epochs_wrapper(
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
         windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname='', eve_template='*eve.fif',
         using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
-        ar_n_interpolates=None, bad_ar_threshold=0.5, use_demi_events=False, n_jobs=6):
+        ar_n_interpolates=None, bad_ar_threshold=0.5, use_demi_events=False, notch_widths=None, n_jobs=6):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
@@ -474,7 +475,7 @@ def calc_epochs_wrapper(
                 pick_eeg, pick_eog, reject, reject_grad, reject_mag, reject_eog, remove_power_line_noise,
                 power_line_freq, epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
                 eve_template, raw_fname, using_auto_reject, ar_compute_thresholds_method, ar_consensus_percs,
-                ar_n_interpolates, bad_ar_threshold, use_demi_events, n_jobs)
+                ar_n_interpolates, bad_ar_threshold, use_demi_events, notch_widths, n_jobs)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -490,16 +491,12 @@ def calc_epochs_wrapper(
 
 @utils.tryit()
 def calc_labels_power_spectrum(
-        subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'], mri_subject='', subjects_dir='',
-        mmvt_dir='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
+        subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'], max_epochs_num=0,
+        mri_subject='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
         add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial',
         epochs=None, src=None, overwrite=False, n_jobs=6):
     if mri_subject == '':
         mri_subject = subject
-    if subjects_dir == '':
-        subjects_dir = SUBJECTS_MRI_DIR
-    if mmvt_dir == '':
-        mmvt_dir = MMVT_DIR
     if inv_fname == '':
         inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
     epo_fname = get_epo_fname(epo_fname)
@@ -507,7 +504,7 @@ def calc_labels_power_spectrum(
         extract_modes = [extract_modes]
     events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
     lambda2 = 1.0 / snr ** 2
-    fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'meg'))
+    fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
     power_spectrum = None
     first_time = True
     for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
@@ -518,7 +515,7 @@ def calc_labels_power_spectrum(
 
         if first_time:
             first_time = False
-            labels = lu.read_labels(mri_subject, subjects_dir, atlas, surf_name=surf_name, n_jobs=n_jobs)
+            labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, surf_name=surf_name, n_jobs=n_jobs)
             inverse_operator, src = get_inv_src(inv_fname, src)
 
         if epochs is None:
@@ -539,7 +536,10 @@ def calc_labels_power_spectrum(
             epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
         now, epochs_num = time.time(), len(epochs)
+        epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
         for epoch_ind, label_ts in enumerate(labels_ts):
+            if epoch_ind > epochs_num:
+                break
             utils.time_to_go(now, epoch_ind, epochs_num, runs_num_to_print=10)
             frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
             if power_spectrum is None:
@@ -3594,7 +3594,7 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
         ica = read_ica(ica_fname)
     else:
         ica = ICA(n_components=n_components, method=method)
-        raw.filter(1, 45, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+        raw.filter(1, 100, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
                    filter_length='10s', phase='zero-double')
         picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                                stim=False, exclude='bads')
@@ -3998,7 +3998,7 @@ def main(tup, remote_subject_dir, org_args, flags=None):
         flags['remove_artifacts'] = remove_artifacts(
             n_max_ecg=args.ica_n_max_ecg, n_max_eog=args.ica_n_max_eog, n_components=args.ica_n_components,
             method=args.ica_method, remove_from_raw=args.remove_artifacts_from_raw, overwrite_ica=args.overwrite_ica,
-            overwrite_raw=args.ica_overwrite_raw)
+            overwrite_raw=args.ica_overwrite_raw, raw_fname=args.raw_fname)
 
     if 'morph_stc' in args.function:
         flags['morph_stc'] = morph_stc(
@@ -4018,8 +4018,8 @@ def main(tup, remote_subject_dir, org_args, flags=None):
 
     if 'calc_labels_power_spectrum' in args.function:
         flags['calc_labels_power_spectrum'] = calc_labels_power_spectrum(
-            subject, args.atlas, conditions, inverse_method, args.extract_mode, MRI_SUBJECT, SUBJECTS_MRI_DIR,
-            MMVT_DIR, args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.max_epochs_num, MRI_SUBJECT,
+            args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.surf_name,
             overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
 
@@ -4062,6 +4062,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--average_per_event', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--set_eeg_reference', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--max_epochs_num', help='', required=False, default=0, type=int)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_sensors', help='overwrite_sensors', required=False, default=0, type=au.is_true)
@@ -4085,6 +4086,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
+    parser.add_argument('--power_line_notch_widths', help='notch_widths', required=False, default=None,
+                        type=au.float_or_none)
     parser.add_argument('--stim_channels', help='stim_channels', required=False, default='STI001', type=au.str_arr_type)
     parser.add_argument('--reject', help='reject trials', required=False, default=1, type=au.is_true)
     parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)

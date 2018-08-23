@@ -1783,7 +1783,7 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
         lists = [glob.glob(op.join(parent_fol, '**', namebase_with_ext(gb)), recursive=True) for gb in glob_pattern]
         files = list(itertools.chain.from_iterable(lists))
         if exclude_pattern != '':
-            exclude_glob_patterns = [op.join(parent_fol, exclude_pattern) if get_parent_fol(g) == '' else g for g in glob_pattern]
+            exclude_glob_patterns = [op.join(parent_fol, exclude_pattern)] # if get_parent_fol(g) == '' else g for g in glob_pattern]
             excludes = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in exclude_glob_patterns]
             excludes = list(itertools.chain.from_iterable(excludes))
             files = list(set(files) - set(excludes))
@@ -2091,7 +2091,7 @@ def find_recursive(fol, name):
     return files
 
 
-def power_spectrum(x, fs, scaling='spectrum'):
+def power_spectrum(x, fs, scaling='density'):
     r'''
     Estimate power spectral density using Welch's method.
 
@@ -2123,6 +2123,6 @@ def power_spectrum(x, fs, scaling='spectrum'):
     '''
 
     from scipy import signal
-    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling='spectrum') # 1024
+    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling='scaling') # 1024
     linear_spectrum = np.log(np.sqrt(Pxx_spec))
     return frequencies, linear_spectrum #[Hz] / [V RMS]
