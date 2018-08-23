@@ -538,7 +538,9 @@ def calc_labels_power_spectrum(
         stcs = mne.minimum_norm.apply_inverse_epochs(
             epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
+        now, epochs_num = time.time(), len(epochs)
         for epoch_ind, label_ts in enumerate(labels_ts):
+            utils.time_to_go(now, epoch_ind, epochs_num, runs_num_to_print=10)
             frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
             if power_spectrum is None:
                 power_spectrum = np.zeros((len(epochs), len(labels), len(frequencies), len(events)))
