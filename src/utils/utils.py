@@ -1460,9 +1460,42 @@ def set_exe_permissions(fpath):
     os.chmod(fpath, 0o744)
 
 
+# def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
+#     import xlrd
+#     import csv
+#     wb = xlrd.open_workbook(xlsx_fname)
+#     sheet_num = 0
+#     if len(wb.sheets()) > 1 and sheet_name == '':
+#         print('More than one sheet in the xlsx file:')
+#         for ind, sh in enumerate(wb.sheets()):
+#             print('{}) {}'.format(ind + 1, sh.name))
+#         sheet_num = input('Which one do you want to load (1, 2, ...)? ')
+#         while not is_int(sheet_num):
+#             print('Please enter a valid integer')
+#             sheet_num = input('Which one do you want to load (1, 2, ...)? ')
+#         sheet_num = int(sheet_num) - 1
+#     if sheet_name != '':
+#         sh = wb.sheet_by_name(sheet_name)
+#     else:
+#         sh = wb.sheets()[sheet_num]
+#     print('Converting sheet "{}" to csv'.format(sh.name))
+#     with open(csv_fname, 'w') as csv_file:
+#         wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+#         for rownum in range(sh.nrows):
+#             wr.writerow([val for val in sh.row_values(rownum)])
+#             # csv_file.write(b','.join([str(val).encode('utf_8') for val in sh.row_values(rownum)]) + b'\n')
+
 def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
-    import xlrd
     import csv
+    print('Converting xlsx to csv')
+    with open(csv_fname, 'w') as csv_file:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        for line in xlsx_reader(xlsx_fname, sheet_name):
+            wr.writerow(line)
+
+
+def xlsx_reader(xlsx_fname, sheet_name=''):
+    import xlrd
     wb = xlrd.open_workbook(xlsx_fname)
     sheet_num = 0
     if len(wb.sheets()) > 1 and sheet_name == '':
@@ -1478,12 +1511,8 @@ def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
         sh = wb.sheet_by_name(sheet_name)
     else:
         sh = wb.sheets()[sheet_num]
-    print('Converting sheet "{}" to csv'.format(sh.name))
-    with open(csv_fname, 'w') as csv_file:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
-        for rownum in range(sh.nrows):
-            wr.writerow([val for val in sh.row_values(rownum)])
-            # csv_file.write(b','.join([str(val).encode('utf_8') for val in sh.row_values(rownum)]) + b'\n')
+    for rownum in range(sh.nrows):
+        yield sh.row_values(rownum)
 
 
 def get_all_subjects(subjects_dir, prefix, exclude_substr):
