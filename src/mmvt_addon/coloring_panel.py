@@ -1243,7 +1243,7 @@ def color_manually():
             continue
         color_rgb = list(map(float, color_rgb))
         if bpy.data.objects.get(obj_name, None) is not None:
-            bpy.data.objects[obj_name].hide = np.all(color_rgb == [1, 1, 1])
+            bpy.data.objects[obj_name].hide = bpy.data.objects[obj_name].hide_render = np.all(color_rgb == [1, 1, 1])
         if len(line) == 5:
             values.append(float(line[4]))
         # if isinstance(color_name, list) and len(color_name) == 1:
