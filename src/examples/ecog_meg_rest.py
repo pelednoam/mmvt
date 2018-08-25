@@ -78,7 +78,7 @@ def calc_electrodes_power_spectrum(subject, edf_name, overwrite=False):
         windows_length=10, # s
         windows_shift=5,
         # epoches_nun=1000,
-        overwrite_epochs_power_spectrum=overwrite
+        overwrite_power_spectrum=overwrite
     ))
     electrodes.call_main(elecs_args)
 
@@ -158,8 +158,8 @@ if __name__ == '__main__':
     cor_fname = op.join(remote_subject_dir, 'mri', 'T1-neuromag', 'sets', 'COR-naoro-171130.fif') # Can be found automatically
     empty_fname = op.join(meg_remote_dir, 'empty_room_raw.fif')
     inv_method, em = 'MNE', 'mean_flip'
-    overwrite_meg, overwrite_electrodes_labels, overwrite_labels_power_spectrum = True, False, True
-
+    overwrite_meg, overwrite_electrodes_labels = True, False
+    overwrite_labels_power_spectrum, overwrite_power_spectrum = True, True
     bipolar = False
     labels_fol_name = atlas = 'electrodes_labels'
     label_r = 5
@@ -180,6 +180,6 @@ if __name__ == '__main__':
         calc_meg_power_spectrum(
             args.subject, atlas, inv_method, em, overwrite_labels_power_spectrum, args.n_jobs)
     elif args.function == 'calc_electrodes_power_spectrum':
-        calc_electrodes_power_spectrum(args.subject, edf_name)
+        calc_electrodes_power_spectrum(args.subject, edf_name, overwrite_power_spectrum)
     elif args.function == 'combine_meg_and_electrodes_power_spectrum':
         combine_meg_and_electrodes_power_spectrum(args.subject, inv_method, em, low_freq, high_freq)

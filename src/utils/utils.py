@@ -2152,6 +2152,6 @@ def power_spectrum(x, fs, scaling='density'):
     '''
 
     from scipy import signal
-    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling='scaling') # 1024
+    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling=scaling) # 1024
     linear_spectrum = np.log(np.sqrt(Pxx_spec))
     return frequencies, linear_spectrum #[Hz] / [V RMS]

@@ -3,7 +3,6 @@ from functools import partial
 import os.path as op
 import os
 import shutil
-import mne
 import scipy.io as sio
 import scipy
 from collections import defaultdict, OrderedDict, Iterable
@@ -11,10 +10,11 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import traceback
 import glob
-import mne.io
 import math
-from tqdm import tqdm
+import time
+import mne
 from mne.filter import notch_filter
+import mne.io
 from scipy.spatial.distance import cdist
 
 from src.utils import utils
@@ -985,7 +985,7 @@ def get_data_and_meta(subject):
         return data, meta_data
     
     
-def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epoches_nun=-1, overwrite=False):
+def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epoches_nun=-1, overwrite=False, n_jobs=-1):
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz')
     if op.isfile(output_fname) and not overwrite:
         return True
@@ -1005,16 +1005,16 @@ def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epoches_n
     for win_ind in range(epoches_nun):
         demi_epochs[win_ind] = [int(win_ind * windows_shift * sfreq), int(sfreq * (win_ind * windows_shift + windows_length))]
 
-    for epoch_ind, demi_epoch in tqdm(enumerate(demi_epochs)):
-        frequencies, linear_spectrum = utils.power_spectrum(data[:, demi_epoch[0]:demi_epoch[1]], sfreq)
+    now = time.time()
+    for epoch_ind, demi_epoch in enumerate(demi_epochs):
+        utils.time_to_go(now, epoch_ind, len(demi_epochs), runs_num_to_print=10)
+        # frequencies, linear_spectrum = utils.power_spectrum(data[:, demi_epoch[0]:demi_epoch[1]], sfreq)
+        psds, freqs = mne.time_frequency.psd_array_welch(
+            data[:, demi_epoch[0]:demi_epoch[1]], sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
         if power_spectrum is None:
-            power_spectrum = np.zeros((len(demi_epochs), electrodes_num, len(frequencies)))
-        try:
-            power_spectrum[epoch_ind] = linear_spectrum
-        except:
-            print('asdf')
-    # power_spectrum = np.mean(power_spectrum, axis=0)
-    np.savez(output_fname, power_spectrum=power_spectrum, frequencies=frequencies)
+            power_spectrum = np.zeros((len(demi_epochs), electrodes_num, len(freqs)))
+            power_spectrum[epoch_ind] = psds
+    np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     return op.isfile(output_fname)
 
 
@@ -1438,10 +1438,10 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'calc_epochs_power_spectrum' in args.function:
         flags['calc_epochs_power_spectrum'] = calc_epochs_power_spectrum(
-            subject, args.windows_length, args.windows_shift, args.epoches_nun, args.overwrite_epochs_power_spectrum)
+            subject, args.windows_length, args.windows_shift, args.epoches_nun, args.overwrite_power_spectrum,
+            args.n_jobs)
 
     return flags
-    # check_montage_and_electrodes_names('/homes/5/npeled/space3/MMVT/mg79/mg79.sfp', '/homes/5/npeled/space3/inaivu/data/mg79_ieeg/angelique/electrode_names.txt')
 
 
 def read_cmd_args(argv=None):
@@ -1510,7 +1510,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--windows_length', help='windows length', required=False, default=1000, type=int)
     parser.add_argument('--windows_shift', help='windows shift', required=False, default=500, type=int)
     parser.add_argument('--epoches_nun', help='epoches nun', required=False, default=-1, type=int)
-    parser.add_argument('--overwrite_epochs_power_spectrum', help='', required=False, default=False, type=au.is_true)
+    parser.add_argument('--overwrite_power_spectrum', help='', required=False, default=False, type=au.is_true)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

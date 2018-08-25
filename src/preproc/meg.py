@@ -541,11 +541,12 @@ def calc_labels_power_spectrum(
             if epoch_ind > epochs_num:
                 break
             utils.time_to_go(now, epoch_ind, epochs_num, runs_num_to_print=10)
-            frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
+            # frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
+            psds, freqs = mne.time_frequency.psd_array_welch(label_ts, sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
             if power_spectrum is None:
-                power_spectrum = np.zeros((len(epochs), len(labels), len(frequencies), len(events)))
-            power_spectrum[epoch_ind, :, :, cond_ind] = linear_spectrum
-        np.savez(output_fname, power_spectrum=power_spectrum, frequencies=frequencies)
+                power_spectrum = np.zeros((len(epochs), len(labels), len(freqs), len(events)))
+            power_spectrum[epoch_ind, :, :, cond_ind] = psds
+        np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     return True
 
 
