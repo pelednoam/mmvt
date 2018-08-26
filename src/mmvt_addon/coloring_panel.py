@@ -1214,7 +1214,7 @@ def color_manually():
         object_added = False
         if line[0].startswith('atlas'):
             atlas = line[0].split('=')[-1].strip()
-            other_atals_labels = [l.name for l in mu.read_labels_from_annots(atlas)]
+            atals_labels = [l.name for l in mu.read_labels_from_annots(atlas)]
             # atlas_labels_rh[atlas] = mu.read_labels_from_annots(atlas, hemi='rh')
             # atlas_labels_lh[atlas] = mu.read_labels_from_annots(atlas, hemi='lh')
             # if len(atlas_labels_rh[atlas]) + len(atlas_labels_lh[atlas]) == 0:
@@ -1256,7 +1256,7 @@ def color_manually():
             if len(line) >= 3 and isinstance(line[2], str) or atlas != '':
                 line_atlas = line[2] if len(line) >= 3 and not mu.is_float(line[2]) else atlas
                 other_atals_labels, object_added = find_atlas_labels(
-                    obj_name, line_atlas, color_rgb, other_atals_labels)
+                    obj_name, line_atlas, color_rgb, other_atals_labels, atals_labels)
             if object_added:
                 continue
 
@@ -1336,7 +1336,7 @@ def find_atlas_labels(obj_name, atlas, color_rgb, other_atals_labels, atlas_labe
         if label_obj_name not in atlas_labels:
             label_obj_name = '_'.join(re.split('\W+', label_obj_name)).lower()
         for atlas_label_name in atlas_labels:
-            if label_obj_name.lower() in '_'.join(re.split('\W+', atlas_label_name)).lower():
+            if '_'.join(re.split('\W+', label_obj_name)).lower() == '_'.join(re.split('\W+', atlas_label_name)).lower():
                 other_atals_labels[atlas].append((atlas_label_name, color_rgb))
                 object_added = True
     return other_atals_labels, object_added

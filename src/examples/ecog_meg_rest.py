@@ -6,6 +6,7 @@ import scipy.interpolate
 from src.utils import utils
 from src.preproc import meg as meg
 from src.preproc import electrodes
+from src.utils import labels_utils as lu
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -16,6 +17,10 @@ def create_electrodes_labels(subject, bipolar=False, labels_fol_name='electrodes
         label_r=5, overwrite=False, n_jobs=-1):
     return electrodes.create_labels_around_electrodes(
         subject, bipolar, labels_fol_name, label_r, overwrite, n_jobs)
+
+
+def create_atlas_coloring(subject, labels_fol_name='electrodes_labels', n_jobs=-1):
+    return lu.create_atlas_coloring(subject, labels_fol_name, n_jobs)
 
 
 def meg_remove_artifcats(subject, raw_fname):
@@ -41,7 +46,7 @@ def meg_preproc(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_lab
         use_demi_events=True,
         windows_length=10000,
         windows_shift=5000,
-        power_line_notch_widths=5,
+        # power_line_notch_widths=5,
         using_auto_reject=False,
         # reject=False,
         use_empty_room_for_noise_cov=True,
@@ -58,7 +63,7 @@ def calc_meg_power_spectrum(subject, atlas, inv_method, em, overwrite=False, n_j
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         function='calc_labels_power_spectrum',
-        max_epochs_num=20,
+        max_epochs_num=100,
         overwrite_labels_power_spectrum=overwrite,
         n_jobs=n_jobs
     ))
@@ -94,10 +99,11 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
         np.load(op.join(MMVT_DIR, subject, 'meg', 'rest_{}_{}_power_spectrum.npz'.format(inv_method, em))))
     elecs_ps_dict = utils.Bag(
         np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(inv_method, em))))
-    meg_ps = meg_ps_dict.power_spectrum.squeeze().mean(axis = 0)
-    elecs_ps = elecs_ps_dict.power_spectrum.squeeze().mean(axis=0)
-    meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps, kind='cubic')
-    elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps, kind='cubic')
+    # Power Spectral Density (dB)
+    meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze().mean(axis=0))
+    elecs_ps = 10 * np.log10(elecs_ps_dict.power_spectrum.squeeze().mean(axis=0))
+    meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps)#, kind='cubic')
+    elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps)#, kind='cubic')
 
     if low_freq is None:
         low_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies)]))
@@ -107,7 +113,9 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
     frequencies = np.linspace(low_freq, high_freq, num=freqs_num, endpoint=True)
 
     meg_ps_inter = meg_func(frequencies)
+    meg_ps_inter -= np.mean(meg_ps_inter)
     elecs_ps_inter = elecs_func(frequencies)
+    elecs_ps_inter -= np.mean(elecs_ps_inter)
     if do_plot:
         plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter)
 
@@ -146,6 +154,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
+    args.n_jobs = utils.get_n_jobs(args.n_jobs)
 
     remote_subject_dir = [d for d in [
         '/autofs/space/megraid_clinical/MEG-MRI/seder/freesurfer/{}'.format(args.subject),
@@ -165,11 +174,13 @@ if __name__ == '__main__':
     label_r = 5
 
     edf_name = 'SDohaseIIday2'
-    low_freq, high_freq = 0, 80
+    low_freq, high_freq = 1, 40
 
     if args.function == 'create_electrodes_labels':
         create_electrodes_labels(
             args.subject, bipolar, labels_fol_name, label_r, overwrite_electrodes_labels, args.n_jobs)
+    elif args.function == 'create_atlas_coloring':
+        create_atlas_coloring(args.subject, labels_fol_name, args.n_jobs)
     elif args.function == 'meg_remove_artifcats':
         meg_remove_artifcats(args.subject, raw_fname)
     elif args.function == 'meg_preproc':

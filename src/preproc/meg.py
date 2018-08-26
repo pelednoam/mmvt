@@ -242,6 +242,7 @@ def calcNoiseCov(epoches):
 
 
 def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
+    # todo: replace with mne.event.make_fixed_length_events
     import math
     T = raw.last_samp - raw.first_samp + 1
     if epoches_nun == 0:
@@ -3585,7 +3586,7 @@ def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, c
 
 
 def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fname='', overwrite_ica=False,
-            do_plot=False, examine_ica=False, n_jobs=6):
+            do_plot=False, examine_ica=False, filter_low_freq=1, filter_high_freq=150, n_jobs=6):
     from mne.preprocessing import read_ica
     if raw_fname == '':
         raw_fname = RAW
@@ -3595,7 +3596,7 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
         ica = read_ica(ica_fname)
     else:
         ica = ICA(n_components=n_components, method=method)
-        raw.filter(1, 100, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+        raw.filter(low_freq, high_freq, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
                    filter_length='10s', phase='zero-double')
         picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                                stim=False, exclude='bads')
