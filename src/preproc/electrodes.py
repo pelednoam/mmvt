@@ -15,6 +15,7 @@ import time
 import mne
 from mne.filter import notch_filter
 import mne.io
+import nibabel as nib
 from scipy.spatial.distance import cdist
 
 from src.utils import utils
@@ -1250,7 +1251,220 @@ def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=Non
 
 
 def snap_electrodes_to_dural(subject, electrodes_group_name):
-    pass
+    # todo: of over all the electrodes, check the groups, and run the snap in a loop only for the grids
+    names, pos = read_electrodes_file(subject, False)
+    return snap_electrodes_to_surface(
+        subject, pos, electrodes_group_name, SUBJECTS_DIR)
+
+
+def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
+                               max_steps=40000, giveup_steps=10000,
+                               init_temp=1e-3, temperature_exponent=1,
+                               deformation_constant=1.):
+    '''
+    Transforms electrodes from surface space to positions on the surface
+    using a simulated annealing "snapping" algorithm which minimizes an
+    objective energy function as in Dykstra et al. 2012
+
+    Parameters
+    ----------
+    electrodes : List(Electrode)
+        List of electrodes with the surf_coords attribute filled. Caller is
+        responsible for filtering these into grids if desired.
+    subjects_dir : Str | None
+        The freesurfer subjects_dir. If this is None, it is assumed to be the
+        $SUBJECTS_DIR environment variable. Needed to access the dural
+        surface.
+    subject : Str | None
+        The freesurfer subject. If this is None, it is assumed to be the
+        $SUBJECT environment variable. Needed to access the dural surface.
+    max_steps : Int
+        The maximum number of steps for the Simulated Annealing algorithm.
+        Adding more steps usually causes the algorithm to take longer. The
+        default value is 40000. max_steps can be smaller than giveup_steps,
+        in which case giveup_steps is ignored
+    giveup_steps : Int
+        The number of steps after which, with no change of objective function,
+        the algorithm gives up. A higher value may cause the algorithm to
+        take longer. The default value is 10000.
+    init_temp : Float
+        The initial annealing temperature. Default value 1e-3
+    temperature_exponent : Float
+        The exponentially determined temperature when making random changes.
+        The value is Texp0 = 1 - Texp/H where H is max_steps
+    deformation_constant : Float
+        A constant to weight the deformation term of the energy cost. When 1,
+        the deformation and displacement are weighted equally. When less than
+        1, there is assumed to be considerable deformation and the spring
+        condition is weighted more highly than the deformation condition.
+
+    There is no return value. The 'snap_coords' attribute will be used to
+    store the snapped locations of the electrodes
+    '''
+
+    n = elecs_pos.shape[0]
+    e_init = np.array(elecs_pos)
+    snapped_electrodes = np.zeros(elecs_pos.shape)
+
+    # first set the alpha parameter exactly as described in Dykstra 2012.
+    # this parameter controls which electrodes have virtual springs connected.
+    # this may not matter but doing it is fast and safe
+    alpha = np.zeros((n, n))
+    init_dist = cdist(e_init, e_init)
+
+    neighbors = []
+
+    k_nei = np.min([n, 6])
+    for i in range(n):
+        neighbor_vec = init_dist[:, i]
+        # take 5 highest neighbors
+        h5, = np.where(np.logical_and(neighbor_vec < np.sort(neighbor_vec)[k_nei - 1],
+                                      neighbor_vec != 0))
+
+        neighbors.append(h5)
+
+    neighbors = np.squeeze(neighbors)
+
+    # get distances from each neighbor pairing
+    neighbor_dists = []
+    for i in range(n):
+        neighbor_dists.append(init_dist[i, neighbors[i]])
+
+    neighbor_dists = np.hstack(neighbor_dists)
+
+    # collect distance into histogram of resolution 0.2
+    max = np.max(np.around(neighbor_dists))
+    min = np.min(np.around(neighbor_dists))
+
+    hist, _ = np.histogram(neighbor_dists, bins=int((max - min) / 2), range=(min, max))
+
+    fundist = np.argmax(hist) * 2 + min + 1
+
+    # apply fundist to alpha matrix
+    alpha_tweak = 1.75
+
+    for i in range(n):
+        neighbor_vec = init_dist[:, i]
+        neighbor_vec[i] = np.inf
+
+        neighbors = np.where(neighbor_vec < fundist * alpha_tweak)
+
+        if len(neighbors) > 5:
+            neighbors = np.where(neighbor_vec < np.sort(neighbor_vec)[5])
+
+        if len(neighbors) == 0:
+            closest = np.argmin(neighbors)
+            neighbors = np.where(neighbor_vec < closest * alpha_tweak)
+
+        alpha[i, neighbors] = 1
+
+        for j in range(i):
+            if alpha[j, i] == 1:
+                alpha[i, j] = 1
+            if alpha[i, j] == 1:
+                alpha[j, i] = 1
+
+    # alpha is set, now do the annealing
+    def energycost(e_new, e_old, alpha):
+        n = len(alpha)
+
+        dist_new = cdist(e_new, e_new)
+        dist_old = cdist(e_old, e_old)
+
+        H = 0
+        for i in range(n):
+            H += deformation_constant * float(cdist([e_new[i]], [e_old[i]]))
+            for j in range(i):
+                H += alpha[i, j] * (dist_new[i, j] - dist_old[i, j]) ** 2
+        return H
+
+    # load the dural surface locations
+    lh_dura, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', 'lh.dural'))
+    rh_dura, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', 'rh.dural'))
+    dura = np.vstack((lh_dura, rh_dura))
+
+    max_deformation = 3
+    deformation_choice = 50
+
+    # adjust annealing parameters
+    # H determines maximal number of steps
+    H = max_steps
+    # Texp determines the steepness of temperateure gradient
+    Texp = 1 - temperature_exponent / H
+    # T0 sets the initial temperature and scales the energy term
+    T0 = init_temp
+    # Hbrk sets a break point for the annealing
+    Hbrk = giveup_steps
+
+    h = 0;
+    hcnt = 0
+    lowcost = mincost = 1e6
+
+    # start e-init as greedy snap to surface
+    e_snapgreedy = dura[np.argmin(cdist(dura, e_init), axis=0)]
+
+    e = np.array(e_snapgreedy).copy()
+    emin = np.array(e_snapgreedy).copy()
+
+    # the annealing schedule continues until the maximum number of moves
+    while h < H:
+        h += 1
+        hcnt += 1
+        # terminate if no moves have been made for a long time
+        if hcnt > Hbrk:
+            break
+
+        # current temperature
+        T = T0 * (Texp ** h)
+
+        # select a random electrode
+        e1 = np.random.randint(n)
+        # transpose it with a *nearby* point on the surface
+
+        # find distances from this point to all points on the surface
+        dists = np.squeeze(cdist(dura, [e[e1]]))
+        # take a distance within the minimum 5X
+
+        mindist = np.sort(dists)[deformation_choice]
+        candidate_verts, = np.where(dists < mindist * max_deformation)
+        choice_vert = candidate_verts[np.random.randint(len(candidate_verts))]
+        e_tmp = e.copy()
+        e_tmp[e1] = dura[choice_vert]
+
+        cost = energycost(e_tmp, e_init, alpha)
+
+        if cost < lowcost or np.random.random() < np.exp(-(cost - lowcost) / T):
+            e = e_tmp
+            lowcost = cost
+
+            if cost < mincost:
+                emin = e
+                mincost = cost
+                print('step %i ... current lowest cost = %f' % (h, mincost))
+                hcnt = 0
+
+            if mincost == 0:
+                break
+        if h % 200 == 0:
+            print('%s %s: step %i ... final lowest cost = %f' % (subject, grid_name, h, mincost))
+
+    # return the emin coordinates
+    for ind, loc in enumerate(emin):
+        snapped_electrodes[ind] = loc
+
+    lh_pia, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', 'lh.pial'))
+    rh_pia, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', 'rh.pial'))
+    pia = np.vstack((lh_pia, rh_pia))
+    e_pia = np.argmin(cdist(pia, emin), axis=0)
+
+    snapped_electrodes_pial = np.zeros(snapped_electrodes.shape)
+    for ind, soln in enumerate(e_pia):
+        snapped_electrodes_pial[ind] = pia[soln]
+
+    output_fname = op.join(subjects_dir, subject, 'electrodes', '{}_snap_electrodes'.format(grid_name))
+    np.savez(output_fname, snapped_electrodes=snapped_electrodes, snapped_electrodes_pial=snapped_electrodes_pial)
+    print('The snap electrodes were saved to {}'.format(output_fname))
+    return snapped_electrodes, snapped_electrodes_pial
 
 
 def set_args(args):
@@ -1441,6 +1655,9 @@ def main(subject, remote_subject_dir, args, flags):
             subject, args.windows_length, args.windows_shift, args.epoches_nun, args.overwrite_power_spectrum,
             args.n_jobs)
 
+    if 'snap_electrodes_to_dural' in args.function:
+        flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(subject, args.grid_to_snap)
+
     return flags
 
 
@@ -1490,6 +1707,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_zscore', help='calc_zscore', required=False, default=0, type=au.is_true)
     parser.add_argument('--channels_names_mismatches', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--overwrite_raw_data', required=False, default=0, type=au.is_true)
+    parser.add_argument('--grid_to_snap', required=False, default='G')
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')
