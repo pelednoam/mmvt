@@ -410,7 +410,15 @@ def create_material(name, diffuseColors, transparency, copy_material=True):
     bpy.context.active_object.active_material.diffuse_color = diffuseColors[:3]
 
 
+
+
 def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False):
+    def get_child_names(obj):
+        for child in obj.children:
+            names.add(child.name)
+            if child.children:
+                get_child_names(child)
+
     bpy.ops.object.select_all(action='DESELECT')
     obj = bpy.data.objects.get(parent_obj_name)
     if obj is None:
@@ -418,12 +426,6 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
     obj.animation_data_clear()
     # Go over all the objects in the hierarchy like @zeffi suggested:
     names = set()
-    def get_child_names(obj):
-        for child in obj.children:
-            names.add(child.name)
-            if child.children:
-                get_child_names(child)
-
     get_child_names(obj)
     names = names - set(exceptions)
     # Remove the animation from the all the child objects

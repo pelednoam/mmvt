@@ -964,7 +964,13 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
             continue
         cur_obj = bpy.data.objects[obj_name]
         fcurves_num = mu.count_fcurves(cur_obj)
-        if fcurves_num < len(conditions):
+        if fcurves_num == len(conditions):
+            fcurve_len = len(cur_obj.animation_data.action.fcurves[0].keyframe_points)
+            if fcurve_len != T:
+                cur_obj.animation_data_clear()
+        else:
+            fcurve_len = T
+        if fcurves_num < len(conditions) or fcurve_len != T:
             cur_obj.animation_data_clear()
             for cond_ind, cond_str in enumerate(conditions):
                 cond_str = cond_str.astype(str) if not isinstance(cond_str, str) else cond_str

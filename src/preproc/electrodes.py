@@ -155,9 +155,10 @@ def grid_or_depth(data):
     # return np.array(electrodes_group_type)
 
 
-def read_electrodes_file(subject, bipolar, postfix=''):
-    electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}_positions{}.npz'.format(
-        '_bipolar' if bipolar else '', '_{}'.format(postfix) if postfix != '' else ''))
+def read_electrodes_file(subject, bipolar, postfix='', snap=False):
+    electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}{}_positions{}.npz'.format(
+        '_bipolar' if bipolar else '', '_snap' if snap else '',
+        '_{}'.format(postfix) if postfix != '' else ''))
     # electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', electrodes_fname)
     if not op.isfile(electrodes_fname):
         print('{}: No npz file, trying to read xls file'.format(subject))
@@ -1558,8 +1559,8 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
 
 
 def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='electrodes_labels',
-        label_r=5, overwrite=False, n_jobs=4):
-    names, pos = read_electrodes_file(subject, bipolar)
+        label_r=5, snap=False, overwrite=False, n_jobs=4):
+    names, pos = read_electrodes_file(subject, bipolar, snap=snap)
     labels_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', labels_fol_name))
     verts = {}
     for hemi in utils.HEMIS:
@@ -1647,7 +1648,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'create_labels_around_electrodes' in args.function:
         flags['create_labels_around_electrodes'] = create_labels_around_electrodes(
-            subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_label_r,
+            subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_label_r, args.snap,
             args.overwrite_electrodes_labels, args.n_jobs)
 
     if 'calc_epochs_power_spectrum' in args.function:
@@ -1708,6 +1709,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--channels_names_mismatches', required=False, default='', type=au.str_arr_type)
     parser.add_argument('--overwrite_raw_data', required=False, default=0, type=au.is_true)
     parser.add_argument('--grid_to_snap', required=False, default='G')
+    parser.add_argument('--snap', required=False, default=0, type=au.is_true)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')

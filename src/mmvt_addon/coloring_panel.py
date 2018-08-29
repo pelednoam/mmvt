@@ -1196,7 +1196,7 @@ def color_manually():
         rand_colors = itertools.cycle(mu.get_distinct_colors(no_colors_lines_num))
     subs_names = [o.name for o in bpy.data.objects['Subcortical_structures'].children]
     cortex_labels_names = [o.name for o in bpy.data.objects['Cortex-lh'].children + bpy.data.objects['Cortex-rh'].children]
-    other_atals_labels = defaultdict(list)
+    other_atals_labels, atals_labels = defaultdict(list), []
     if coloring_name.startswith('_labels_'):
         atlas = coloring_name.split('_')[2]
         obj_type = mu.OBJ_TYPE_LABEL

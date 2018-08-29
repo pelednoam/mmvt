@@ -14,9 +14,9 @@ MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 
 def create_electrodes_labels(subject, bipolar=False, labels_fol_name='electrodes_labels',
-        label_r=5, overwrite=False, n_jobs=-1):
+        label_r=5, snap=False, overwrite=False, n_jobs=-1):
     return electrodes.create_labels_around_electrodes(
-        subject, bipolar, labels_fol_name, label_r, overwrite, n_jobs)
+        subject, bipolar, labels_fol_name, label_r, snap, overwrite, n_jobs)
 
 
 def create_atlas_coloring(subject, labels_fol_name='electrodes_labels', n_jobs=-1):
@@ -63,7 +63,7 @@ def calc_meg_power_spectrum(subject, atlas, inv_method, em, overwrite=False, n_j
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         function='calc_labels_power_spectrum',
-        max_epochs_num=100,
+        max_epochs_num=20,
         overwrite_labels_power_spectrum=overwrite,
         n_jobs=n_jobs
     ))
@@ -166,19 +166,21 @@ if __name__ == '__main__':
     raw_fname = raw_fnames[0] if len(raw_fnames) > 0 else ''
     cor_fname = op.join(remote_subject_dir, 'mri', 'T1-neuromag', 'sets', 'COR-naoro-171130.fif') # Can be found automatically
     empty_fname = op.join(meg_remote_dir, 'empty_room_raw.fif')
-    inv_method, em = 'MNE', 'mean_flip'
+    inv_method = 'dSPM' # 'MNE'
+    em = 'mean_flip'
     overwrite_meg, overwrite_electrodes_labels = True, False
     overwrite_labels_power_spectrum, overwrite_power_spectrum = True, True
     bipolar = False
     labels_fol_name = atlas = 'electrodes_labels'
     label_r = 5
+    snap = True
 
     edf_name = 'SDohaseIIday2'
-    low_freq, high_freq = 1, 40
+    low_freq, high_freq = 1, 100
 
     if args.function == 'create_electrodes_labels':
         create_electrodes_labels(
-            args.subject, bipolar, labels_fol_name, label_r, overwrite_electrodes_labels, args.n_jobs)
+            args.subject, bipolar, labels_fol_name, label_r, snap, overwrite_electrodes_labels, args.n_jobs)
     elif args.function == 'create_atlas_coloring':
         create_atlas_coloring(args.subject, labels_fol_name, args.n_jobs)
     elif args.function == 'meg_remove_artifcats':

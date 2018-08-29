@@ -820,6 +820,8 @@ def create_atlas_coloring(subject, atlas, n_jobs=-1):
                 labels_colors_rgb[label_inv_name], labels_colors_names[label_inv_name] = next(colors_rgb_and_names)
         print('Writing to {} and {}'.format(coloring_fname, coloring_names_fname))
         with open(coloring_fname, 'w') as colors_file, open(coloring_names_fname, 'w') as col_names_file:
+            if atlas != '':
+                colors_file.write('atlas={}\n'.format(atlas))
             for label in labels:
                 label_inv_name = get_label_hemi_invariant_name(label.name)
                 color_rgb = labels_colors_rgb[label_inv_name]
