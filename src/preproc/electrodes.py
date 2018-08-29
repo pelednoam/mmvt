@@ -987,7 +987,7 @@ def get_data_and_meta(subject):
         return data, meta_data
     
     
-def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epoches_nun=-1, overwrite=False, n_jobs=-1):
+def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epochs_num=-1, overwrite=False, n_jobs=-1):
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz')
     if op.isfile(output_fname) and not overwrite:
         return True
@@ -1001,21 +1001,28 @@ def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epoches_n
     sfreq = 1 / (meta_data.times[1] - meta_data.times[0])
     T = data.shape[1] / sfreq #meta_data.times[-1] - meta_data.times[0]
     electrodes_num = data.shape[0]
-    if epoches_nun == -1:
-        epoches_nun = math.floor((T - windows_length) / windows_shift + 1)
-    demi_epochs = np.zeros((epoches_nun, 2), dtype=np.uint32)
-    for win_ind in range(epoches_nun):
+    if epochs_num == -1:
+        epochs_num = math.floor((T - windows_length) / windows_shift + 1)
+    demi_epochs = np.zeros((epochs_num, 2), dtype=np.uint32)
+    for win_ind in range(epochs_num):
         demi_epochs[win_ind] = [int(win_ind * windows_shift * sfreq), int(sfreq * (win_ind * windows_shift + windows_length))]
 
     now = time.time()
+    fmin, fmax = 0., 100.
+    bandwidth = 2.  # bandwidth of the windows in Hz
+
     for epoch_ind, demi_epoch in enumerate(demi_epochs):
+        if epoch_ind == epochs_num:
+            break
         utils.time_to_go(now, epoch_ind, len(demi_epochs), runs_num_to_print=10)
         # frequencies, linear_spectrum = utils.power_spectrum(data[:, demi_epoch[0]:demi_epoch[1]], sfreq)
-        psds, freqs = mne.time_frequency.psd_array_welch(
-            data[:, demi_epoch[0]:demi_epoch[1]], sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
+        psds, freqs = mne.time_frequency.psd_array_multitaper(
+            data[:, demi_epoch[0]:demi_epoch[1]], sfreq, fmin, fmax, bandwidth, n_jobs=n_jobs)
+        # psds, freqs = mne.time_frequency.psd_array_welch(
+        #     data[:, demi_epoch[0]:demi_epoch[1]], sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
         if power_spectrum is None:
-            power_spectrum = np.zeros((len(demi_epochs), electrodes_num, len(freqs)))
-            power_spectrum[epoch_ind] = psds
+            power_spectrum = np.empty((epochs_num, electrodes_num, len(freqs)))
+        power_spectrum[epoch_ind] = psds
     np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     return op.isfile(output_fname)
 
@@ -1653,7 +1660,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'calc_epochs_power_spectrum' in args.function:
         flags['calc_epochs_power_spectrum'] = calc_epochs_power_spectrum(
-            subject, args.windows_length, args.windows_shift, args.epoches_nun, args.overwrite_power_spectrum,
+            subject, args.windows_length, args.windows_shift, args.epochs_num, args.overwrite_power_spectrum,
             args.n_jobs)
 
     if 'snap_electrodes_to_dural' in args.function:
@@ -1729,7 +1736,7 @@ def read_cmd_args(argv=None):
 
     parser.add_argument('--windows_length', help='windows length', required=False, default=1000, type=int)
     parser.add_argument('--windows_shift', help='windows shift', required=False, default=500, type=int)
-    parser.add_argument('--epoches_nun', help='epoches nun', required=False, default=-1, type=int)
+    parser.add_argument('--epochs_num', help='epoches nun', required=False, default=-1, type=int)
     parser.add_argument('--overwrite_power_spectrum', help='', required=False, default=False, type=au.is_true)
 
     pu.add_common_args(parser)

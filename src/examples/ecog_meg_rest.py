@@ -83,7 +83,7 @@ def calc_electrodes_power_spectrum(subject, edf_name, overwrite=False):
         preload=True,
         windows_length=10, # s
         windows_shift=5,
-        # epoches_nun=1000,
+        epochs_num=20,
         overwrite_power_spectrum=overwrite
     ))
     electrodes.call_main(elecs_args)
@@ -101,21 +101,26 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
     elecs_ps_dict = utils.Bag(
         np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(inv_method, em))))
     # Power Spectral Density (dB)
-    # meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze().mean(axis=0))
-    meg_ps = meg_ps_dict.power_spectrum.squeeze().mean(axis=0)
-    elecs_ps = 10 * np.log10(elecs_ps_dict.power_spectrum.squeeze().mean(axis=0))
+    meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze())
+    # plot_power_spectrum(meg_ps, meg_ps_dict.frequencies, 'MEG')
+    meg_ps = meg_ps.mean(axis=0)
+    elecs_ps = 10 * np.log10(elecs_ps_dict.power_spectrum.squeeze())
+    # plot_power_spectrum(elecs_ps, elecs_ps_dict.frequencies, 'electrodes')
+    elecs_ps = elecs_ps.mean(axis=0)
     meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps)#, kind='cubic')
     elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps)#, kind='cubic')
 
     low_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies), low_freq]))
     high_freq = int(min([max(meg_ps_dict.frequencies), max(elecs_ps_dict.frequencies), high_freq]))
     freqs_num = high_freq - low_freq + 1
-    frequencies = np.linspace(low_freq, high_freq, num=freqs_num, endpoint=True)
+    frequencies = np.linspace(low_freq, high_freq, num=freqs_num * 10, endpoint=True)
 
     meg_ps_inter = meg_func(frequencies)
     meg_ps_inter -= np.mean(meg_ps_inter)
     elecs_ps_inter = elecs_func(frequencies)
     elecs_ps_inter -= np.mean(elecs_ps_inter)
+
+    plot_all_results(meg_ps_inter, elecs_ps_inter, frequencies)
 
     electrodes_meta_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_meta_data.npz')
     elecs_dict = utils.Bag(np.load(electrodes_meta_fname))
@@ -128,6 +133,30 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
 
     if do_plot:
         plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter)
+
+
+def plot_power_spectrum(psds, freqs, title):
+    f, ax = plt.subplots()
+    psds_mean = psds.mean(0)
+    psds_std = psds.std(0)
+    for ps_mean, ps_std in zip(psds_mean, psds_std):
+        ax.plot(freqs, ps_mean, color='k')
+        ax.fill_between(freqs, ps_mean - ps_std, ps_mean + ps_std, color='k', alpha=.5)
+    ax.set(title='{} Multitaper PSD'.format(title), xlabel='Frequency',
+           ylabel='Power Spectral Density (dB)')
+    plt.show()
+
+
+def plot_all_results(meg_ps_inter, elecs_ps_inter, frequencies):
+    fig, ax = plt.subplots(nrows=8, ncols=8, sharex='col', sharey='row')
+    ind = 0
+    for row in ax:
+        for col in row:
+            col.plot(frequencies, meg_ps_inter[ind], 'b')
+            col.plot(frequencies, elecs_ps_inter[ind], 'r')
+            col.set_xlim([0, 60])
+            ind += 1
+    plt.show()
 
 
 def plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter):
