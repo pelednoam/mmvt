@@ -537,34 +537,35 @@ def calc_labels_power_spectrum(
         bandwidth = 2.  # bandwidth of the windows in Hz
         epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
         now = time.time()
-        for label_ind, label in enumerate(labels):
-            utils.time_to_go(now, label_ind, len(labels), 1)
-            stcs = mne.minimum_norm.compute_source_psd_epochs(
-                epochs, inverse_operator, lambda2=lambda2, method=inverse_method, fmin=fmin, fmax=fmax,
-                bandwidth=bandwidth, label=label, return_generator=True)
-            for epoch_ind, stc in enumerate(stcs):
-                if epoch_ind >= epochs_num:
-                    break
-                if power_spectrum is None:
-                    freqs = stc.times
-                    print('Freqs: {}'.format(freqs))
-                    power_spectrum = np.zeros((len(epochs), len(labels), len(freqs), len(events)))
-                power_spectrum[epoch_ind, :, :, cond_ind] = np.mean(stc.data, axis=0)
 
-        # stcs = mne.minimum_norm.apply_inverse_epochs(
-        #     epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
-        # labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
-        # now, epochs_num = time.time(), len(epochs)
-        # epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
-        # for epoch_ind, label_ts in enumerate(labels_ts):
-        #     if epoch_ind > epochs_num:
-        #         break
-        #     utils.time_to_go(now, epoch_ind, epochs_num, runs_num_to_print=10)
-        #     # frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
-        #     psds, freqs = mne.time_frequency.psd_array_welch(label_ts, sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
-        #     if power_spectrum is None:
-        #         power_spectrum = np.zeros((len(epochs), len(labels), len(freqs), len(events)))
-        #     power_spectrum[epoch_ind, :, :, cond_ind] = psds
+        # for label_ind, label in enumerate(labels):
+        #     utils.time_to_go(now, label_ind, len(labels), 1)
+        #     stcs = mne.minimum_norm.compute_source_psd_epochs(
+        #         epochs, inverse_operator, lambda2=lambda2, method=inverse_method, fmin=fmin, fmax=fmax,
+        #         bandwidth=bandwidth, label=label, return_generator=True)
+        #     for epoch_ind, stc in enumerate(stcs):
+        #         if epoch_ind >= epochs_num:
+        #             break
+        #         if power_spectrum is None:
+        #             freqs = stc.times
+        #             print('Freqs: {}'.format(freqs))
+        #             power_spectrum = np.zeros((epochs_num, len(labels), len(freqs), len(events)))
+        #         power_spectrum[epoch_ind, label_ind, :, cond_ind] = np.mean(stc.data, axis=0)
+
+        stcs = mne.minimum_norm.apply_inverse_epochs(
+            epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
+        labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
+        now, epochs_num = time.time(), len(epochs)
+        epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
+        for epoch_ind, label_ts in enumerate(labels_ts):
+            if epoch_ind == epochs_num:
+                break
+            utils.time_to_go(now, epoch_ind, epochs_num, runs_num_to_print=10)
+            # frequencies, linear_spectrum = utils.power_spectrum(label_ts, sfreq)
+            psds, freqs = mne.time_frequency.psd_array_welch(label_ts, sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
+            if power_spectrum is None:
+                power_spectrum = np.zeros((epochs_num, len(labels), len(freqs), len(events)))
+            power_spectrum[epoch_ind, :, :, cond_ind] = psds
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     return True
 

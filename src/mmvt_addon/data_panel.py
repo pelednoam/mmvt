@@ -966,8 +966,6 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
         fcurves_num = mu.count_fcurves(cur_obj)
         if fcurves_num == len(conditions):
             fcurve_len = len(cur_obj.animation_data.action.fcurves[0].keyframe_points)
-            if fcurve_len != T:
-                cur_obj.animation_data_clear()
         else:
             fcurve_len = T
         if fcurves_num < len(conditions) or fcurve_len != T:

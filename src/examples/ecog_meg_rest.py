@@ -2,6 +2,7 @@ import os.path as op
 import glob
 import numpy as np
 import scipy.interpolate
+import matplotlib.pyplot as plt
 
 from src.utils import utils
 from src.preproc import meg as meg
@@ -100,15 +101,14 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
     elecs_ps_dict = utils.Bag(
         np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(inv_method, em))))
     # Power Spectral Density (dB)
-    meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze().mean(axis=0))
+    # meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze().mean(axis=0))
+    meg_ps = meg_ps_dict.power_spectrum.squeeze().mean(axis=0)
     elecs_ps = 10 * np.log10(elecs_ps_dict.power_spectrum.squeeze().mean(axis=0))
     meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps)#, kind='cubic')
     elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps)#, kind='cubic')
 
-    if low_freq is None:
-        low_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies)]))
-    if high_freq is None:
-        high_freq = int(min([max(meg_ps_dict.frequencies), max(elecs_ps_dict.frequencies)]))
+    low_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies), low_freq]))
+    high_freq = int(min([max(meg_ps_dict.frequencies), max(elecs_ps_dict.frequencies), high_freq]))
     freqs_num = high_freq - low_freq + 1
     frequencies = np.linspace(low_freq, high_freq, num=freqs_num, endpoint=True)
 
@@ -116,8 +116,6 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
     meg_ps_inter -= np.mean(meg_ps_inter)
     elecs_ps_inter = elecs_func(frequencies)
     elecs_ps_inter -= np.mean(elecs_ps_inter)
-    if do_plot:
-        plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter)
 
     electrodes_meta_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_meta_data.npz')
     elecs_dict = utils.Bag(np.load(electrodes_meta_fname))
@@ -128,9 +126,11 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
     data[:, :, 1] = meg_ps_inter
     np.savez(output_fname, data=data, names=labels, conditions=['grid_rest', 'meg_rest'])
 
+    if do_plot:
+        plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter)
+
 
 def plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, elecs_ps, elecs_ps_inter):
-    import matplotlib.pyplot as plt
     plt.figure()
     plt.plot(meg_ps_dict.frequencies, meg_ps.T)
     plt.title('Original MEG PS')
@@ -143,6 +143,32 @@ def plot_results(meg_ps_dict, elecs_ps_dict, frequencies, meg_ps, meg_ps_inter, 
     plt.figure()
     plt.plot(frequencies, elecs_ps_inter.T)
     plt.title('Interpolate Electrodes PS')
+    plt.show()
+
+
+def compare_ps_from_epochs_and_from_time_series(subject):
+    ps1 = np.load(op.join(MMVT_DIR, subject, 'meg', 'rest_dSPM_mean_flip_power_spectrum_from_epochs.npz'))['power_spectrum'].mean(axis=0).squeeze()
+    ps2 = 10 * np.log10(np.load(op.join(MMVT_DIR, subject, 'meg', 'rest_dSPM_mean_flip_power_spectrum.npz'))['power_spectrum'].mean(axis=0).squeeze())
+    plt.figure()
+    plt.plot(ps1.T)
+    plt.title('power spectrum from epochs')
+    plt.xlim([0, 100])
+    plt.figure()
+    plt.plot(ps2.T)
+    plt.title('power spectrum from time series')
+    plt.xlim([0, 100])
+    plt.show()
+
+
+def check_mmvt_file(subject):
+    input_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_data_power_spectrum_comparison.npz')
+    d = utils.Bag(np.load(input_fname))
+    plt.figure()
+    plt.plot(d.data[:, :, 0].T)
+    plt.title(d.conditions[0])
+    plt.figure()
+    plt.plot(d.data[:, :, 1].T)
+    plt.title(d.conditions[1])
     plt.show()
 
 
@@ -196,3 +222,7 @@ if __name__ == '__main__':
         calc_electrodes_power_spectrum(args.subject, edf_name, overwrite_power_spectrum)
     elif args.function == 'combine_meg_and_electrodes_power_spectrum':
         combine_meg_and_electrodes_power_spectrum(args.subject, inv_method, em, low_freq, high_freq)
+    elif args.function == 'check_mmvt_file':
+        check_mmvt_file(args.subject)
+    elif args.function == 'compare_ps_from_epochs_and_from_time_series':
+        compare_ps_from_epochs_and_from_time_series(args.subject)
