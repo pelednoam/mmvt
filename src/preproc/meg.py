@@ -555,7 +555,6 @@ def calc_labels_power_spectrum(
         stcs = mne.minimum_norm.apply_inverse_epochs(
             epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
-        now, epochs_num = time.time(), len(epochs)
         epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
         for epoch_ind, label_ts in enumerate(labels_ts):
             if epoch_ind == epochs_num:
@@ -567,6 +566,9 @@ def calc_labels_power_spectrum(
                 label_ts, sfreq, fmin, fmax, bandwidth, n_jobs=n_jobs)
             if power_spectrum is None:
                 power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
+            # for k in range(64):
+            #     plt.psd(label_ts[k].squeeze(), 256 * 8, sfreq)
+            # plt.xlim([0, 100])
             power_spectrum[epoch_ind, :, :, cond_ind] = psds
 
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
