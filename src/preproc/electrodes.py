@@ -1005,8 +1005,8 @@ def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epochs_nu
         epochs_num = math.floor((T - windows_length) / windows_shift + 1)
     demi_epochs = np.zeros((epochs_num, 2), dtype=np.uint32)
     for win_ind in range(epochs_num):
-        demi_epochs[win_ind] = [int(win_ind * windows_shift * sfreq), int(sfreq * (win_ind * windows_shift + windows_length))]
-
+        demi_epochs[win_ind] = [int(win_ind * windows_shift * sfreq),
+                                int(sfreq * (win_ind * windows_shift + windows_length))]
     now = time.time()
     fmin, fmax = 0., 100.
     bandwidth = 2.  # bandwidth of the windows in Hz
@@ -1015,11 +1015,8 @@ def calc_epochs_power_spectrum(subject, windows_length, windows_shift, epochs_nu
         if epoch_ind == epochs_num:
             break
         utils.time_to_go(now, epoch_ind, len(demi_epochs), runs_num_to_print=10)
-        # frequencies, linear_spectrum = utils.power_spectrum(data[:, demi_epoch[0]:demi_epoch[1]], sfreq)
         psds, freqs = mne.time_frequency.psd_array_multitaper(
             data[:, demi_epoch[0]:demi_epoch[1]], sfreq, fmin, fmax, bandwidth, n_jobs=n_jobs)
-        # psds, freqs = mne.time_frequency.psd_array_welch(
-        #     data[:, demi_epoch[0]:demi_epoch[1]], sfreq, n_fft=256*8, n_jobs=n_jobs, verbose=False)
         if power_spectrum is None:
             power_spectrum = np.empty((epochs_num, electrodes_num, len(freqs)))
         power_spectrum[epoch_ind] = psds

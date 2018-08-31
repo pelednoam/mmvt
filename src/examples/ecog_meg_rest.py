@@ -64,6 +64,7 @@ def calc_meg_power_spectrum(subject, atlas, inv_method, em, overwrite=False, n_j
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         function='calc_labels_power_spectrum',
+        pick_ori='normal',  # very important for calculation of the power spectrum
         max_epochs_num=20,
         overwrite_labels_power_spectrum=overwrite,
         n_jobs=n_jobs
@@ -102,13 +103,13 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
         np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(inv_method, em))))
     # Power Spectral Density (dB)
     meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze())
-    # plot_power_spectrum(meg_ps, meg_ps_dict.frequencies, 'MEG')
+    plot_power_spectrum(meg_ps, meg_ps_dict.frequencies, 'MEG')
     meg_ps = meg_ps.mean(axis=0)
     elecs_ps = 10 * np.log10(elecs_ps_dict.power_spectrum.squeeze())
-    # plot_power_spectrum(elecs_ps, elecs_ps_dict.frequencies, 'electrodes')
+    plot_power_spectrum(elecs_ps, elecs_ps_dict.frequencies, 'electrodes')
     elecs_ps = elecs_ps.mean(axis=0)
-    meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps)#, kind='cubic')
-    elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps)#, kind='cubic')
+    meg_func = scipy.interpolate.interp1d(meg_ps_dict.frequencies, meg_ps)
+    elecs_func = scipy.interpolate.interp1d(elecs_ps_dict.frequencies, elecs_ps)
 
     low_freq = int(max([min(meg_ps_dict.frequencies), min(elecs_ps_dict.frequencies), low_freq]))
     high_freq = int(min([max(meg_ps_dict.frequencies), max(elecs_ps_dict.frequencies), high_freq]))
@@ -116,9 +117,9 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
     frequencies = np.linspace(low_freq, high_freq, num=freqs_num * 10, endpoint=True)
 
     meg_ps_inter = meg_func(frequencies)
-    meg_ps_inter -= np.mean(meg_ps_inter)
+    meg_ps_inter = (meg_ps_inter - np.mean(meg_ps_inter)) / np.std(meg_ps_inter)
     elecs_ps_inter = elecs_func(frequencies)
-    elecs_ps_inter -= np.mean(elecs_ps_inter)
+    elecs_ps_inter = (elecs_ps_inter - np.mean(elecs_ps_inter)) / np.std(elecs_ps_inter)
 
     plot_all_results(meg_ps_inter, elecs_ps_inter, frequencies)
 
