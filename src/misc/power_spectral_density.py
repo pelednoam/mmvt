@@ -57,16 +57,13 @@ for i, stc in enumerate(stcs):
 
 psd_avg /= n_epochs
 psd_avg = 10 * np.log10(psd_avg)
-
 freqs = stc.times  # the frequencies are stored here
 
 plt.figure()
-plt.plot(freqs, psd_avg)
-plt.xlabel('Freq (Hz)')
-plt.ylabel('Power Spectral Density')
-plt.title('compute_source_psd_epochs')
+plt.plot(freqs, psd_avg, label='compute_source_psd_epochs')
 
-stc = mne.minimum_norm.apply_inverse_epochs(epochs, inverse_operator, lambda2, method, return_generator=True)
+stc = mne.minimum_norm.apply_inverse_epochs(
+    epochs, inverse_operator, lambda2, method, pick_ori='normal', return_generator=True)
 label_ts = mne.extract_label_time_course(stc, label, inverse_operator['src'], mode=em, return_generator=True)
 psd_avg = 0
 for epoch_ind, label_ts in enumerate(label_ts):
@@ -80,10 +77,8 @@ psd_avg /= n_epochs
 psd_avg = 10 * np.log10(psd_avg)
 
 
-plt.figure()
-plt.plot(freqs, psd_avg)
+plt.plot(freqs, psd_avg, label='psd_array_multitaper on label_ts')
 plt.xlabel('Freq (Hz)')
 plt.ylabel('Power Spectral Density')
-plt.title('psd_array_multitaper on label_ts')
-
+plt.legend()
 plt.show()
