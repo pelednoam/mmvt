@@ -165,12 +165,14 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_Onset-epo.fif'.format(subject, task)),
                 empty_fname=empty_fnames[task],
-                function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,' +
-                         'calc_labels_avg_per_condition,calc_labels_min_max',
+                function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
+                         # 'calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),
                 cor_fname=cors[task].format(subject=subject),
                 average_per_event=False,
                 data_per_task=True,
+                pick_ori='normal', # very important for calculation of the power spectrum
+                fmin=0, fmax=200, bandwidth=2.0,
                 ica_overwrite_raw=False,
                 normalize_data=False,
                 t_min=times[0], t_max=times[1],

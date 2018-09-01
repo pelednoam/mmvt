@@ -492,7 +492,8 @@ def calc_epochs_wrapper(
 
 @utils.tryit()
 def calc_labels_power_spectrum(
-        subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'], max_epochs_num=0,
+        subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
+        fmin=0, fmax=200, bandwidth=2., max_epochs_num=0,
         mri_subject='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
         add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial',
         epochs=None, src=None, overwrite=False, n_jobs=6):
@@ -533,9 +534,8 @@ def calc_labels_power_spectrum(
             print('annot create EEG average reference projector (no EEG data found)')
         if inverse_operator is None:
             inverse_operator, src = get_inv_src(inv_fname, src, cond_name)
-        fmin, fmax = 0., 100.
-        bandwidth = 2.  # bandwidth of the windows in Hz
-        epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
+
+        # epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
         now = time.time()
 
         # for label_ind, label in enumerate(labels):
@@ -4044,8 +4044,8 @@ def main(tup, remote_subject_dir, org_args, flags=None):
 
     if 'calc_labels_power_spectrum' in args.function:
         flags['calc_labels_power_spectrum'] = calc_labels_power_spectrum(
-            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.max_epochs_num, MRI_SUBJECT,
-            args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.fmin, args.fmax, args.bandwidth,
+            args.max_epochs_num, MRI_SUBJECT, args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.surf_name,
             overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
 
@@ -4179,6 +4179,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--bands', required=False, default='')
     parser.add_argument('--calc_inducde_power_per_label', required=False, default=1, type=au.is_true)
     parser.add_argument('--induced_power_normalize_proj', required=False, default=1, type=au.is_true)
+    parser.add_argument('--fmin', required=False, default=0, type=int)
+    parser.add_argument('--fmax', required=False, default=200, type=int)
+    parser.add_argument('--bandwidth', required=False, default=2., type=float)
 
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)

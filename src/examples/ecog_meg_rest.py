@@ -65,7 +65,7 @@ def calc_meg_power_spectrum(subject, atlas, inv_method, em, overwrite=False, n_j
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         function='calc_labels_power_spectrum',
         pick_ori='normal',  # very important for calculation of the power spectrum
-        max_epochs_num=20,
+        # max_epochs_num=20,
         overwrite_labels_power_spectrum=overwrite,
         n_jobs=n_jobs
     ))
@@ -84,7 +84,7 @@ def calc_electrodes_power_spectrum(subject, edf_name, overwrite=False):
         preload=True,
         windows_length=10, # s
         windows_shift=5,
-        epochs_num=20,
+        # epochs_num=20,
         overwrite_power_spectrum=overwrite
     ))
     electrodes.call_main(elecs_args)
@@ -101,8 +101,12 @@ def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mea
         np.load(op.join(MMVT_DIR, subject, 'meg', 'rest_{}_{}_power_spectrum.npz'.format(inv_method, em))))
     elecs_ps_dict = utils.Bag(
         np.load(op.join(MMVT_DIR, subject, 'electrodes', 'power_spectrum.npz'.format(inv_method, em))))
+
     # Power Spectral Density (dB)
     meg_ps = 10 * np.log10(meg_ps_dict.power_spectrum.squeeze())
+    mask = np.where(meg_ps_dict.frequencies > 8)[0]
+    np.argmax(np.sum(meg_ps[:, :, mask], axis=(1, 2)))
+
     plot_power_spectrum(meg_ps, meg_ps_dict.frequencies, 'MEG')
     meg_ps = meg_ps.mean(axis=0)
     elecs_ps = 10 * np.log10(elecs_ps_dict.power_spectrum.squeeze())
