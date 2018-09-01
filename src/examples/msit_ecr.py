@@ -149,12 +149,12 @@ def meg_preproc(args):
         args.subject = subject
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         for task in args.tasks:
-            output_fname = op.join(
-                MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_minmax.npz'.format(
-                    task.lower(), atlas, inv_method, em))
-            if op.isfile(output_fname) and not args.overwrite:
-                print('{} already exist!'.format(output_fname))
-                continue
+            # output_fname = op.join(
+            #     MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_minmax.npz'.format(
+            #         task.lower(), atlas, inv_method, em))
+            # if op.isfile(output_fname) and not args.overwrite:
+            #     print('{} already exist!'.format(output_fname))
+            #     continue
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
@@ -165,7 +165,8 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_Onset-epo.fif'.format(subject, task)),
                 empty_fname=empty_fnames[task],
-                function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
+                function='calc_labels_power_spectrum',
+                # function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
                          # 'calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),
                 cor_fname=cors[task].format(subject=subject),
