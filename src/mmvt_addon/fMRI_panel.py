@@ -642,9 +642,8 @@ def fMRI_draw(self, context):
     user_fol = mu.get_user_fol()
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
+    layout.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
     if not fMRIPanel.fMRI_clusters_files_exist and _addon().coloring.fMRI_constrasts_exist() > 0:
-        row = layout.row(align=True)
-        row.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
         layout.operator(CalcClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
         return
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')

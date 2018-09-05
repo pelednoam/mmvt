@@ -225,7 +225,7 @@ def init_clusters(subject, input_fname):
 
 
 def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0, min_cluster_size=0, clusters_label='',
-                  task='', n_jobs=1):
+                  task='', create_clusters_labels=False, n_jobs=1):
     # contrast_name = contrast_name if volume_name == '' else volume_name
     # volume_name = volume_name if volume_name != '' else contrast_name
     # if input_fol == '':
@@ -268,29 +268,31 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
     print('Saving clusters labels: {}'.format(clusters_labels_output_fname))
     utils.save(clusters_labels, clusters_labels_output_fname)
 
-    clusters_fol = utils.make_dir(
-        op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}'.format(new_atlas_name, atlas)))
-    for cluster_ind, cluster in enumerate(clusters_labels['values']):
-        cluster = utils.Bag(cluster)
-        # cluster: vertices, intersects, name, coordinates, max, hemi, size
-        cluster_label = mne.Label(
-            cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
-        cluster_name = '{}_{:.2f}_{}-{}.label'.format(
-            cluster.name.replace('-{}'.format(cluster_label.hemi), ''), cluster.max, cluster.size, cluster_label.hemi)
-        cluster_label.save(op.join(clusters_fol, cluster_name))
+    if create_clusters_labels:
+        clusters_fol = utils.make_dir(
+            op.join(MMVT_DIR, subject, 'fmri', 'clusters_labels_{}_{}'.format(new_atlas_name, atlas)))
+        for cluster_ind, cluster in enumerate(clusters_labels['values']):
+            cluster = utils.Bag(cluster)
+            # cluster: vertices, intersects, name, coordinates, max, hemi, size
+            cluster_label = mne.Label(
+                cluster.vertices, cluster.coordinates, hemi=cluster.hemi, name=cluster.name, subject=subject)
+            cluster_name = '{}_{:.2f}_{}-{}.label'.format(
+                cluster.name.replace('-{}'.format(cluster_label.hemi), ''), cluster.max, cluster.size,
+                cluster_label.hemi)
+            cluster_label.save(op.join(clusters_fol, cluster_name))
 
-    if len(clusters) > 0:
-        ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, clusters_fol)
-        if ret:
-            annot_files_template = op.join(
-                SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', new_atlas_name))
-            for hemi in utils.HEMIS:
-                annot_fname = annot_files_template.format(hemi=hemi)
-                dest_annot_fname = op.join(clusters_fol, utils.namebase_with_ext(annot_fname))
-                if not op.isfile(dest_annot_fname):
-                    shutil.copy(annot_fname, dest_annot_fname)
-        from src.preproc import anatomy as anat
-        anat.calc_labeles_contours(subject, new_atlas_name, overwrite=True, verbose=False)
+        if len(clusters) > 0:
+            ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, clusters_fol)
+            if ret:
+                annot_files_template = op.join(
+                    SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', new_atlas_name))
+                for hemi in utils.HEMIS:
+                    annot_fname = annot_files_template.format(hemi=hemi)
+                    dest_annot_fname = op.join(clusters_fol, utils.namebase_with_ext(annot_fname))
+                    if not op.isfile(dest_annot_fname):
+                        shutil.copy(annot_fname, dest_annot_fname)
+            from src.preproc import anatomy as anat
+            anat.calc_labeles_contours(subject, new_atlas_name, overwrite=True, verbose=False)
 
     return op.isfile(clusters_labels_output_fname)
 
@@ -1861,7 +1863,7 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'find_clusters'):
         flags['find_clusters'] = find_clusters(
             subject, args.fmri_file_template, args.threshold, args.atlas, args.min_cluster_max,
-            args.min_cluster_size, args.clusters_label, args.task, args.n_jobs)
+            args.min_cluster_size, args.clusters_label, args.task, args.create_clusters_labels,  args.n_jobs)
 
     if 'fmri_pipeline_all' in args.function:
         flags['fmri_pipeline_all'] = fmri_pipeline_all(subject, args.atlas, filter_dic=None)
@@ -1950,6 +1952,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('-n', '--contrast_name', help='contrast map', required=False, default='')
     parser.add_argument('-t', '--task', help='task', required=False, default='')#, type=au.str_arr_type)
     parser.add_argument('--threshold', help='clustering threshold', required=False, default=2, type=float)
+    parser.add_argument('--create_clusters_labels', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fsfast', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--is_pet', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--contrast_template', help='', required=False, default='')
