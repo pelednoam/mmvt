@@ -710,10 +710,12 @@ def fMRI_draw(self, context):
     layout.operator(NearestCluster.bl_idname, text="Nearest cluster", icon='MOD_SKIN')
     # layout.prop(context.scene, 'search_closest_cluster_only_in_filtered', text="Seach only in filtered blobs")
     # layout.operator(LoadMEGData.bl_idname, text="Save as functional ROIs", icon='IPO')
-    # layout.prop(context.scene, 'fmri_blobs_norm_by_percentile', text="Norm by percentiles")
-    # if bpy.context.scene.fmri_blobs_norm_by_percentile:
-    #     layout.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
-    #     layout.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
+    if bpy.context.scene.fmri_more_settings:
+        layout.prop(context.scene, 'fmri_blobs_norm_by_percentile', text="Norm by percentiles")
+        if bpy.context.scene.fmri_blobs_norm_by_percentile:
+            row = layout.row(align=True)
+            row.prop(context.scene, 'fmri_blobs_percentile_min', text="Percentile min")
+            row.prop(context.scene, 'fmri_blobs_percentile_max', text="Percentile max")
     # layout.operator(FindfMRIFilesMinMax.bl_idname, text="Calc minmax for all files", icon='IPO')
     if mu.is_freesurfer_exist and bpy.context.scene.fmri_more_settings:
         layout.operator(LoadVolumefMRIFile.bl_idname, text="Load volume fMRI file", icon='LOAD_FACTORY').filepath = \
