@@ -88,7 +88,8 @@ def _clusters_update():
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
     find_electrodes_in_cluster()
-    mu.rotate_view_to_vertice()
+    if bpy.context.scene.fmri_rotate_view_to_vertice:
+        mu.fmri_rotate_view_to_vertice()
 
 
 def fmri_blobs_percentile_min_update(self, context):
@@ -341,11 +342,14 @@ def fmri_how_to_sort_update(self, context):
 
 
 def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None):
+    if not fMRIPanel.update:
+        return
     fMRIPanel.dont_show_clusters_info = False
     clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
     key = clusters_labels_file
     if key not in fMRIPanel.clusters_labels:
         return
+    fMRIPanel.update = False
     if val_threshold is None:
         val_threshold = bpy.context.scene.fmri_cluster_val_threshold = bpy.context.scene.fmri_clustering_threshold = \
             fMRIPanel.clusters_labels[key]['threshold']
@@ -353,6 +357,7 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
         size_threshold = bpy.context.scene.fmri_cluster_size_threshold
     if clusters_name is None:
         clusters_name = bpy.context.scene.fmri_clustering_filter
+    fMRIPanel.update = True
     # if isinstance(fMRIPanel.clusters_labels[key], dict):
     #     bpy.context.scene.fmri_clustering_threshold = val_threshold = fMRIPanel.clusters_labels[key]['threshold']
     # else:
@@ -716,6 +721,7 @@ def fMRI_draw(self, context):
         row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
         row.prop(context.scene, 'fmri_cluster_contours_color', text="")
         layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
+        layout.prop(context.scene, 'fmri_rotate_view_to_vertice', text='Rotate on update')
 
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     # row = layout.row(align=True)
@@ -903,6 +909,8 @@ try:
     bpy.types.Scene.fmri_more_settings = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.show_only_electrodes_near_cluster = bpy.props.BoolProperty(
         default=False, update=show_only_electrodes_near_cluster_update)
+    bpy.types.Scene.fmri_rotate_view_to_vertice = bpy.props.BoolProperty(
+        default=True, description='Rotate the brain for best view')
 except:
     pass
 
@@ -928,6 +936,7 @@ class fMRIPanel(bpy.types.Panel):
     constrast = {'rh':None, 'lh':None}
     clusters_labels_file_names = []
     clusters_labels_files = []
+    update = True
 
     @classmethod
     def poll(cls, context):
@@ -962,6 +971,7 @@ def init(addon):
     bpy.context.scene.fmri_blobs_norm_by_percentile = True
     bpy.context.scene.plot_fmri_cluster_contours = False
     bpy.context.scene.fmri_only_clusters_with_electrodes = False
+    bpy.context.scene.fmri_rotate_view_to_vertice = True
 
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         # Check if the constrast files exist
