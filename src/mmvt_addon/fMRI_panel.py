@@ -2,6 +2,8 @@ import os.path as op
 import numpy as np
 import glob
 from queue import Empty
+from collections import Counter
+
 try:
     from scipy.spatial.distance import cdist
 except:
@@ -340,17 +342,17 @@ def fmri_how_to_sort_update(self, context):
 
 def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None):
     fMRIPanel.dont_show_clusters_info = False
+    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    key = clusters_labels_file
+    if key not in fMRIPanel.clusters_labels:
+        return
     if val_threshold is None:
-        val_threshold = bpy.context.scene.fmri_cluster_val_threshold
+        val_threshold = bpy.context.scene.fmri_cluster_val_threshold = bpy.context.scene.fmri_clustering_threshold = \
+            fMRIPanel.clusters_labels[key]['threshold']
     if size_threshold is None:
         size_threshold = bpy.context.scene.fmri_cluster_size_threshold
     if clusters_name is None:
         clusters_name = bpy.context.scene.fmri_clustering_filter
-    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
-    # key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
-    key = clusters_labels_file
-    if key not in fMRIPanel.clusters_labels:
-        return
     # if isinstance(fMRIPanel.clusters_labels[key], dict):
     #     bpy.context.scene.fmri_clustering_threshold = val_threshold = fMRIPanel.clusters_labels[key]['threshold']
     # else:
@@ -368,6 +370,15 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
         sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'
         clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
+    clusters_num = {clus:1 for clus in set(fMRIPanel.clusters)}
+    cnt = Counter(fMRIPanel.clusters)
+    for ind, name in enumerate(fMRIPanel.clusters):
+        if cnt[fMRIPanel.clusters[ind]] > 1:
+            num = clusters_num[name]
+            clusters_num[name] += 1
+            new_name = '{}~{}'.format(name, num)
+            fMRIPanel.clusters[ind] = new_name
+            fMRIPanel.lookup[key][new_name] = fMRIPanel.lookup[key][name]
 
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind + 1) for ind, c in enumerate(fMRIPanel.clusters)]
@@ -518,8 +529,11 @@ def calc_colors_ratio(activity):
     else:
         data_max, data_min = get_activity_max_min(activity)
         if data_max == 0 and data_min == 0:
-            print('Both data max and min are zeros!')
-            return 0, 0
+            bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max = 0, 100
+            data_max, data_min = get_activity_max_min(activity)
+            if data_max == 0 and data_min == 0:
+                print('Both data max and min are zeros!')
+                return 0, 0
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_title('fMRI')
     colors_ratio = 256 / (data_max - data_min)
