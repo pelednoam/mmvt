@@ -2,6 +2,8 @@ import os.path as op
 import numpy as np
 import glob
 from queue import Empty
+from collections import Counter
+
 try:
     from scipy.spatial.distance import cdist
 except:
@@ -86,7 +88,8 @@ def _clusters_update():
     _addon().save_cursor_position()
     _addon().create_slices(pos=tkreg_ras)
     find_electrodes_in_cluster()
-    mu.rotate_view_to_vertice()
+    if bpy.context.scene.fmri_rotate_view_to_vertice:
+        mu.fmri_rotate_view_to_vertice()
 
 
 def fmri_blobs_percentile_min_update(self, context):
@@ -339,18 +342,22 @@ def fmri_how_to_sort_update(self, context):
 
 
 def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None):
+    if not fMRIPanel.update:
+        return
     fMRIPanel.dont_show_clusters_info = False
+    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
+    key = clusters_labels_file
+    if key not in fMRIPanel.clusters_labels:
+        return
+    fMRIPanel.update = False
     if val_threshold is None:
-        val_threshold = bpy.context.scene.fmri_cluster_val_threshold
+        val_threshold = bpy.context.scene.fmri_cluster_val_threshold = bpy.context.scene.fmri_clustering_threshold = \
+            fMRIPanel.clusters_labels[key]['threshold']
     if size_threshold is None:
         size_threshold = bpy.context.scene.fmri_cluster_size_threshold
     if clusters_name is None:
         clusters_name = bpy.context.scene.fmri_clustering_filter
-    clusters_labels_file = bpy.context.scene.fmri_clusters_labels_files
-    # key = '{}_{}'.format(clusters_labels_file, bpy.context.scene.fmri_clusters_labels_parcs)
-    key = clusters_labels_file
-    if key not in fMRIPanel.clusters_labels:
-        return
+    fMRIPanel.update = True
     # if isinstance(fMRIPanel.clusters_labels[key], dict):
     #     bpy.context.scene.fmri_clustering_threshold = val_threshold = fMRIPanel.clusters_labels[key]['threshold']
     # else:
@@ -368,6 +375,15 @@ def update_clusters(val_threshold=None, size_threshold=None, clusters_name=None)
         sort_field = 'max' if bpy.context.scene.fmri_how_to_sort == 'tval' else 'size'
         clusters_tup = sorted([(abs(x[sort_field]), cluster_name(x)) for x in fMRIPanel.clusters_labels_filtered])[::-1]
     fMRIPanel.clusters = [x_name for x_size, x_name in clusters_tup]
+    clusters_num = {clus:1 for clus in set(fMRIPanel.clusters)}
+    cnt = Counter(fMRIPanel.clusters)
+    for ind, name in enumerate(fMRIPanel.clusters):
+        if cnt[fMRIPanel.clusters[ind]] > 1:
+            num = clusters_num[name]
+            clusters_num[name] += 1
+            new_name = '{}~{}'.format(name, num)
+            fMRIPanel.clusters[ind] = new_name
+            fMRIPanel.lookup[key][new_name] = fMRIPanel.lookup[key][name]
 
     # fMRIPanel.clusters.sort(key=mu.natural_keys)
     clusters_items = [(c, c, '', ind + 1) for ind, c in enumerate(fMRIPanel.clusters)]
@@ -518,8 +534,11 @@ def calc_colors_ratio(activity):
     else:
         data_max, data_min = get_activity_max_min(activity)
         if data_max == 0 and data_min == 0:
-            print('Both data max and min are zeros!')
-            return 0, 0
+            bpy.context.scene.fmri_blobs_percentile_min, bpy.context.scene.fmri_blobs_percentile_max = 0, 100
+            data_max, data_min = get_activity_max_min(activity)
+            if data_max == 0 and data_min == 0:
+                print('Both data max and min are zeros!')
+                return 0, 0
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_title('fMRI')
     colors_ratio = 256 / (data_max - data_min)
@@ -702,6 +721,7 @@ def fMRI_draw(self, context):
         row.prop(context.scene, 'plot_fmri_cluster_contours', text="Plot cluster contours")
         row.prop(context.scene, 'fmri_cluster_contours_color', text="")
         layout.prop(context.scene, 'plot_fmri_cluster_per_click', text="Listen to left clicks")
+        layout.prop(context.scene, 'fmri_rotate_view_to_vertice', text='Rotate on update')
 
     # layout.prop(context.scene, 'fmri_what_to_plot', expand=True)
     # row = layout.row(align=True)
@@ -889,6 +909,8 @@ try:
     bpy.types.Scene.fmri_more_settings = bpy.props.BoolProperty(default=False)
     bpy.types.Scene.show_only_electrodes_near_cluster = bpy.props.BoolProperty(
         default=False, update=show_only_electrodes_near_cluster_update)
+    bpy.types.Scene.fmri_rotate_view_to_vertice = bpy.props.BoolProperty(
+        default=True, description='Rotate the brain for best view')
 except:
     pass
 
@@ -914,6 +936,7 @@ class fMRIPanel(bpy.types.Panel):
     constrast = {'rh':None, 'lh':None}
     clusters_labels_file_names = []
     clusters_labels_files = []
+    update = True
 
     @classmethod
     def poll(cls, context):
@@ -948,6 +971,7 @@ def init(addon):
     bpy.context.scene.fmri_blobs_norm_by_percentile = True
     bpy.context.scene.plot_fmri_cluster_contours = False
     bpy.context.scene.fmri_only_clusters_with_electrodes = False
+    bpy.context.scene.fmri_rotate_view_to_vertice = True
 
     for file_name, clusters_labels_file in zip(files_names, clusters_labels_files):
         # Check if the constrast files exist

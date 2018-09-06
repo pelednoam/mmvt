@@ -1,11 +1,13 @@
 import argparse
 import shutil
 import os.path as op
+import os
 import glob
 from src.preproc import fMRI as fmri
 from src.utils import utils
 from src.utils import args_utils as au
 from src.utils import preproc_utils as pu
+from src.utils import freesurfer_utils as fu
 
 LINKS_DIR = utils.get_links_dir()
 FMRI_DIR = utils.get_link_dir(utils.get_links_dir(), 'fMRI')
@@ -208,15 +210,24 @@ def project_and_calc_clusters(args):
     if not op.isdir(args.root_fol):
         print('You should first set args.root_fol!')
         return False
+    img_files = [f for f in glob.glob(op.join(args.root_fol, '*.img')) if op.isfile(f)]
+    for img_fname in img_files:
+        mgz_fname = fu.mri_convert_to(img_fname, 'mgz', overwrite=False)
+        if ' ' in utils.namebase(mgz_fname):
+            mgz_new_fname = op.join(
+                utils.get_parent_fol(mgz_fname),
+                utils.namebase_with_ext(mgz_fname).replace(' ', '_').replace(',', '').lower())
+            os.rename(mgz_fname, mgz_new_fname)
     nii_files = [f for f in glob.glob(op.join(args.root_fol, '*'))
                  if op.isfile(f) and utils.file_type(f) in ('nii', 'nii.gz', 'mgz')]
     for fname in nii_files:
-        args = fmri.read_cmd_args(dict(
+        fmri_args = fmri.read_cmd_args(dict(
             subject=args.subject,
             function='project_volume_to_surface,find_clusters',
-            fmri_file_template=fname
+            fmri_file_template=fname,
+            threshold=args.cluster_threshold
         ))
-        pu.run_on_subjects(args, fmri.main)
+        pu.run_on_subjects(fmri_args, fmri.main)
 
 
 def get_subjects_files(args):
@@ -254,5 +265,6 @@ if __name__ == '__main__':
                         default='/space/thibault/1/users/npeled/subjects/{subject}')
     parser.add_argument('-f', '--function', help='function name', required=True)
     parser.add_argument('-r', '--root_fol', help='root folder', required=False, default='')
+    parser.add_argument('--cluster_threshold', required=False, default=2, type=float)
     args = utils.Bag(au.parse_parser(parser))
     locals()[args.function](args)
