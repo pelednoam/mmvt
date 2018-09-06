@@ -2702,6 +2702,34 @@ def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, o
     return ret
 
 
+def create_meg_mesh(subject, excludes=[], overwrite_faces_verts=True):
+    try:
+        from scipy.spatial import Delaunay
+        from src.utils import trig_utils
+        input_file = op.join(MMVT_DIR, subject, 'meg', 'meg_sensors_positions.npz')
+        mesh_ply_fname = op.join(MMVT_DIR, subject, 'meg', 'meg_helmet.ply')
+        faces_verts_out_fname = op.join(MMVT_DIR, subject, 'meg', 'meg_faces_verts.npy')
+        f = np.load(input_file)
+        verts = f['pos']
+        # excluded_inds = [np.where(f['names'] == e)[0] for e in excludes]
+        # verts = np.delete(verts, excluded_inds, 0)
+        verts_tup = [(x, y, z) for x, y, z in verts]
+        tris = Delaunay(verts_tup)
+        faces = tris.convex_hull
+        areas = [trig_utils.poly_area(verts[poly]) for poly in tris.convex_hull]
+        inds = [k for k, s in enumerate(areas) if s > np.percentile(areas, 97)]
+        faces = np.delete(faces, inds, 0)
+        utils.write_ply_file(verts, faces, mesh_ply_fname, True)
+        utils.calc_ply_faces_verts(verts, faces, faces_verts_out_fname, overwrite_faces_verts,
+                                   utils.namebase(faces_verts_out_fname))
+        np.savez(input_file, pos=f['pos'], names=f['names'], tri=faces, excludes=excludes)
+    except:
+        print('Error in create_eeg_mesh!')
+        print(traceback.format_exc())
+        return False
+    return True
+
+
 def find_trans_file(trans_file='', remote_subject_dir='', subject='', subjects_dir=''):
     subject = MRI_SUBJECT if subject == '' else subject
     subject_dir = SUBJECTS_MRI_DIR if subjects_dir == '' else subjects_dir
@@ -4051,6 +4079,9 @@ def main(tup, remote_subject_dir, org_args, flags=None):
 
     if 'fit_ica_on_subjects' in args.function:
         fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
+
+    if 'create_meg_mesh' in args.function:
+        flags['create_meg_mesh'] = create_meg_mesh(subject, excludes=[], overwrite_faces_verts=True)
 
     return flags
 

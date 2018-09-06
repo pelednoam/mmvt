@@ -123,7 +123,7 @@ def main(tup, remote_subject_dir, args, flags):
     conditions, stat = init(subject, args, mri_subject, remote_subject_dir)
 
     if utils.should_run(args, 'read_eeg_sensors_layout'):
-        flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(subject, mri_subject, args)
+        flags['read_eeg_sensors_layout'] = read_eeg_sensors_layout(mri_subject, args)
 
     flags, evoked, epochs = meg.calc_evokes_wrapper(subject, conditions, args, flags, mri_subject=mri_subject)
 

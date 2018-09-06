@@ -1724,12 +1724,41 @@ def color_eeg_helmet(use_abs=None):
     colors_ratio = 256 / (data_max - data_min)
 
     cur_obj = bpy.data.objects['eeg_helmet']
-    # eeg_loc = np.array([eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
-    # hel_loc = np.array([v.co for v in cur_obj.data.vertices])
-    # from scipy.spatial.distance import cdist
-    # indices = np.argmin(cdist(hel_loc, eeg_loc), axis=1)
     data_t = data[ColoringMakerPanel.eeg_helmet_indices, bpy.context.scene.frame_current]
+    activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
+                              colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
+
+def color_meg_helmet(use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
+    fol = mu.get_user_fol()
+    data, meta = get_meg_sensors_data()
+    if bpy.context.scene.meg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.meg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        if data.shape[2] == 1:
+            data = data.squeeze()
+        else:
+            data = np.diff(data, axis=2).squeeze()
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('MEG sensors conditions difference')
+    lookup = np.load(op.join(fol, 'meg', 'meg_faces_verts.npy'))
+    threshold = 0
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+        data_maxmin = max([abs(data_min), abs(data_max)])
+        data_min, data_max = -data_maxmin, data_maxmin
+        _addon().set_colorbar_max_min(data_max, data_min, True)
+    colors_ratio = 256 / (data_max - data_min)
+
+    cur_obj = bpy.data.objects['meg_helmet']
+    data_t = data[ColoringMakerPanel.meg_helmet_indices, bpy.context.scene.frame_current]
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
@@ -1898,6 +1927,17 @@ class ColorEEGHelmet(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         color_eeg_helmet()
+        return {"FINISHED"}
+
+
+class ColorMEGHelmet(bpy.types.Operator):
+    bl_idname = "mmvt.meg_helmet"
+    bl_label = "mmvt meg helmet"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_meg_helmet()
         return {"FINISHED"}
 
 
@@ -2284,6 +2324,8 @@ def draw(self, context):
         col = layout.box().column()
         col.prop(context.scene, "meg_sensors_conditions", text="")
         col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensors", icon='POTATO')
+        if not bpy.data.objects.get('meg_helmet', None) is None:
+            col.operator(ColorMEGHelmet.bl_idname, text="Plot MEG Helmet", icon='POTATO')
 
     if ColoringMakerPanel.eeg_exist:
         col = layout.box().column()
@@ -2457,6 +2499,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     run_meg_minmax_prec_update = True
     run_electrodes_minmax_prec_update = True
     eeg_helmet_indices = []
+    meg_helmet_indices = []
     # activity_map_coloring = activity_map_coloring
 
     def draw(self, context):
@@ -2652,6 +2695,14 @@ def init_meg_sensors():
         bpy.context.scene.meg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('meg_sensors')
 
+    meg_helmet = bpy.data.objects.get('meg_helmet')
+    if meg_helmet is not None:
+        from scipy.spatial.distance import cdist
+        meg_sensors_loc = np.array(
+            [meg_obj.matrix_world.to_translation() * 10 for meg_obj in bpy.data.objects['EEG_sensors'].children])
+        meg_helmet_vets_loc = np.array([v.co for v in meg_helmet.data.vertices])
+        ColoringMakerPanel.meg_helmet_indices = np.argmin(cdist(meg_helmet_vets_loc, meg_sensors_loc), axis=1)
+
 
 def init_eeg_sensors():
     user_fol = mu.get_user_fol()
@@ -2838,11 +2889,12 @@ def register():
         bpy.utils.register_class(ColorMEGSensors)
         bpy.utils.register_class(ColorEEGSensors)
         bpy.utils.register_class(ColorEEGHelmet)
+        bpy.utils.register_class(ColorMEGHelmet)
         bpy.utils.register_class(ColorConnections)
         bpy.utils.register_class(ColorConnectionsLabelsAvg)
         bpy.utils.register_class(ClearColors)
         bpy.utils.register_class(ColoringMakerPanel)
-        bpy.utils.register_class(PlotLabelsFolder)
+        # bpy.utils.register_class(PlotLabelsFolder)
         bpy.utils.register_class(ColorStaticConnectionsDegree)
         # print('Freeview Panel was registered!')
     except:
@@ -2868,11 +2920,12 @@ def unregister():
         bpy.utils.unregister_class(ColorMEGSensors)
         bpy.utils.unregister_class(ColorEEGSensors)
         bpy.utils.unregister_class(ColorEEGHelmet)
+        bpy.utils.unregister_class(ColorMEGHelmet)
         bpy.utils.unregister_class(ColorConnections)
         bpy.utils.unregister_class(ColorConnectionsLabelsAvg)
         bpy.utils.unregister_class(ClearColors)
         bpy.utils.unregister_class(ColoringMakerPanel)
-        bpy.utils.unregister_class(PlotLabelsFolder)
+        # bpy.utils.unregister_class(PlotLabelsFolder)
         bpy.utils.unregister_class(ColorStaticConnectionsDegree)
     except:
         pass

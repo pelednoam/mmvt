@@ -280,13 +280,14 @@ def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
     try:
         verts_num = verts.shape[0]
         faces_num = faces.shape[0]
-        faces = faces.astype(np.int)
-        faces_for_ply = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
         with open(ply_file_name, 'w') as f:
             f.write(PLY_HEADER.format(verts_num, faces_num))
         with open(ply_file_name, 'ab') as f:
             np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
-            np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
+            if faces_num > 0:
+                faces = faces.astype(np.int)
+                faces_for_ply = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
+                np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
         if write_also_npz:
             np.savez('{}.npz'.format(op.splitext(ply_file_name)[0]), verts=verts, faces=faces)
         return True

@@ -296,6 +296,13 @@ def get_blender_python_exe(blender_fol, gui=True):
     return blender_bin_fol, python_exe
 
 
+def get_pip_update_cmd(package='numpy'):
+    blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
+    blender_bin_fol, python_exe = get_blender_python_exe(blender_fol, False)
+    install_cmd = '{} install --upgrade {}'.format(op.join(blender_bin_fol, 'bin', 'pip'), package)
+    print(install_cmd)
+
+
 def install_blender_reqs(blender_fol='', gui=True):
     # http://stackoverflow.com/questions/9956741/how-to-install-multiple-python-packages-at-once-using-pip
     try:
@@ -405,6 +412,9 @@ def main(args):
 
     if 'find_blender' in args.function:
         find_blender()
+
+    if 'get_pip_update_cmd' in args.function:
+        get_pip_update_cmd()
 
     # print('Finish!')
 

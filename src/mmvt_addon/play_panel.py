@@ -590,9 +590,13 @@ def play_panel_draw(context, layout):
     row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
     layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
-    files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
-                              glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(
-                                  _addon().get_figure_format())))])
+    try:
+        files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
+                                  glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(
+                                      _addon().get_figure_format())))])
+    except:
+        files_with_numbers = 0
+
     if files_with_numbers > 0:
         if not CreateMovie.running:
             layout.operator(CreateMovie.bl_idname, text="Create Movie", icon='RENDER_ANIMATION')

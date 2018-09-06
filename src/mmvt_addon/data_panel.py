@@ -408,6 +408,43 @@ def recalc_eeg_mesh_faces_verts():
     utils.write_ply_file(verts, faces, ply_file_name, write_also_npz=True)
 
 
+def create_meg_mesh():
+    meg_mesh_fname = op.join(mu.get_user_fol(), 'meg', 'meg_helmet.ply')
+    if not op.isfile(meg_mesh_fname):
+        print('You need to create a mesh first ({})'.format(meg_mesh_fname))
+        return None
+    mu.change_layer(_addon().BRAIN_EMPTY_LAYER)
+    create_empty_if_doesnt_exists('Helmets', _addon().BRAIN_EMPTY_LAYER, bpy.context.scene.layers, 'Functional maps')
+    mu.change_layer(_addon().EEG_LAYER)
+    current_mat = bpy.data.materials['Helmet_map_mat']
+    bpy.ops.import_mesh.ply(filepath=meg_mesh_fname)
+    mesh_obj = bpy.context.selected_objects[0]
+    mesh_obj.name = 'meg_helmet'
+    mesh_obj.select = True
+    bpy.ops.object.shade_smooth()
+    mesh_obj.parent = bpy.data.objects['Helmets']
+    mesh_obj.scale = [0.1] * 3
+    mesh_obj.active_material = current_mat
+    mesh_obj.hide = False
+    return mesh_obj
+
+
+def recalc_meg_mesh_faces_verts():
+    mu.add_mmvt_code_root_to_path()
+    from src.utils import utils
+    importlib.reload(utils)
+    meg_helmet = bpy.data.objects.get('meg_helmet')
+    if meg_helmet is None:
+        print('meg helmet is None!')
+        return
+    verts = np.array([v.co for v in meg_helmet.data.vertices])
+    faces = np.array([f.vertices for f in meg_helmet.data.polygons])
+    out_file = op.join(mu.get_user_fol(), 'meg', 'meg_faces_verts.npy')
+    ply_file_name = op.join(mu.get_user_fol(), 'meg', 'meg_helmet.ply')
+    utils.calc_ply_faces_verts(verts, faces, out_file, overwrite=True)
+    utils.write_ply_file(verts, faces, ply_file_name, write_also_npz=True)
+
+
 class ImportRois(bpy.types.Operator):
     bl_idname = "mmvt.roi_importing"
     bl_label = "import2 ROIs"
@@ -633,6 +670,19 @@ class ImportEEG(bpy.types.Operator):
             import_eeg_sensors()
         else:
             export_eeg_sensors()
+        return {"FINISHED"}
+
+
+class CreateMEGMesh(bpy.types.Operator):
+    bl_idname = "mmvt.meg_mesh"
+    bl_label = "meg mesh"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        if bpy.data.objects.get('eeg_helmet'):
+            recalc_meg_mesh_faces_verts()
+        else:
+            create_meg_mesh()
         return {"FINISHED"}
 
 
@@ -1234,8 +1284,11 @@ def data_draw(self, context):
     if op.isfile(meg_sensors_positions_file):
         col = layout.box().column()
         col.operator(ImportMEGSensors.bl_idname, text="Import MEG sensors", icon='COLOR_GREEN')
+        if bpy.data.objects.get('meg_helmet'):
+            col.operator(CreateMEGMesh.bl_idname, text="Export MEG mesh", icon='LAMP_AREA')
+        else:
+            col.operator(CreateMEGMesh.bl_idname, text="Import MEG mesh", icon='COLOR_GREEN')
         if meg_data_exist and meg_meta_data_exist and meg_data_minmax_exist:
-            # col.operator("mmvt.meg_mesh", text="Creating MEG mesh", icon='COLOR_GREEN')
             col.prop(context.scene, 'meg_sensors_data_files', text="")
             col.operator(AddDataToMEGSensors.bl_idname, text="Add data to MEG sensors", icon='FCURVE')
 
@@ -1485,6 +1538,7 @@ def register():
         bpy.utils.register_class(ImportRois)
         bpy.utils.register_class(ImportBrain)
         bpy.utils.register_class(CreateEEGMesh)
+        bpy.utils.register_class(CreateMEGMesh)
         bpy.utils.register_class(AnatomyPreproc)
         bpy.utils.register_class(ChooseElectrodesPositionsFile)
         # bpy.utils.register_class(FixBrainMaterials)
@@ -1510,6 +1564,7 @@ def unregister():
         bpy.utils.unregister_class(ImportElectrodes)
         bpy.utils.unregister_class(ImportRois)
         bpy.utils.unregister_class(ImportEEG)
+        bpy.utils.unregister_class(CreateMEGMesh)
         bpy.utils.unregister_class(ImportBrain)
         bpy.utils.unregister_class(CreateEEGMesh)
         bpy.utils.unregister_class(AnatomyPreproc)
@@ -1519,4 +1574,5 @@ def unregister():
         # bpy.utils.unregister_class(SelectExternalMEGEvoked)
     except:
         pass
+
 

@@ -647,7 +647,7 @@ def fix_scale():
     for sub_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
         _fix_scale(sub_obj.name)
 
-    for obj_name in ['inner_skull', 'outer_skull', 'eeg_helmet', 'seghead']:
+    for obj_name in ['inner_skull', 'outer_skull', 'eeg_helmet', 'meg_helmet', 'seghead']:
         _fix_scale(obj_name)
     # _fix_scale('skull_plane')
 
