@@ -220,20 +220,8 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
                                           bpy.context.scene.frame_current)
         if bpy.context.scene.render_movie:
             _addon().render_image(set_to_camera_mode=set_to_camera_mode)
-        # mu.show_only_render(True)
-        # view3d_context = mu.get_view3d_context()
-        # bpy.ops.render.opengl(view3d_context)
-        # # mu.view_selected()
-        # image_context = mu.get_image_area()
-        # image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
-        #                      '{}_{}.png'.format(play_type, bpy.context.scene.frame_current))
-        # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
-        #                       'INVOKE_DEFAULT',  # invoke the operator
-        #                       copy=True,
-        #                       filepath=image_name)  # export it to this location
     else:
         print("The image wasn't rendered due to an error in the plotting.")
-    # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
 def capture_graph(play_type=None, output_path=None, selection_type=None):
