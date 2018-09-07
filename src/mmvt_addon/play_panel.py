@@ -38,8 +38,8 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
        ("stim", "Electrodes stimulation"), ("stim_sources", "Electrodes stimulation & sources"),
        ("meg_elecs", "Meg & Electrodes activity"),
        ("meg_elecs_coh", "Meg & Electrodes activity & coherence"),
-       ("eeg_helmet", "EEG helmet"), ("meg_sensors", "MEG sensors"),
-       ("eeg_sensors", "EEG sensors")]
+       ("meg_sensors", "MEG sensors"), ("meg_helmet", "MEG helmet"),
+       ("eeg_helmet", "EEG helmet"), ("eeg_sensors", "EEG sensors")]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Chooses the displayed modality\n\nCurrent modality')
 bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description='Sets the frames per second for the video')
@@ -210,6 +210,8 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
         _addon().color_eeg_sensors()
     if play_type in ['meg_sensors']:
         _addon().color_meg_sensors()
+    if play_type in ['meg_helmet']:
+        _addon().color_meg_helmet()
     if successful_ret:
         if bpy.context.scene.save_images:
             _addon().save_image(play_type, bpy.context.scene.save_selected_view,

@@ -208,6 +208,7 @@ set_lower_threshold = coloring_panel.set_lower_threshold
 get_lower_threshold = coloring_panel.get_lower_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
 color_eeg_helmet = coloring_panel.color_eeg_helmet
+color_meg_helmet = coloring_panel.color_meg_helmet
 calc_colors = coloring_panel.calc_colors
 init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
 color_connections = coloring_panel.color_connections

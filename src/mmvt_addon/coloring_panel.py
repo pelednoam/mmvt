@@ -2699,7 +2699,7 @@ def init_meg_sensors():
     if meg_helmet is not None:
         from scipy.spatial.distance import cdist
         meg_sensors_loc = np.array(
-            [meg_obj.matrix_world.to_translation() * 10 for meg_obj in bpy.data.objects['EEG_sensors'].children])
+            [meg_obj.matrix_world.to_translation() * 10 for meg_obj in bpy.data.objects['MEG_sensors'].children])
         meg_helmet_vets_loc = np.array([v.co for v in meg_helmet.data.vertices])
         ColoringMakerPanel.meg_helmet_indices = np.argmin(cdist(meg_helmet_vets_loc, meg_sensors_loc), axis=1)
 
