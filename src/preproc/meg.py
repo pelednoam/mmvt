@@ -2074,7 +2074,7 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
               overwrite=False, n_jobs=6):
     ret = True
     for ind, cond in enumerate(events.keys()):
-        input_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh')
+        input_fname = stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh')
         if not op.isfile(input_fname):
             stcs_files = list(set([f[:-len('-rh.stc')] for f in glob.glob(op.join(SUBJECT_MEG_FOLDER, '*.stc'))]))
             stcs_files += list(
@@ -2656,7 +2656,8 @@ def get_info(info_fname='', evoked_fname='', raw_fname=''):
 def get_info_fname(info_fname=''):
     if info_fname == '':
         fwd_fname = INFO
-    fwd_fname, fwd_exist = locating_meg_file(fwd_fname, '*fwd.fif')
+    info_fname, info_exist = locating_meg_file(fwd_fname, '*-info.pkl')
+    return info_fname, info_exist
 
 
 def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
@@ -2664,10 +2665,8 @@ def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, o
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
     if info is None:
-
-        if info_fname == '':
-            info_fname = INFO
-        if not op.isfile(info_fname):
+        info_fname, info_exist = get_info_fname(info_fname)
+        if not info_exist:
             raw_fname, raw_exist = locating_meg_file(RAW, args.raw_template)
             if not raw_exist:
                 print('No raw or raw info file!')

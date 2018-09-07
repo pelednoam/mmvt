@@ -74,8 +74,6 @@ bpy.types.Scene.appearance_seghead_trans = bpy.props.FloatProperty(default=0, mi
     description='Sets the transparency value of the head from 0 to 1 ')
 
 
-
-
 def init(addon):
     TransparencyPanel.addon = addon
     bpy.context.scene.appearance_solid_slider = 0.0

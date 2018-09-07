@@ -1895,6 +1895,14 @@ def select_all_brain(val):
         if not val:
             for child in bpy.data.objects['Subcortical_fmri_activity_map'].children:
                 child.hide_select = True
+    # head = bpy.data.objects.get('seghead', None)
+    # if head is not None and not head.hide:
+    #     head.select = val
+    #     head.hide_select = not val
+    for obj in [bpy.data.objects.get(obj_name, None) for obj_name in ['eeg_helmet', 'meg_helmet', 'seghead']]:
+        if obj is not None and not obj.hide:
+            if obj is not None:
+                obj.select = val
 
 
 def get_view3d_region():

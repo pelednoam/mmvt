@@ -230,38 +230,13 @@ def render_draw(self, context):
     split.column().prop(bpy.context.scene.render.image_settings, 'file_format', text='')
 
     if view == 'CAMERA':
-        # layout.label(text='Output Path:')
         layout.prop(context.scene, "quality", text='Quality')
         layout.prop(context.scene.render, 'resolution_x')
         layout.prop(context.scene.render, 'resolution_y')
-
-        # layout.operator(CameraMode.bl_idname, text="Camera Mode", icon='CAMERA_DATA')
-        # layout.operator("view3d.viewnumpad", text="View Camera", icon='CAMERA_DATA').type = 'CAMERA'
-
-        # camera_files = glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl')) + \
-        #                glob.glob(op.join(mu.get_user_fol(), 'camera', 'camera_*.pkl'))
-        # if len(camera_files) > 1:
-        #     layout.operator(RenderAllFigures.bl_idname, text="Render All", icon='SCENE')
-        # perspectives_files_exist = op.isdir(
-        #     op.join(mu.get_user_fol(), 'camera')) and \
-        #     np.all([op.isfile(op.join(mu.get_user_fol(), 'camera', '{}.pkl'.format(pers_name))) for pers_name in
-        #     ['camera_lateral_lh', 'camera_lateral_rh', 'camera_medial_lh', 'camera_medial_rh']])
-        # if perspectives_files_exist:
-        #     layout.operator(RenderPerspectives.bl_idname, text="Render Perspectives", icon='SCENE')
-        #     layout.operator(CombinePerspectives.bl_idname, text="Combine Perspectives", icon='OUTLINER_OB_LATTICE')
-
-        # layout.prop(context.scene, 'smooth_figure')
-        # layout.operator(CameraMode.bl_idname, text="Camera view", icon='CAMERA_DATA')
-        # layout.operator(GrabCamera.bl_idname, text="Grab Camera", icon='BORDER_RECT')
-        # if len(bpy.context.scene.camera_files) > 0:
-        #     layout.prop(context.scene, 'camera_files', text='')
-        #     layout.operator(LoadCamera.bl_idname, text="Load Camera", icon='RENDER_REGION')
-        # layout.operator(MirrorCamera.bl_idname, text="Mirror Camera", icon='RENDER_REGION')
         layout.prop(context.scene, "lighting", text='Lighting')
         layout.prop(context.scene, "background_color", expand=True)
         if RenderingMakerPanel.background_rendering:
             layout.label(text='Rendering in the background...')
-        # layout.prop(context.scene, 'render_background')
 
         layout.prop(context.scene, "show_camera_props", text='Show camera props')
         if bpy.context.scene.show_camera_props:
@@ -278,7 +253,6 @@ def render_draw(self, context):
             layout.prop(context.scene, 'view_distance', text='View distance')
             layout.prop(bpy.context.scene.render, 'resolution_percentage', text='Resolution')
         layout.prop(context.scene, "background_color", expand=True)
-        # layout.prop(context.user_preferences.themes[0].view_3d.space.gradients, "high_gradient", text="Background")
 
     icon = 'SCENE' if view == 'ORTHO' else 'MESH_MONKEY'
     text = 'Camera' if view == 'ORTHO' else 'Object'

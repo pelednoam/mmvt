@@ -2698,8 +2698,10 @@ def init_meg_sensors():
     meg_helmet = bpy.data.objects.get('meg_helmet')
     if meg_helmet is not None:
         from scipy.spatial.distance import cdist
+        # meg_sensors_loc = np.array(
+        #     [meg_obj.matrix_world.to_translation() * 10 for meg_obj in bpy.data.objects['MEG_sensors'].children])
         meg_sensors_loc = np.array(
-            [meg_obj.matrix_world.to_translation() * 10 for meg_obj in bpy.data.objects['MEG_sensors'].children])
+            [meg_obj.location * 10 for meg_obj in bpy.data.objects['MEG_sensors'].children])
         meg_helmet_vets_loc = np.array([v.co for v in meg_helmet.data.vertices])
         ColoringMakerPanel.meg_helmet_indices = np.argmin(cdist(meg_helmet_vets_loc, meg_sensors_loc), axis=1)
 
@@ -2733,8 +2735,10 @@ def init_eeg_sensors():
     eeg_helmet = bpy.data.objects.get('eeg_helmet')
     if eeg_helmet is not None:
         from scipy.spatial.distance import cdist
+        # eeg_sensors_loc = np.array(
+        #     [eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
         eeg_sensors_loc = np.array(
-            [eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+            [eeg_obj.location * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
         eeg_helmet_vets_loc = np.array([v.co for v in eeg_helmet.data.vertices])
         ColoringMakerPanel.eeg_helmet_indices = np.argmin(cdist(eeg_helmet_vets_loc, eeg_sensors_loc), axis=1)
 
