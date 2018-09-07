@@ -1784,7 +1784,7 @@ def color_meg_sensors():
 
 
 def color_eeg_sensors():
-    _addon().show_hide_eeg()
+    _addon().show_hide_eeg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_EEG)
     threshold = bpy.context.scene.coloring_lower_threshold
     data, meta = get_eeg_sensors_data()
