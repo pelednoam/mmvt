@@ -2096,10 +2096,10 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
         stc_morphed.save(output_fname)
         print('Morphed stc file was saves in {}'.format(output_fname))
         ret = ret and utils.both_hemi_files_exist(output_fname)
-    diff_template = op.join(SUBJECT_MEG_FOLDER, '{cond}-{hemi}.stc').replace(SUBJECT, morph_to_subject)
-    calc_stc_diff_both_hemis(events, diff_template, inverse_method, overwrite)
+    # diff_template = op.join(SUBJECT_MEG_FOLDER, '{cond}-{hemi}.stc').replace(SUBJECT, morph_to_subject)
+    diff_template = STC_HEMI.format(cond='{cond}', hemi='{hemi}', method=inverse_method).replace(SUBJECT, morph_to_subject)
+    ret = ret and calc_stc_diff_both_hemis(events, diff_template, inverse_method, overwrite)
     return ret
-
 
 
 # @utils.timeit

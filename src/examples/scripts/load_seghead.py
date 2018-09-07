@@ -9,9 +9,9 @@ def run(mmvt):
         mmvt.utils.run_mmvt_func('src.utils.freesurfer_utils', 'create_seghead', add_subject=True)
         return
     ply_fname = op.join(mmvt.utils.get_user_fol(), 'surf', 'seghead.ply')
-    if not op.isfile(ply_fname):
-        verts, faces = nib_fs.read_geometry(surf_fname)
-        mmvt.utils.write_ply_file(verts, faces, ply_fname)
+    # if not op.isfile(ply_fname):
+    verts, faces = nib_fs.read_geometry(surf_fname)
+    mmvt.utils.write_ply_file(verts, faces, ply_fname)
     mmvt.data.load_ply(ply_fname, 'seghead', new_material_name='seghead_mat')
     mmvt.appearance.set_transparency('seghead_mat', 1)
     mmvt.appearance.set_layers_depth_trans('seghead_mat', 10)
