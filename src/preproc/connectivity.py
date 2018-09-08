@@ -218,6 +218,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         data = data[labels_indices]
 
     conditions = f['conditions'] if 'conditions' in f else ['rest']
+    # args.conditions = conditions
     labels_hemi_indices = {}
     for hemi in utils.HEMIS:
         labels_hemi_indices[hemi] = np.array([ind for ind,l in enumerate(labels_names) if l in names[hemi]])
