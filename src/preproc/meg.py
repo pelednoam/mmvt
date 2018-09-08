@@ -591,9 +591,10 @@ def calc_labels_connectivity(
     events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
     lambda2 = 1.0 / snr ** 2
     if bands is None or bands == '':
-        bands = [[4, 8], [8, 15], [15, 30], [30, 55], [65, 200]]
+        bands = [[4, 8], [8, 15], [15, 30], [30, 55], [65, 120]]
+        # bands = [[30, 55]]
     if cwt_frequencies is None or cwt_frequencies == '':
-        cwt_frequencies = np.arange(4, 200, 2)
+        cwt_frequencies = np.arange(4, 120, 2)
     fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'connectivity'))
     ret = True
     first_time = True
@@ -607,13 +608,15 @@ def calc_labels_connectivity(
             first_time = False
             labels = lu.read_labels(mri_subject, subjects_dir, atlas, surf_name=surf_name, n_jobs=n_jobs)
             inverse_operator, src = get_inv_src(inv_fname, src)
-            if raw is None:
-                raw_fname = get_raw_fname(raw_fname)
-                if not op.isfile(raw_fname):
-                    print('Can\'t find the raw data! ({})'.format(raw_fname))
-                    return False
-                raw = mne.io.read_raw_fif(raw_fname)
-                sfreq = raw.info['sfreq']
+            if inverse_operator is None or src is None:
+                print('Can\'t find the inverse_operator!')
+            # if raw is None:
+            #     raw_fname = get_raw_fname(raw_fname)
+            #     if not op.isfile(raw_fname):
+            #         print('Can\'t find the raw data! ({})'.format(raw_fname))
+            #         return False
+            #     raw = mne.io.read_raw_fif(raw_fname)
+            #     sfreq = raw.info['sfreq']
 
         if epochs is None:
             epo_cond_fname = get_cond_fname(epo_fname, cond_name)
@@ -621,6 +624,7 @@ def calc_labels_connectivity(
                 print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
                 return False
             epochs = mne.read_epochs(epo_cond_fname, apply_SSP_projection_vectors, add_eeg_ref)
+        sfreq = epochs.info['sfreq']
         try:
             mne.set_eeg_reference(epochs, ref_channels=None)
             epochs.apply_proj()
@@ -948,7 +952,7 @@ def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', 
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
                     fwd = _make_forward_solution(
-                        src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem_fname=bem_fname)
+                        src, raw_fname, evo_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem_fname=bem_fname)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
@@ -1032,18 +1036,19 @@ def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, 
             shutil.copy(bem_fname, BEM)
         else:
             raise Exception("Can't find the BEM file!")
+
+    # if op.isfile(evo_fname):
+    #     info_fname = evo_fname
     if op.isfile(epo_fname):
-        info = epo_fname
+        info_fname = epo_fname
+    elif op.isfile(raw_fname):
+        info = raw_fname
     else:
-        raw_fname = get_raw_fname(raw_fname)
-        if op.isfile(raw_fname):
-            info = raw_fname
-        else:
-            raise Exception("Can't find info object for make_forward_solution!")
+        raise Exception("Can't find info object for make_forward_solution!")
 
     try:
         fwd = mne.make_forward_solution(
-            info=info, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=usingEEG, mindist=5.0,
+            info=info_fname, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=usingEEG, mindist=5.0,
             n_jobs=n_jobs, overwrite=True)
     except:
         utils.print_last_error_line()

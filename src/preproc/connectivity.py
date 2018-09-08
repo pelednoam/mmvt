@@ -165,6 +165,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
+
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     if args.labels_data_name != '':
         labels_data_fname = op.join(conn_fol, args.labels_data_name.format(subject=subject, hemi='{hemi}'))

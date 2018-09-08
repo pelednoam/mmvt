@@ -108,6 +108,25 @@ def calc_meg_connectivity(args):
     con.call_main(args)
 
 
+def calc_meg_gamma_connectivity(args):
+    args = con.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        # atlas='laus125',
+        function='calc_lables_connectivity',
+        connectivity_modality='meg',
+        connectivity_method='pli',
+        windows_length=100,
+        windows_shift=10,
+        # sfreq=1000.0,
+        fmin=30,
+        fmax=55,
+        recalc_connectivity=True,
+        # max_windows_num=100,
+        n_jobs=args.n_jobs
+    ))
+    con.call_main(args)
+
+
 def calc_electrodes_rest_connectivity(args):
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,

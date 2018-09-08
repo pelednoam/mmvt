@@ -100,6 +100,27 @@ def calc_msit(args):
     meg.call_main(args)
 
 
+def calc_msit_labels_avg(args):
+    # python -m src.preproc.meg -s ep001 -m mg78 -a laus250 -t MSIT
+    #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
+    #   --events_file_name {subject}_msit_nTSSS_interference-eve.txt --cleaning_method nTSSS
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        function='calc_labels_avg_per_condition,calc_labels_min_max',
+        data_per_task=True,
+        atlas=args.atlas,
+        contrast='interference',
+        cleaning_method='nTSSS',
+        t_min=-0.5,
+        t_max=2,
+        pick_ori='normal',
+        overwrite_labels_data=True
+    ))
+    meg.call_main(args)
+
+
 def calc_msit_evoked(args):
     # python -m src.preproc.meg -s ep001 -m mg78 -a laus125 -f calc_epochs,calc_evokes -t MSIT
     #   --contrast interference --t_max 2 --t_min -0.5 --data_per_task 1 --read_events_from_file 1
@@ -205,6 +226,23 @@ def calc_rest(args):
         # baseline_max=0,
     ))
     meg.call_main(args)
+
+
+def calc_labels_connectivity(args):
+    args = meg.read_cmd_args(dict(
+        subject=args.subject,
+        mri_subject=args.mri_subject,
+        task='MSIT',
+        function='calc_labels_connectivity',
+        data_per_task=True,
+        # atlas='laus125',
+        contrast='interference',
+        cleaning_method='nTSSS',
+        pick_ori='normal',
+        con_method='wpli2_debiased'
+    ))
+    meg.call_main(args)
+
 
 
 def calc_power_spectrum(args):
