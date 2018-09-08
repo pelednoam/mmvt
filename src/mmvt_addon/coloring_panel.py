@@ -82,14 +82,27 @@ def get_meg_sensors_data():
     return ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta
 
 
-def plot_meg(t=-1, save_image=False, view_selected=False):
-    if t != -1:
-        bpy.context.scene.frame_current = t
-    activity_map_coloring('MEG')
-    if save_image:
-        return _addon().save_image('meg', view_selected, t)
+def plot_meg():
+    ret = True
+    if ColoringMakerPanel.stc_file_chosen:
+        plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
+                 threshold=bpy.context.scene.coloring_lower_threshold, save_image=False)
+    elif ColoringMakerPanel.activity_map_chosen:
+        activity_map_coloring('MEG')
     else:
-        return True
+        print('ColorMeg: Both stc_file_chosen and activity_map_chosen are False!')
+        ret = False
+    return ret
+
+
+# def plot_meg(t=-1, save_image=False, view_selected=False):
+#     if t != -1:
+#         bpy.context.scene.frame_current = t
+#     activity_map_coloring('MEG')
+#     if save_image:
+#         return _addon().save_image('meg', view_selected, t)
+#     else:
+#         return True
 
 
 # @mu.dump_args
@@ -2097,14 +2110,9 @@ class ColorMeg(bpy.types.Operator):
 
     @staticmethod
     def invoke(self, context, event=None):
-        if ColoringMakerPanel.stc_file_chosen:
-            plot_stc(ColoringMakerPanel.stc, bpy.context.scene.frame_current,
-                     threshold=bpy.context.scene.coloring_lower_threshold, save_image=False)
-        elif ColoringMakerPanel.activity_map_chosen:
-            activity_map_coloring('MEG')
-        else:
-            print('ColorMeg: Both stc_file_chosen and activity_map_chosen are False!')
+        plot_meg()
         return {"FINISHED"}
+
 
 
 class ColorMegMax(bpy.types.Operator):
