@@ -101,6 +101,7 @@ def create_keyframes(d, threshold, threshold_type, radius=.1, stat=STAT_DIFF, ve
     layers_rods[rods_layer] = True
     mu.delete_hierarchy(get_connections_parent_name())
     mu.create_empty_if_doesnt_exists(get_connections_parent_name(), _addon().BRAIN_EMPTY_LAYER, None, 'Functional maps')
+    d.con_values = d.con_values.squeeze()
     if d.con_values.ndim >= 2:
         windows_num = d.con_values.shape[1]
     else:
@@ -428,6 +429,8 @@ def plot_connections(d, plot_time, threshold=None):
         colors_ratio = 256 / (data_max - data_min)
         stat_vals = [calc_stat_data(d.con_values[ind, t], STAT_DIFF) if d.con_values.ndim >= 2 else d.con_values[ind]
                      for ind in selected_indices]
+        if len(stat_vals[0]) == 2:
+            stat_vals = [np.diff(v) for v in stat_vals]
         colors = _addon().calc_colors(np.array(stat_vals).squeeze(), data_min, colors_ratio)
         # colors = np.concatenate((colors, np.zeros((len(colors), 1))), 1)
         _addon().show_hide_connections()
@@ -826,6 +829,8 @@ def connectivity_files_update(self, context):
     data = ConnectionsPanel.d.con_values
     # data_max = np.percentile(data[ConnectionsPanel.selected_indices], 97)
     # data_min = np.percentile(data[ConnectionsPanel.selected_indices], 3)
+    if data.ndim == 3 and data.shape[2] == 2:
+        data = np.diff(data, axis=2).squeeze()
     if len(ConnectionsPanel.selected_indices) > 0:
         data_max = np.nanmax(data[ConnectionsPanel.selected_indices])
         data_min = np.nanmin(data[ConnectionsPanel.selected_indices])

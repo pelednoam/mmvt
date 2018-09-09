@@ -745,8 +745,8 @@ def calc_connectivity(data, labels, hemis, args):
         con_type  = con_type[indices]
         stat_data = stat_data[indices]
 
-    # con_values = np.squeeze(con_values)
-    con_values = np.squeeze(stat_data)
+    con_values = np.squeeze(con_values)
+    # con_values = np.squeeze(stat_data)
     if 'data_max' not in args and 'data_min' not in args or args.data_max == 0 and args.data_min == 0:
         if args.symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0 and data_max != 0:
             data_max, data_min = data_minmax, -data_minmax
