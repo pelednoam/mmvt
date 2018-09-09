@@ -218,7 +218,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         data = data[labels_indices]
 
     conditions = f['conditions'] if 'conditions' in f else ['rest']
-    # args.conditions = conditions
+    args.conditions = conditions
+    if len(conditions) == 2:
+        args.stat = STAT_DIFF
     labels_hemi_indices = {}
     for hemi in utils.HEMIS:
         labels_hemi_indices[hemi] = np.array([ind for ind,l in enumerate(labels_names) if l in names[hemi]])
@@ -238,13 +240,14 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     else:
         labels_subs_indices = []
 
-    if args.windows_num == 1 and data.ndim == 3:
+    if args.windows_num == 1 and data.ndim == 3 and len(conditions) == 1:
         data = np.mean(data, axis=2)
 
     # Check this code!!!
-    if data.ndim == 3 and data.shape[2] == len(conditions):
-        data = np.diff(data, axis=2).squeeze()
-    if data.ndim == 2 or labels_extract_mode.startswith('pca_') and data.ndim == 3:
+    # if data.ndim == 3 and data.shape[2] == len(conditions):
+    #     data = np.diff(data, axis=2).squeeze()
+    if data.ndim == 2 or (labels_extract_mode.startswith('pca_') and data.ndim == 3) or \
+            (data.ndim == 3 and len(conditions) == data.shape[2]):
         # No windows yet
         import math
         T = data.shape[1] # If this is fMRI data, the real T is T*tr
@@ -317,23 +320,28 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             connectivity_method = 'Pearson corr'
 
         elif 'pli' in args.connectivity_method:
-            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
-            if data.ndim == 3:
-                conn_data = np.transpose(data, [2, 1, 0])
-            elif data.ndim == 2:
-                conn_data = np.zeros((windows_num, data.shape[0], args.windows_length))
-                for w in range(windows_num):
-                    conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
-            indices = np.array_split(np.arange(windows_num), args.n_jobs)
-            # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
-            chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length)
-                  for chunk_indices in indices]
-            results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
-            for chunk in results:
-                for w, con in chunk.items():
-                    conn[:, :, w] = con
-            backup(output_mat_fname)
-            np.save(output_mat_fname, conn)
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num, len(conditions)))
+            for cond_ind, cond_name in enumerate(conditions):
+                if data.ndim == 4:
+                    cond_data = data[:, :, : cond_ind]
+                    conn_data = np.transpose(cond_data, [2, 1, 0])
+                elif data.ndim == 3:
+                    cond_data = data[:, :, cond_ind]
+                    conn_data = np.zeros((windows_num, cond_data.shape[0], args.windows_length))
+                    for w in range(windows_num):
+                        conn_data[w] = cond_data[:, windows[w, 0]:windows[w, 1]]
+                indices = np.array_split(np.arange(windows_num), args.n_jobs)
+                # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+                chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length)
+                      for chunk_indices in indices]
+                results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
+                for chunk in results:
+                    for w, con in chunk.items():
+                        conn[:, :, w, cond_ind] = con
+                # output_mat_fname = op.join(utils.get_parent_fol(output_fname), '{}_{}.npy'.format(
+                #     utils.namebase(output_mat_fname), cond_name))
+                backup(output_mat_fname)
+                np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
 
         elif 'coherence' in args.connectivity_method:
@@ -460,7 +468,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         conn = conn[:, :, :, np.newaxis]
     elif conn.ndim == 2:
         conn = conn[:, :, np.newaxis]
-    else:
+    elif 4 < conn.ndim < 2:
         raise Exception('Wrong number of dims!')
     d = save_connectivity(subject, conn, args.connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
                           con_vertices_fname)
@@ -737,7 +745,8 @@ def calc_connectivity(data, labels, hemis, args):
         con_type  = con_type[indices]
         stat_data = stat_data[indices]
 
-    con_values = np.squeeze(con_values)
+    # con_values = np.squeeze(con_values)
+    con_values = np.squeeze(stat_data)
     if 'data_max' not in args and 'data_min' not in args or args.data_max == 0 and args.data_min == 0:
         if args.symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0 and data_max != 0:
             data_max, data_min = data_minmax, -data_minmax
