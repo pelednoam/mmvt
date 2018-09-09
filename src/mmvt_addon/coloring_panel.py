@@ -278,6 +278,8 @@ def object_coloring(obj, rgb):
         return False
     if can_color_obj(obj):
         cur_mat.node_tree.nodes["RGB"].outputs[0].default_value = new_color
+    else:
+        print('RGB not in cur_mat.node_tree.nodes! ({})'.format(cur_mat.name))
     # else:
     #     print("Can't color {}".format(obj.name))
     #     return False

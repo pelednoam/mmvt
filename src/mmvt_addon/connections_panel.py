@@ -164,9 +164,10 @@ def create_conncection_per_condition(d, layers_rods, indices, mask, windows_num,
         cur_obj.name = conn_name
         cur_obj.parent = parent_obj
 
-        mu.create_material('{}_mat'.format(conn_name), con_color, 1)
-        cur_mat = bpy.data.materials['{}_mat'.format(conn_name)]
-        cur_obj.active_material = cur_mat
+        # mu.create_material('{}_mat'.format(conn_name), con_color, 1)
+        mu.create_and_set_material(cur_obj)
+        # cur_mat = bpy.data.materials['{}_mat'.format(conn_name)]
+        # cur_obj.active_material = cur_mat
         # cur_obj.animation_data_clear()
         if windows_num == 1:
             continue
