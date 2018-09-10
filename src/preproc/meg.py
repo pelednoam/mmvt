@@ -1042,7 +1042,7 @@ def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, 
     if op.isfile(epo_fname):
         info_fname = epo_fname
     elif op.isfile(raw_fname):
-        info = raw_fname
+        info_fname = raw_fname
     else:
         raise Exception("Can't find info object for make_forward_solution!")
 
@@ -1054,7 +1054,7 @@ def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, 
         utils.print_last_error_line()
         print('Trying to create fwd only with MEG')
         fwd = mne.make_forward_solution(
-            info=info, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=False, mindist=5.0,
+            info=info_fname, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=False, mindist=5.0,
             n_jobs=n_jobs, overwrite=True)
 
     return fwd
@@ -1240,6 +1240,10 @@ def get_empty_fname(empty_fname=''):
         empty_fname = EMPTY_ROOM
     print('Looking for empty room fif file...')
     empty_fname, empty_exist = locating_meg_file(empty_fname, '*empty*.fif')
+    if not empty_exist:
+        empty_fname, empty_exist = locating_meg_file(empty_fname, '*noise*.fif')
+    if not empty_exist:
+        empty_fname, empty_exist = locating_meg_file(empty_fname, '*.fif')
     return empty_fname
 
 
@@ -1343,7 +1347,7 @@ def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_co
 def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, calc_source_band_induced_power=False, save_stc=True, snr=3.0,
-                           overwrite_stc=False, stc_template='', epo_fname='', evo_fname='', inv_fname='',
+                           overwrite_stc=False, stc_template='', raw_fname='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
                            modality='meg', calc_stc_for_all=False, calc_stcs_diff=True,
                            atlas='aparc.DKTatlas40', bands=None, calc_inducde_power_per_label=True,
@@ -1404,6 +1408,15 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
+                    raw_fname = get_raw_fname(raw_fname)
+                    if op.isfile(raw_fname):
+                        raw = mne.io.read_raw_fif(raw_fname)
+                    else:
+                        raise Exception('Can\'t find the raw data!')
+                    try:
+                        mne.set_eeg_reference(raw, ref_channels=None)
+                    except:
+                        print('annot create EEG average reference projector (no EEG data found)')
                     stcs_num[cond_name] = mne.minimum_norm.apply_inverse_raw(
                         raw, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 else:
@@ -2952,19 +2965,15 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
         return flags
     if mri_subject == '':
         mri_subject = subject
-    raw_fname = get_raw_fname(args.raw_fname)
     inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     fwd_fname = get_fwd_fname(args.fwd_fname, args.fwd_usingMEG, args.fwd_usingEEG)
-    epo_fname = get_epo_fname(args.epo_fname)
-    evo_fname = get_evo_fname(args.evo_fname)
-    cor_fname = get_cor_fname(args.cor_fname)
-    noise_cov_fname = NOISE_COV if args.noise_cov_fname == '' else args.noise_cov_fname
     get_meg_files(subject, [inv_fname], args, conditions)
     if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution') and (not op.isfile(fwd_fname) or args.overwrite_fwd):
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
             #     {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
+            cor_fname = get_cor_fname(args.cor_fname)
             trans_file = find_trans_file(cor_fname, args.remote_subject_dir)
             if trans_file is None:
                 flags['make_forward_solution'] = False
@@ -2988,8 +2997,10 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
                     nec_file, args)
                 if file_exist:
                     break
+            evo_fname = get_evo_fname(args.evo_fname)
             get_meg_files(subject, [evo_fname], args, conditions)
             sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
+            raw_fname = get_raw_fname(args.raw_fname)
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
                 mri_subject, conditions, raw_fname, evo_fname, fwd_fname, args.cor_fname, sub_corticals_codes_file, args.fwd_usingMEG,
                 args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
@@ -2997,7 +3008,11 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
                 args.n_jobs, args)
 
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
+            epo_fname = get_epo_fname(args.epo_fname)
+            evo_fname = get_evo_fname(args.evo_fname)
             get_meg_files(subject, [epo_fname, fwd_fname], args, conditions)
+            raw_fname = get_raw_fname(args.raw_fname)
+            noise_cov_fname = NOISE_COV if args.noise_cov_fname == '' else args.noise_cov_fname
             flags['calc_inverse_operator'] = calc_inverse_operator(
                 conditions, raw_fname, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.empty_fname,
                 args.inv_loose, args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
@@ -3051,8 +3066,8 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             conditions, args.task, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc,
             args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
-            args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw,
-            raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff,
+            args.raw_fname, args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG,
+            args.apply_on_raw, raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff,
             args.atlas, args.bands, args.calc_inducde_power_per_label, args.induced_power_normalize_proj, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
