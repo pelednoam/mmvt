@@ -2765,6 +2765,10 @@ def find_trans_file(trans_file='', remote_subject_dir='', subject='', subjects_d
         trans_file = utils.select_one_file(
             ok_trans_files, template='*COR*.fif', files_desc='MRI-Head transformation',
             file_func=lambda fname:read_trans(fname))
+    if op.isfile(trans_file):
+        print('trans file was found in {}'.format(trans_file))
+    else:
+        raise Exception('trans file wasn\'t found!')
     return trans_file
 
 
