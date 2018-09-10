@@ -952,7 +952,7 @@ def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', 
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
                     fwd = _make_forward_solution(
-                        src, raw_fname, evo_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem_fname=bem_fname)
+                        src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem_fname=bem_fname)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
@@ -4094,6 +4094,9 @@ def main(tup, remote_subject_dir, org_args, flags=None):
     if 'create_meg_mesh' in args.function:
         flags['create_meg_mesh'] = create_meg_mesh(subject, excludes=[], overwrite_faces_verts=True)
 
+    if 'find_trans_file' in args.function:
+        flags['find_trans_file'] = op.isfile(find_trans_file(
+            '', args.remote_subject_dir, MRI_SUBJECT, SUBJECTS_MRI_DIR))
     return flags
 
 
