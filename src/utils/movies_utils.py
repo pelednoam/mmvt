@@ -152,29 +152,37 @@ def create_animated_gif(movie_fol, movie_name, out_movie_name, fps=None):
     video.write_gif(op.join(movie_fol, out_movie_name), fps=fps)#, program='ImageMagick', opt='OptimizeTransparency')
 
 
-def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
-    # First convert the part to avi, because mp4 cannot be concat
-    cmd = 'ffmpeg -i concat:"'
-    if len(parts) == 0:
-        parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
-    else:
-        parts = [op.join(fol, p) for p in parts]
-    for part_fname in parts:
-        part_name, _ = op.splitext(part_fname)
-        cmd = '{}{}.avi|'.format(cmd, op.join(fol, part_name))
-        utils.remove_file('{}.avi'.format(part_name))
-        utils.run_script('ffmpeg -i {} -codec copy {}.avi'.format(part_fname, op.join(fol, part_name)))
-    # cmd = '{}" -c copy -bsf:a aac_adtstoasc {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
-    cmd = '{}" -c copy {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
-    print(cmd)
-    utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
-    utils.run_script(cmd)
-    # clean up
-    # todo: doesn't clean the part filess
-    utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
-    for part_fname in parts:
-        part_name, _ = op.splitext(part_fname)
-        utils.remove_file('{}.avi'.format(part_name))
+def combine_movies(fol, final_movie_name, parts_names, fps=60, movie_type='mp4', threads=1):
+    from moviepy.editor import VideoFileClip, concatenate_videoclips
+
+    parts = [VideoFileClip(op.join(fol, '{}.{}'.format(movie_name, movie_type))) for movie_name in parts_names]
+    final_movie = concatenate_videoclips(parts, method='chain')
+    final_movie.write_videofile(op.join(fol, '{}.{}'.format(final_movie_name, movie_type)), fps=fps, threads=threads)
+
+
+# def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
+#     # First convert the part to avi, because mp4 cannot be concat
+#     cmd = 'ffmpeg -i concat:"'
+#     if len(parts) == 0:
+#         parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
+#     else:
+#         parts = [op.join(fol, p) for p in parts]
+#     for part_fname in parts:
+#         part_name, _ = op.splitext(part_fname)
+#         cmd = '{}{}.{}|'.format(cmd, op.join(fol, part_name), movie_type)
+#         # utils.remove_file('{}.avi'.format(part_name))
+#         utils.run_script('ffmpeg -i {} -codec copy {}.{}'.format(part_fname, op.join(fol, part_name), movie_type))
+#     # cmd = '{}" -c copy -bsf:a aac_adtstoasc {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
+#     cmd = '{}" -c copy {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
+#     print(cmd)
+#     utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
+#     utils.run_script(cmd)
+#     # clean up
+#     # todo: doesn't clean the part filess
+#     utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
+#     for part_fname in parts:
+#         part_name, _ = op.splitext(part_fname)
+#         utils.remove_file('{}.avi'.format(part_name))
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
