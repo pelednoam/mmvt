@@ -115,6 +115,10 @@ def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=Fals
         start_rotating()
 
 
+def set_rotate_brain(dx=0, dy=0, dz=0):
+    bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz = dx, dy, dz
+
+
 # def view_all():
 #     c = mu.get_view3d_context()
 #     bpy.ops.view3d.view_all(c)

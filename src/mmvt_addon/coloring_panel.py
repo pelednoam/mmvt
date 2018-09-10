@@ -319,21 +319,14 @@ def clear_cortex(hemis=HEMIS):
     for hemi in hemis:
         for cur_obj in [bpy.data.objects[hemi], mu.get_hemi_obj(hemi)]:
             clear_object_vertex_colors(cur_obj)
-        # if bpy.context.scene.coloring_both_pial_and_inflated:
-        #     for cur_obj in [bpy.data.objects[hemi], mu.get_hemi_obj(hemi)]:
-        #         clear_object_vertex_colors(cur_obj)
-        # else:
-        #     # if _addon().is_pial():
-        #     #     cur_obj = bpy.data.objects[hemi]
-        #     # elif _addon().is_inflated():
-        #     cur_obj = mu.get_hemi_obj(hemi)
-        #     clear_object_vertex_colors(cur_obj)
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             object_coloring(label_obj, (1, 1, 1))
 
 
 #todo: call this code from the coloring
 def clear_object_vertex_colors(cur_obj):
+    if cur_obj is None:
+        return
     mesh = cur_obj.data
     scn = bpy.context.scene
     scn.objects.active = cur_obj
@@ -2205,6 +2198,8 @@ def clear_colors():
     for root in ['Subcortical_meg_activity_map', 'Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         clear_colors_from_parent_childrens(root)
     clear_connections()
+    for cur_obj in [bpy.data.objects.get(helmet) for helmet in ['eeg_helmet', 'meg_helmet']]:
+        clear_object_vertex_colors(cur_obj)
     ColoringMakerPanel.what_is_colored = set()
     _addon().labels.set_labels_plotted([])
 
