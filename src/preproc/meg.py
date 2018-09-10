@@ -1417,7 +1417,7 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                         mne.set_eeg_reference(raw, ref_channels=None)
                     except:
                         print('annot create EEG average reference projector (no EEG data found)')
-                    stcs_num[cond_name] = mne.minimum_norm.apply_inverse_raw(
+                    stcs[cond_name] = mne.minimum_norm.apply_inverse_raw(
                         raw, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 else:
                     evoked = get_evoked_cond(
