@@ -4,6 +4,12 @@ import mmvt_utils as mu
 import traceback
 
 
+CUT_AXIAL = 'axial'
+CUT_CORONAL = 'coronal'
+CUT_SAGITAL = 'sagital'
+CUTS = [CUT_AXIAL, CUT_CORONAL, CUT_SAGITAL]
+
+
 def _addon():
     return SlicerPanel.addon
 
@@ -144,7 +150,19 @@ def export_electrodes():
             wr.writerow([elc.name, *['{:.2f}'.format(loc * 10) for loc in elc.location]])
 
 
-def slice_brain(cut_pos=None, save_image=False):
+def set_slicer_cut_type(cut_type):
+    cuts = ['axial', 'coronal', 'sagital']
+    if cut_type in cuts:
+        bpy.context.scene.slicer_cut_type = cut_type
+    else:
+        print('Can be one of this values:'.format(','.join(cuts)))
+
+
+def get_slicer_cut_type():
+    return bpy.context.scene.slicer_cut_type
+
+
+def slice_brain(cut_pos=None, save_image=False, render_image=False):
     coordinate = bpy.context.scene.cursor_location
     cut_type = bpy.context.scene.slicer_cut_type
     create_joint_brain_obj()
@@ -219,6 +237,8 @@ def slice_brain(cut_pos=None, save_image=False):
     cur_plane_obj.hide_select = True
     if save_image:
         _addon().save_image('slicing', bpy.context.scene.save_selected_view)
+    if render_image:
+        _addon().render_image(set_to_camera_mode=True)
 
 
 def clear_slice():
@@ -499,9 +519,9 @@ class ExportElectrodes(bpy.types.Operator):
         return {'FINISHED'}
 
 
-items_names = [("axial", "Axial"), ("coronal", "Coronal"), ("sagital", 'Sagital')]
-items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
-bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Sets the slicing axis.\n\nCurrent axis')
+bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(
+    items=[(cut_type, cut_type.capitalize(), '', ind) for ind, cut_type in enumerate(CUTS)],
+    description='Sets the slicing axis.\n\nCurrent axis')
 # bpy.types.Scene.slice_using_left_click = bpy.props.BoolProperty(
 #     default=True, description="slice_using_left_click", update=show_cb_in_render_update)
 bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update,
@@ -540,7 +560,8 @@ bpy.types.Scene.slices_show_pial_color = bpy.props.FloatVectorProperty(
 bpy.types.Scene.slices_show_dural = bpy.props.BoolProperty(default=False, update=slices_update)
 bpy.types.Scene.slices_show_dural_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
-
+bpy.types.Scene.slices_rotate_view_on_click = bpy.props.BoolProperty(
+    default=True, description='Rotate the brain for best view')
 
 
 def slicer_draw(self, context):
@@ -584,6 +605,8 @@ def slicer_draw(self, context):
         row.prop(context.scene, 'slices_show_dural', text='Plot dural')
         if context.scene.slices_show_dural:
             row.prop(context.scene, 'slices_show_dural_color', text='')
+    col.prop(context.scene, "slices_rotate_view_on_click", text='Rotate the brain on click')
+
 
     # col = layout.box().column()
     # col.prop(context.scene, 'new_electrode_lead', text='Lead')

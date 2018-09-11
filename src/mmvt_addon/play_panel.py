@@ -523,7 +523,7 @@ def slicing_movie():
     coordinates = bpy.context.scene.cursor_location
     _addon().create_slices()
     for z in np.arange(7.3, -3.6, -0.1):
-        cut_pos = [0, 0 , z]
+        cut_pos = [0, 0, z]
         coordinates[2] = z
         _addon().slice_brain(cut_pos, save_image=True)
         _addon().clear_slice()

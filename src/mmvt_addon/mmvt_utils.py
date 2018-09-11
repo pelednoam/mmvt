@@ -2894,6 +2894,9 @@ def set_prop(prop_name, prop_val):
         bpy.context.scene.__setattr__(prop_name, prop_val)
 
 
+def get_cursor_location():
+    return bpy.context.scene.cursor_location
+
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 #     try:
