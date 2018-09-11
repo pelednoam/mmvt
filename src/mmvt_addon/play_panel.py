@@ -157,7 +157,9 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
     bpy.context.scene.render_movie = True
     bpy.context.scene.rotate_brain_while_playing = rotate_brain
     print('In play movie!')
-    for limits in range(play_from, play_to + 1, play_dt):
+    play_range = list(range(play_from, play_to + 1, play_dt))
+    runs_num = len(play_range)
+    for run, limits in enumerate(play_range):
         print('limits: {}'.format(limits))
         mu.write_to_stderr('Plotting {} frame {} ({}-{})'.format(play_type, limits, play_from, play_to))
         bpy.context.scene.frame_current = limits
@@ -171,7 +173,8 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
             mu.write_to_stderr(traceback.format_exc())
         else:
             time_took = time.time() - now
-            mu.write_to_stderr('Done! ({:.2f}s)'.format(time_took))
+            more_time = time_took / run * (runs_num - run)
+            mu.write_to_stderr(('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)))
 
 
 

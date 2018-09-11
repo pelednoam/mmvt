@@ -36,18 +36,6 @@ bpy.types.Scene.render_meg_sas_from = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_meg_sas_to = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_meg_sas_dt = bpy.props.IntProperty(min=1, default=1)
 
-#
-# def set_render_meg_sas_from(val):
-#     bpy.context.scene.render_meg_sas_from = val
-#
-#
-# def set_render_meg_sas_to(val):
-#     bpy.context.scene.render_meg_sas_from = val
-#
-#
-# def set_render_meg_sas_dt(val):
-#     bpy.context.scene.render_meg_sas_from = val
-
 
 def draw(self, context):
     layout = self.layout
