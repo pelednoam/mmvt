@@ -31,18 +31,17 @@ def do_something(subject_fname):
     mmvt = su.init_mmvt_addon()
     mu = mmvt.utils
     # Call mmvt functions
-    lib, (run_func, init_func, draw_func, params) = mmvt.scripts.check_script(
+    script_check_ret = mmvt.scripts.check_script(
         mu.namebase(args.script_name), return_all=True)
+    if script_check_ret is None:
+        print('Can\'t call the script {}!'.format(args.script_name))
+        return
+    lib, (run_func, init_func, draw_func, params) = script_check_ret
     for param_tup in args.script_params:
         if len(param_tup.split(':')) != 2:
             continue
         param_name, param_val = param_tup.split(':')
         mu.set_prop(param_name, param_val)
-        # setter_name = 'set_{}'.format(param_name)
-        # if hasattr(lib, setter_name):
-        #     getattr(lib, setter_name)(param_val)
-        # if bpy.context.scene.__getattribute__(param_name):
-        #    bpy.context.scene.__setattr__(param_name, param_val)
 
     run_func(mmvt)
     su.exit_blender()

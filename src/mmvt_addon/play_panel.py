@@ -163,6 +163,7 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
         bpy.context.scene.frame_current = limits
         rotate_while_playing()
         try:
+            mu.write_to_stderr('Plotting {} frame {} ({}-{})'.format(play_type, limits, play_from, play_to))
             plot_something(None, bpy.context, limits, camera_fname=camera_fname, set_to_camera_mode=set_to_camera_mode)
         except:
             print(traceback.format_exc())
