@@ -7,6 +7,7 @@ def run(mmvt):
     output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', 'meg_sensors_and_source'))
     dz = 360/ (bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from) * \
          bpy.context.scene.render_rot_head_dt
+    mu.write_to_stderr('Setting dz to {}'.format(dz))
 
     mmvt.appearance.show_hide_meg_sensors(bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source'])
     mmvt.appearance.show_hide_eeg_sensors(bpy.context.scene.render_rot_head_type in ['eeg_helmet', 'eeg_helmet_source'])

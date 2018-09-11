@@ -40,7 +40,8 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
        ("meg_elecs_coh", "Meg & Electrodes activity & coherence"),
        ("meg_sensors", "MEG sensors"), ("meg_helmet", "MEG helmet"),
        ("eeg_helmet", "EEG helmet"), ("eeg_sensors", "EEG sensors"),
-       ('meg_helmet_source', 'MEG helmet & source')]
+       ('meg_helmet_source', 'MEG helmet & source'),
+       ('eeg_helmet_source', 'EEG helmet & source')]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Chooses the displayed modality\n\nCurrent modality')
 bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description='Sets the frames per second for the video')
@@ -197,7 +198,7 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
     # if False: #PlayPanel.init_play:
 
     successful_ret = True
-    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh', 'meg_helmet_source']:
+    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh', 'meg_helmet_source', 'eeg_helmet_source']:
         # if PlayPanel.loop_indices:
         #     _addon().default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
@@ -230,7 +231,7 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
         # _addon().color_objects_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         _addon().color_electrodes_sources()
-    if play_type in ['eeg_helmet']:
+    if play_type in ['eeg_helmet', 'eeg_helmet_source']:
         _addon().color_eeg_sensors()
         _addon().color_eeg_helmet()
     if play_type in ['eeg_sensors']:
