@@ -173,7 +173,7 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
             mu.write_to_stderr(traceback.format_exc())
         else:
             time_took = time.time() - now
-            more_time = time_took / run * (runs_num - run)
+            more_time = time_took / (run + 1) * (runs_num - (run +  1))
             mu.write_to_stderr(('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)))
 
 
