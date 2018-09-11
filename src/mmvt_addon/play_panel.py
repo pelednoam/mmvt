@@ -159,18 +159,20 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
     print('In play movie!')
     for limits in range(play_from, play_to + 1, play_dt):
         print('limits: {}'.format(limits))
-        mu.write_to_stderr('rendering frame {}'.format(limits))
+        mu.write_to_stderr('Plotting {} frame {} ({}-{})'.format(play_type, limits, play_from, play_to))
         bpy.context.scene.frame_current = limits
         rotate_while_playing()
         try:
-            mu.write_to_stderr('Plotting {} frame {} ({}-{})'.format(play_type, limits, play_from, play_to))
+            now = time.time()
             plot_something(None, bpy.context, limits, camera_fname=camera_fname, set_to_camera_mode=set_to_camera_mode)
         except:
             print(traceback.format_exc())
             print('Error in plotting at {}!'.format(limits))
             mu.write_to_stderr(traceback.format_exc())
         else:
-            mu.write_to_stderr('Done!')
+            time_took = time.time() - now
+            mu.write_to_stderr('Done! ({:.2f}s)'.format(time_took))
+
 
 
 def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_camera_mode=True):
