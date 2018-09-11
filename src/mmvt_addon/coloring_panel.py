@@ -196,8 +196,8 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
         _addon().set_colorbar_max_min(data_max, data_min)
         _addon().set_colorbar_prec(2)
         _addon().set_colorbar_title('MEG')
-    if threshold > data_max:
-        print('threshold > data_max!')
+    if threshold > ColoringMakerPanel.meg_data_max:
+        print('threshold ({}) > data_max ({})!'.format(threshold, ColoringMakerPanel.meg_data_max))
         threshold = bpy.context.scene.coloring_lower_threshold = 0
     colors_ratio = 256 / (data_max - data_min)
     # set_default_colormap(data_min, data_max)
