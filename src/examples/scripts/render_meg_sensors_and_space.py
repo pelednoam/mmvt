@@ -29,7 +29,7 @@ def run(mmvt):
 
     mmvt.play.render_movie(
         'meg_helmet_source', bpy.context.scene.render_meg_sas_from, bpy.context.scene.render_meg_sas_to,
-        bpy.context.scene.render_meg_sas_dt, rotate_brain=True)
+        play_dt=bpy.context.scene.render_meg_sas_dt, rotate_brain=True)
 
 
 bpy.types.Scene.render_meg_sas_from = bpy.props.IntProperty(min=0, default=0)

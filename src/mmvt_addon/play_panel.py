@@ -161,7 +161,7 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
     runs_num = len(play_range)
     for run, limits in enumerate(play_range):
         print('limits: {}'.format(limits))
-        mu.write_to_stderr('Plotting {} frame {} ({}-{})'.format(play_type, limits, play_from, play_to))
+        mu.write_to_stderr('Plotting {} frame {} ({}-{}, dt {})'.format(play_type, limits, play_from, play_to, play_dt))
         bpy.context.scene.frame_current = limits
         rotate_while_playing()
         try:
