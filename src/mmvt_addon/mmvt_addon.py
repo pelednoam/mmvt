@@ -494,6 +494,7 @@ get_report_name = reports_panel.get_report_name
 get_report_files = reports_panel.get_report_files
 get_report_fields = reports_panel.get_report_fields
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ scripts_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scripts = scripts_panel
 get_scripts_names = scripts_panel.get_scripts_names
 run_script = scripts_panel.run_script
 

@@ -22,7 +22,7 @@ def scripts_items_update(self, context):
         init_func(_addon())
 
 
-def check_script(script_name):
+def check_script(script_name, return_all=False):
     try:
         lib = importlib.import_module(script_name)
         importlib.reload(lib)
@@ -32,11 +32,14 @@ def check_script(script_name):
             init_func = get_func(lib, 'init')
             draw_func = get_func(lib, 'draw')
             ScriptsPanel.funcs[script_name] = (run_func, init_func, draw_func, func_signature.parameters)
-            return True
+            if return_all:
+                return lib, ScriptsPanel.funcs[script_name]
+            else:
+                return True
         else:
-            return False
+            return None if return_all else False
     except:
-        return False
+        return None if return_all else False
 
 
 def get_func(lib, func_name):
@@ -53,12 +56,12 @@ def run_script(script_name=''):
     try:
         script_name = bpy.context.scene.scripts_files.replace(' ', '_')
         run_func, init_func, draw_func, params = ScriptsPanel.funcs[script_name]
-        if ScriptsPanel.cb_min_max_exist and ScriptsPanel.threshold_exist:
-            run_func(_addon(), cb_min=bpy.context.scene.scripts_cb_min, cb_max=bpy.context.scene.scripts_cb_max,
-                     threshold=bpy.context.scene.scripts_threshold)
-        elif ScriptsPanel.threshold_exist:
-            run_func(_addon(), threshold=bpy.context.scene.scripts_threshold)
-        elif len(params) == 2:
+        # if ScriptsPanel.cb_min_max_exist and ScriptsPanel.threshold_exist:
+        #     run_func(_addon(), cb_min=bpy.context.scene.scripts_cb_min, cb_max=bpy.context.scene.scripts_cb_max,
+        #              threshold=bpy.context.scene.scripts_threshold)
+        # elif ScriptsPanel.threshold_exist:
+        #     run_func(_addon(), threshold=bpy.context.scene.scripts_threshold)
+        if len(params) == 2:
             run_func(_addon(), bpy.context.scene.scripts_overwrite)
         elif len(params) == 1:
             run_func(_addon())
@@ -81,11 +84,11 @@ def scripts_draw(self, context):
         draw_func(self, context)
     layout.operator(RunScript.bl_idname, text="Run script", icon='POSE_HLT')
     layout.prop(context.scene, 'scripts_overwrite', 'Overwrite')
-    if ScriptsPanel.threshold_exist:
-        layout.prop(context.scene, 'scripts_threshold', 'threshold')
-    if ScriptsPanel.cb_min_max_exist:
-        layout.prop(context.scene, 'scripts_cb_min', 'cb min')
-        layout.prop(context.scene, 'scripts_cb_max', 'cb max')
+    # if ScriptsPanel.threshold_exist:
+    #     layout.prop(context.scene, 'scripts_threshold', 'threshold')
+    # if ScriptsPanel.cb_min_max_exist:
+    #     layout.prop(context.scene, 'scripts_cb_min', 'cb min')
+    #     layout.prop(context.scene, 'scripts_cb_max', 'cb max')
 
 
 class RunScript(bpy.types.Operator):
@@ -102,9 +105,9 @@ class RunScript(bpy.types.Operator):
 bpy.types.Scene.scripts_files = bpy.props.EnumProperty(items=[],
     description='List of script in the folder:\n..\mmvt_root\mmvtcode\src\examples\scripts\n\nCurrent script')
 bpy.types.Scene.scripts_overwrite = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.scripts_threshold = bpy.props.FloatProperty(default=0)
-bpy.types.Scene.scripts_cb_min = bpy.props.FloatProperty(default=0)
-bpy.types.Scene.scripts_cb_max = bpy.props.FloatProperty(default=0)
+# bpy.types.Scene.scripts_threshold = bpy.props.FloatProperty(default=0)
+# bpy.types.Scene.scripts_cb_min = bpy.props.FloatProperty(default=0)
+# bpy.types.Scene.scripts_cb_max = bpy.props.FloatProperty(default=0)
 
 
 class ScriptsPanel(bpy.types.Panel):
@@ -147,9 +150,9 @@ def init(addon):
         bpy.context.scene.report_use_script = bpy.context.scene.reports_files in ScriptsPanel.scripts_names
     except:
         pass
-    bpy.context.scene.scripts_threshold = 2
-    bpy.context.scene.scripts_cb_min = 2
-    bpy.context.scene.scripts_cb_max = 6
+    # bpy.context.scene.scripts_threshold = 2
+    # bpy.context.scene.scripts_cb_min = 2
+    # bpy.context.scene.scripts_cb_max = 6
     register()
     ScriptsPanel.init = True
 

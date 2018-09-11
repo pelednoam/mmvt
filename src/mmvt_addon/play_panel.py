@@ -98,13 +98,14 @@ class ModalTimerOperator(bpy.types.Operator):
         if event.type == 'TIMER':
             # print(time.time() - self._time)
             if time.time() - self._time > bpy.context.scene.play_time_step:
-                if bpy.context.scene.rotate_brain_while_playing and (
-                            bpy.context.scene.render_movie or bpy.context.scene.save_images):
-                    _addon().camera_mode('ORTHO')
-                    _addon().rotate_brain()
-                    _addon().camera_mode('CAMERA')
-                elif bpy.context.scene.rotate_brain_while_playing:
-                    _addon().rotate_brain()
+                rotate_while_playing()
+                # if bpy.context.scene.rotate_brain_while_playing and (
+                #             bpy.context.scene.render_movie or bpy.context.scene.save_images):
+                #     _addon().camera_mode('ORTHO')
+                #     _addon().rotate_brain()
+                #     _addon().camera_mode('CAMERA')
+                # elif bpy.context.scene.rotate_brain_while_playing:
+                #     _addon().rotate_brain()
 
                 bpy.context.scene.frame_current = self.limits
                 # print(self.limits, time.time() - self._time)
@@ -140,6 +141,16 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
+def rotate_while_playing():
+    if bpy.context.scene.rotate_brain_while_playing and (
+            bpy.context.scene.render_movie or bpy.context.scene.save_images):
+        _addon().camera_mode('ORTHO')
+        _addon().rotate_brain()
+        _addon().camera_mode('CAMERA')
+    elif bpy.context.scene.rotate_brain_while_playing:
+        _addon().rotate_brain()
+
+
 def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_to_camera_mode=True, rotate_brain=False):
     set_play_to(play_to)
     bpy.context.scene.play_type = play_type
@@ -150,6 +161,7 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
         print('limits: {}'.format(limits))
         mu.write_to_stderr('rendering frame {}'.format(limits))
         bpy.context.scene.frame_current = limits
+        rotate_while_playing()
         try:
             plot_something(None, bpy.context, limits, camera_fname=camera_fname, set_to_camera_mode=set_to_camera_mode)
         except:

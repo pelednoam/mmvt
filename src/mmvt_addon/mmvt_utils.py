@@ -2748,6 +2748,14 @@ def is_float(x):
         return False
 
 
+def is_int(x):
+    try:
+        int(x)
+        return True
+    except:
+        return False
+
+
 def run_mmvt_func(module, func_name='', flags='', add_subject=False):
     if 'preproc' in module.split('.'):
         flags += ' -s {} --ignore_missing 1'.format(get_user())
@@ -2867,6 +2875,23 @@ def fix_normals(parent_name):
         bm.clear()
         mesh.update()
     bm.free()
+
+
+def prop_exist(prop_name):
+    try:
+        bpy.context.scene.__getattribute__(prop_name)
+        return True
+    except:
+        return False
+
+
+def set_prop(prop_name, prop_val):
+    if prop_exist(prop_name):
+        if is_int(prop_val):
+            prop_val = int(prop_val)
+        elif is_float(prop_val):
+            prop_val = float(prop_val)
+        bpy.context.scene.__setattr__(prop_name, prop_val)
 
 
 # def mouse_coo_to_3d_loc(event, context):

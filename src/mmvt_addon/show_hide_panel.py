@@ -565,6 +565,16 @@ class ShowHideRHSubs(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def show_head():
+    bpy.context.scene.objects_show_hide_head = True
+    hide_obj(bpy.data.objects['seghead'], False)
+
+
+def hide_head():
+    bpy.context.scene.objects_show_hide_head = False
+    hide_obj(bpy.data.objects['seghead'], True)
+
+
 class ShowHideHead(bpy.types.Operator):
     bl_idname = "mmvt.show_hide_head"
     bl_label = "mmvt show_hide_head"

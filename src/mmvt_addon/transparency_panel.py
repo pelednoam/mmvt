@@ -21,6 +21,14 @@ def set_brain_transparency(val):
         print('transparency value must be between 0 (not transparent) and 1')
 
 
+def set_head_transparency(val):
+    if 0 <= val <= 1:
+        bpy.context.scene.appearance_seghead_trans = val
+        appearance_update()
+    else:
+        print('transparency value must be between 0 (not transparent) and 1')
+
+
 def set_light_layers_depth(val):
     if 0 <= val <= 10:
         bpy.context.scene.appearance_depth_slider = val
