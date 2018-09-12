@@ -24,6 +24,7 @@ def run(mmvt):
         inf_range = np.arange(1, -1, -0.01)
     else:
         inf_range = np.arange(0, -1, -0.01)
+    # dz = 180 / (len(inf_range))
     now, N = time.time(), len(inf_range)
     for run, inflating in enumerate(inf_range):
         mu.time_to_go(now, run, N, 1, do_write_to_stderr=True)
@@ -33,6 +34,7 @@ def run(mmvt):
         if bpy.context.scene.inflating_render_movie:
             mmvt.render.render_image('inflating_{}.{}'.format(
                 run, mmvt.render.get_figure_format()), set_to_camera_mode=True)
+        # mmvt.show_hide.rotate_brain(0, 0, dz)
 
 
 bpy.types.Scene.inflating_render_movie = bpy.props.BoolProperty(default=False, description='Renders each frame')
