@@ -1,8 +1,18 @@
 import bpy
+import mmvt_utils as mu
 
 
 def _addon():
     return TransparencyPanel.addon
+
+
+def set_layer_weight(val):
+    for obj in mu.get_hemis_objs():
+        obj.active_material.node_tree.nodes['Layer Weight'].inputs['Blend'].default_value = val
+
+
+def layer_weight_update(self, context):
+    set_layer_weight(bpy.context.scene.appearance_layer_weight)
 
 
 def appearance_update(self=None, context=None):
@@ -45,6 +55,7 @@ def transparency_draw(self, context):
         layout.prop(context.scene, 'appearance_depth_slider', text="Depth")
         if bpy.data.objects.get('seghead', None) is not None:
             layout.prop(context.scene, 'appearance_seghead_trans', text="Transparent head")
+        layout.prop(context.scene, 'appearance_layer_weight', text='Light weight')
     else:
         layout.label(text='This panel works only in rendered brain and activity map mode')
 
@@ -80,6 +91,7 @@ bpy.types.Scene.appearance_depth_slider = bpy.props.IntProperty(default=0, min=0
     description='Sets the amount of surface layers that will be seen')
 bpy.types.Scene.appearance_seghead_trans = bpy.props.FloatProperty(default=0, min=0, max=1, update=appearance_update,
     description='Sets the transparency value of the head from 0 to 1 ')
+bpy.types.Scene.appearance_layer_weight = bpy.props.FloatProperty(default=0.3, update=layer_weight_update)
 
 
 def init(addon):

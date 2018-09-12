@@ -2,7 +2,6 @@ import os.path as op
 import glob
 from src.utils import utils
 
-
 FFMPEG_DIR = utils.get_link_dir(utils.get_links_dir(), 'ffmpeg')
 FFMPEG_DIR = op.join(FFMPEG_DIR, 'bin') if utils.is_windows() else FFMPEG_DIR
 FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else 'ffmpeg'
@@ -186,8 +185,10 @@ def combine_movies(fol, final_movie_name, parts_names, fps=60, movie_type='mp4',
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug=False,
+                   images_type='', ffmpeg_cmd='', movie_name_full_path=False, debug=False,
                    copy_files=False, add_reverse_frames=False, **kwargs):
+    if ffmpeg_cmd == '':
+        ffmpeg_cmd = FFMPEG_CMD
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     if movie_name == '' and images_prefix != '':
@@ -297,7 +298,7 @@ if __name__ == '__main__':
     parser.add_argument('--fol', required=False)
     parser.add_argument('--movie_name', required=False, default='')
     parser.add_argument('--out_movie_name', required=False, default='output2')
-    parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
+    parser.add_argument('--ffmpeg_cmd', required=False, default='')
     parser.add_argument('--frame_rate', required=False, default=10)
     parser.add_argument('--copy_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--add_reverse_frames', required=False, default=0, type=au.is_true)
@@ -305,6 +306,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')
     args = utils.Bag(au.parse_parser(parser))
+    if args.ffmpeg_cmd == '':
+        args.ffmpeg_cmd = FFMPEG_CMD
     locals()[args.function](**args)
 
     # combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',

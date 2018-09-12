@@ -6,6 +6,10 @@ import shutil
 from src.utils import utils
 from src.utils import movies_utils as mu
 
+LINKS_DIR = utils.get_links_dir()
+SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
+MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
+
 
 def remove_dup_file_type(root, ft):
     files = glob.glob(op.join(root, '*.{0}.{0}'.format(ft)))
@@ -50,12 +54,11 @@ def combine_movies(fol, final_movie_name, fps=60, movie_type='mp4'):
 
 if __name__ == '__main__':
     ft = 'jpeg'
-    root = '/home/npeled/mmvt/matt_hibert/figures/modalities_movie'
+    root = op.join(MMVT_DIR, 'matt_hibert', 'figures')
     # for fol in [d for d in glob.glob(op.join(root, '*')) if op.isdir(d)]:
-    for fol in [op.join(root, d) for d in ['electrodes2', 'meg_sensors_and_source']]:
-        # remove_dup_file_type(fol, ft)
+    for fol in [op.join(root, d) for d in ['inflating_movie']]:
+        remove_dup_file_type(fol, ft)
         # remove_odd_files(fol, ft)
-        make_movie(fol, '{}_30'.format(utils.namebase(fol)), 30, True)
-        pass
+        make_movie(fol, '{}_20'.format(utils.namebase(fol)), 20, True)
     # combine_movies(root, 'modalities_movie', 60)
     print('finish!')

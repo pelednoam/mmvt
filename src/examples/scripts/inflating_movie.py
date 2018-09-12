@@ -9,7 +9,8 @@ def run(mmvt):
     output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', 'inflating_movie'))
     mmvt.render.set_output_path(output_fol)
     mmvt.render.set_render_quality(60)
-    mmvt.transparency.set_brain_transparency(0)
+    mmvt.transparency.set_brain_transparency(1)
+    mmvt.transparency.set_layer_weight(0.2)
 
     mmvt.appearance.show_hide_meg_sensors(False)
     mmvt.appearance.show_hide_eeg_sensors(False)
