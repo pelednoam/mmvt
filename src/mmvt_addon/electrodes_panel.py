@@ -39,6 +39,10 @@ def elc_size_update(self, context):
         pass
 
 
+def set_show_electrodes_groups_leads(val):
+    bpy.context.scene.show_electrodes_groups_leads = val
+
+
 def show_electrodes_groups_leads_update(self, context):
     parent_name = 'leads'
     leads_obj = bpy.data.objects.get(parent_name, None)

@@ -13,7 +13,7 @@ def run(mmvt):
 
     mmvt.appearance.show_hide_meg_sensors(False)
     mmvt.appearance.show_hide_eeg_sensors(False)
-    mmvt.appearance.show_hide_electrodes(False)
+    mmvt.appearance.show_hide_electrodes(True)
     mmvt.appearance.show_hide_connections(False)
     mmvt.show_hide.hide_head()
     mmvt.show_hide.show_hemis()
@@ -23,6 +23,9 @@ def run(mmvt):
 
     mmvt.transparency.set_brain_transparency(0)
     mmvt.transparency.set_head_transparency(1)
+
+    mmvt.coloring.color_manually('electrodes_groups_coloring')
+    mmvt.electrodes.set_show_electrodes_groups_leads(True)
 
     coordinates = mu.get_cursor_location()
     bpy.context.scene.slicing_movie_from_y = coordinates[1]

@@ -1180,7 +1180,9 @@ def color_groups_manually():
     color_objects(objects_names, colors, data)
 
 
-def color_manually():
+def color_manually(coloring_name=''):
+    if coloring_name != '':
+        bpy.context.scene.coloring_files = coloring_name
     ColoringMakerPanel.what_is_colored.add(WIC_MANUALLY)
     init_activity_map_coloring('FMRI')
     subject_fol = mu.get_user_fol()
