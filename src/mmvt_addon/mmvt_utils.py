@@ -581,14 +581,18 @@ def show_only_selected_fcurves(context):
 #     return xs, ys
 
 
-def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1):
+def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1, do_write_to_stderr=False):
     if run % runs_num_to_print == 0 and run != 0:
         time_took = time.time() - now
         more_time = time_took / run * (runs_num - run)
         if thread > 0:
-            print('{}: {}/{}, {:.2f}s, {:.2f}s to go!'.format(thread, run, runs_num, time_took, more_time))
+            str = '{}: {}/{}, {:.2f}s, {:.2f}s to go!'.format(thread, run, runs_num, time_took, more_time)
         else:
-            print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+            str = '{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)
+        if do_write_to_stderr:
+            write_to_stderr(str)
+        else:
+            print(str)
 
 
 def show_hide_obj_and_fcurves(objs, val, exclude=[]):

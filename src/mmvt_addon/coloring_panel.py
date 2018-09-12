@@ -1503,6 +1503,27 @@ def meg_minmax_prec_update(selc, context):
     calc_stc_minmax()
 
 
+def set_meg_minmax_prec(min_prec, max_prec, stc_name):
+    if ColoringMakerPanel.stc_exist:
+        ColoringMakerPanel.run_meg_minmax_prec_update = False
+        bpy.context.scene.meg_min_prec = min_prec
+        bpy.context.scene.meg_max_prec = max_prec
+        ColoringMakerPanel.run_meg_minmax_prec_update = True
+        calc_stc_minmax((min_prec, max_prec), stc_name)
+
+
+def fmri_minmax_prec_update(selc, context):
+    if not ColoringMakerPanel.run_fmri_minmax_prec_update:
+        return
+    ColoringMakerPanel.run_fmri_minmax_prec_update = False
+    if bpy.context.scene.fmri_min_prec >= bpy.context.scene.fmri_max_prec:
+        bpy.context.scene.fmri_min_prec = bpy.context.scene.fmri_max_prec - 1
+    if bpy.context.scene.fmri_max_prec <= bpy.context.scene.fmri_min_prec:
+        bpy.context.scene.fmri_max_prec = bpy.context.scene.fmri_min_prec + 1
+    ColoringMakerPanel.run_fmri_minmax_prec_update = True
+    calc_fmri_minmax()
+
+
 def electrodes_minmax_prec_update(selc, context):
     if not ColoringMakerPanel.run_electrodes_minmax_prec_update:
         return
@@ -1512,15 +1533,6 @@ def electrodes_minmax_prec_update(selc, context):
     if bpy.context.scene.electrodes_max_prec <= bpy.context.scene.electrodes_min_prec:
         bpy.context.scene.electrodes_max_prec = bpy.context.scene.electrodes_min_prec + 1
     ColoringMakerPanel.run_electrodes_minmax_prec_update = True
-
-
-def set_meg_minmax_prec(min_prec, max_prec, stc_name):
-    if ColoringMakerPanel.stc_exist:
-        ColoringMakerPanel.run_meg_minmax_prec_update = False
-        bpy.context.scene.meg_min_prec = min_prec
-        bpy.context.scene.meg_max_prec = max_prec
-        ColoringMakerPanel.run_meg_minmax_prec_update = True
-        calc_stc_minmax((min_prec, max_prec), stc_name)
 
 
 def calc_stc_minmax(meg_min_max_prec=None, stc_name=''):
@@ -2320,6 +2332,9 @@ def draw(self, context):
             if len(fmri_files) > 0:
                 col.prop(context.scene, "fmri_files", text="")
                 col.operator(ColorfMRI.bl_idname, text="Plot fMRI file", icon='POTATO')
+                # row = col.row(align=True)
+                # row.prop(context.scene, 'fmri_min_prec', 'min percentile')
+                # row.prop(context.scene, 'fmri_max_prec', 'max percentile')
             if ColoringMakerPanel.fmri_activity_map_exist:
                 col.operator(ColorfMRIDynamics.bl_idname, text="Plot fMRI Dynamics", icon='POTATO')
             if ColoringMakerPanel.fmri_labels_exist:
@@ -2402,6 +2417,10 @@ bpy.types.Scene.meg_peak_mode = bpy.props.EnumProperty(
 bpy.types.Scene.meg_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update,
     description='Sets the min percentile that is being used to calculate the min & max colorbar’s values')
 bpy.types.Scene.meg_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update,
+    description='Sets the max percentile that is being used to calculate the min & max colorbar’s values')
+bpy.types.Scene.fmri_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update,
+    description='Sets the min percentile that is being used to calculate the min & max colorbar’s values')
+bpy.types.Scene.fmri_max_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=meg_minmax_prec_update,
     description='Sets the max percentile that is being used to calculate the min & max colorbar’s values')
 bpy.types.Scene.electrodes_min_prec = bpy.props.FloatProperty(min=0, default=0, max=100, update=electrodes_minmax_prec_update,
     description='Sets the min percentile that is being used to calculate the min & max colorbar')
@@ -2502,6 +2521,7 @@ class ColoringMakerPanel(bpy.types.Panel):
     fMRI_contrasts_names = []
     fMRI_constrasts_exist = False
     run_meg_minmax_prec_update = True
+    run_fmri_minmax_prec_update = True
     run_electrodes_minmax_prec_update = True
     eeg_helmet_indices = []
     meg_helmet_indices = []

@@ -485,9 +485,13 @@ def calc_subs_surface_activity(subject, fmri_file_template, template_brains, thr
 def morph_fmri(morph_from, morph_to, nii_fname):
     from src.utils import freesurfer_utils as fu
     utils.make_dir(op.join(MMVT_DIR, morph_to, 'fmri'))
-    hemi = lu.get_label_hemi(nii_fname)
+    hemi = lu.get_label_hemi(utils.get_label_for_full_fname(nii_fname))
     utils.make_dir(op.join(op.join(FMRI_DIR, morph_to)))
-    output_fname = op.join(FMRI_DIR, morph_to, utils.namebase_with_ext(nii_fname))
+    if lu.get_label_hemi(nii_fname) == '':
+        output_fname = op.join(FMRI_DIR, morph_to, '{}-{}.{}'.format(
+            utils.namebase(nii_fname), hemi, utils.file_type(nii_fname)))
+    else:
+        output_fname = op.join(FMRI_DIR, morph_to, utils.namebase_with_ext(nii_fname))
     x = nib.load(nii_fname).get_data()
     morph_from_template = check_vertice_num_for_template(hemi, x)
     if morph_from_template != '':
