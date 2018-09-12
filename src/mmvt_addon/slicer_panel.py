@@ -172,6 +172,7 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
     option_ind = optional_cut_types.index(cut_type)
     bpy.context.scene.is_sliced_ind = option_ind
     bpy.context.scene.last_cursor_location = coordinate
+    flip_plane_normals = False
     if cut_pos is None:
         cut_pos = [0.0, 0.0, 0.0]
         cut_pos[option_ind] = coordinate[option_ind]
@@ -217,8 +218,10 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
     cube_location = [0, 0, 0]
     if cut_pos[option_ind] > 0 or cut_type == 'axial':
         cube_location[option_ind] = cut_pos[option_ind] + 9.98
+        is_coordinate_positive = True
     elif cut_pos[option_ind] < 0:
         cube_location[option_ind] = cut_pos[option_ind] - 9.98
+        is_coordinate_positive = False
     bpy.data.objects['masking_cube'].location = tuple(cube_location)
     bpy.data.objects['masking_cube'].hide = True
     bpy.data.objects['masking_cube'].hide_render = True
@@ -234,11 +237,28 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
         cur_plane_obj.modifiers.new('Boolean', type='BOOLEAN')
         cur_plane_obj.modifiers['Boolean'].object = bpy.data.objects['joint_brain']
         cur_plane_obj.modifiers['Boolean'].operation = 'INTERSECT'
+        flip_slice_plane_if_needed(is_coordinate_positive)
     cur_plane_obj.hide_select = True
     if save_image:
         _addon().save_image('slicing', bpy.context.scene.save_selected_view)
     if render_image:
         _addon().render_image(set_to_camera_mode=True)
+
+
+def flip_slice_plane_if_needed(is_coordinate_positive):
+    slice_is_flipped = bpy.context.scene.slice_plane_flipped[bpy.context.scene.slicer_cut_type]
+    print('is_positive =={}'.format(is_coordinate_positive))
+    print('slice_plane_flipped[cut_type] == {}'.format(slice_is_flipped))
+    if slice_is_flipped == is_coordinate_positive:
+        print('in check_to_flip_slice_plane, return False')
+        return False
+    else:
+        print('in check_to_flip_slice_plane, return True')
+        bpy.context.scene.slice_plane_flipped[bpy.context.scene.slicer_cut_type] = not slice_is_flipped
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.flip_normals()
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return True
 
 
 def clear_slice():
@@ -676,6 +696,7 @@ def init(addon):
     bpy.context.scene.slices_plot_cross = True
     bpy.context.scene.slices_mark_voxel = True
     bpy.context.scene.slices_modality = 'mri'
+    bpy.context.scene.slice_plane_flipped = {'coronal': False, 'axial': False, 'sagital': False}
     SlicerPanel.init = True
     register()
 
