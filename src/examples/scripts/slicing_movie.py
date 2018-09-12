@@ -45,7 +45,6 @@ def run(mmvt):
                 run, mmvt.render.get_figure_format()), set_to_camera_mode=True)
         mmvt.slicer.clear_slice()
         mmvt.where_am_i_panel.create_slices(pos=coordinates)
-        return
 
 
 bpy.types.Scene.slicing_movie_from_y = bpy.props.FloatProperty(default=8)
