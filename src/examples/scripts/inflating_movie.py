@@ -35,7 +35,9 @@ def run(mmvt):
         if bpy.context.scene.inflating_render_movie:
             mmvt.render.render_image('inflating_{}.{}'.format(
                 run, mmvt.render.get_figure_format()), set_to_camera_mode=True)
+        mmvt.render.camera_mode('ORTHO')
         mmvt.show_hide.rotate_brain(0, 0, dz)
+        mmvt.render.camera_mode('CAMERA')
 
 
 bpy.types.Scene.inflating_render_movie = bpy.props.BoolProperty(default=False, description='Renders each frame')
