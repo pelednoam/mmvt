@@ -137,12 +137,24 @@ def show_only_redner_update(self, context):
 
 
 def show_hide_cerebellum_update(self, context):
+    set_show_hide_cerebellum(context.scene.show_hide_cerebellum)
+
+
+def set_show_hide_cerebellum(val):
     obj_names = [
         'Left-Cerebellum-Cortex', 'Right-Cerebellum-Cortex',
         'Left-Cerebellum-Cortex_fmri_activity', 'Right-Cerebellum-Cortex_fmri_activity',
         'Left-Cerebellum-Cortex_meg_activity', 'Right-Cerebellum-Cortex_meg_activity']
     for obj_name in obj_names:
-        show_hide_hierarchy(context.scene.show_hide_cerebellum, obj_name)
+        show_hide_hierarchy(val, obj_name)
+
+
+def show_cerebellum():
+    set_show_hide_cerebellum(False)
+
+
+def hide_cerebellum():
+    set_show_hide_cerebellum(True)
 
 
 def show_hide_hierarchy(do_hide, obj_name, hemi='both'):
