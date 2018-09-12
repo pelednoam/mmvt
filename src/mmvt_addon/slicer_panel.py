@@ -2,6 +2,7 @@ import bpy
 import os.path as op
 import mmvt_utils as mu
 import traceback
+import glob
 
 
 CUT_AXIAL = 'axial'
@@ -182,6 +183,10 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
         bpy.ops.mesh.primitive_plane_add(radius=25.7 / 2.0, location=tuple(cut_pos))
         bpy.context.object.name = '{}_plane'.format(cut_type)
         bpy.context.object.rotation_euler = optional_rots[option_ind]
+        if cut_type == 'axial':
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.flip_normals()
+            bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.mesh.uv_texture_add()
         try:
             bpy.context.object.active_material = bpy.data.materials['{}_plane_mat'.format(cut_type)]
@@ -237,7 +242,7 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
         cur_plane_obj.modifiers.new('Boolean', type='BOOLEAN')
         cur_plane_obj.modifiers['Boolean'].object = bpy.data.objects['joint_brain']
         cur_plane_obj.modifiers['Boolean'].operation = 'INTERSECT'
-        flip_slice_plane_if_needed(is_coordinate_positive)
+    flip_slice_plane_if_needed(is_coordinate_positive)
     cur_plane_obj.hide_select = True
     if save_image:
         _addon().save_image('slicing', bpy.context.scene.save_selected_view)
@@ -246,15 +251,17 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
 
 
 def flip_slice_plane_if_needed(is_coordinate_positive):
-    slice_is_flipped = bpy.context.scene.slice_plane_flipped[bpy.context.scene.slicer_cut_type]
+    if bpy.context.active_object.get('is_flipped') is None:
+        bpy.context.active_object['is_flipped'] = False
+    slice_is_flipped = bpy.context.active_object['is_flipped']
     print('is_positive =={}'.format(is_coordinate_positive))
     print('slice_plane_flipped[cut_type] == {}'.format(slice_is_flipped))
-    if slice_is_flipped == is_coordinate_positive:
+    if slice_is_flipped != is_coordinate_positive:
         print('in check_to_flip_slice_plane, return False')
         return False
     else:
         print('in check_to_flip_slice_plane, return True')
-        bpy.context.scene.slice_plane_flipped[bpy.context.scene.slicer_cut_type] = not slice_is_flipped
+        bpy.context.active_object['is_flipped'] = not bpy.context.active_object['is_flipped']
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.flip_normals()
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -696,7 +703,13 @@ def init(addon):
     bpy.context.scene.slices_plot_cross = True
     bpy.context.scene.slices_mark_voxel = True
     bpy.context.scene.slices_modality = 'mri'
-    bpy.context.scene.slice_plane_flipped = {'coronal': False, 'axial': False, 'sagital': False}
+    empty_brain_path = op.join(mu.get_mmvt_code_root(), 'resources', 'empty_subject.blend', 'Material')
+    for slice_str in ['coronal', 'sagital', 'axial']:
+        cur_mat_name = '{}_plane_mat'.format(slice_str)
+        if bpy.data.materials.get(cur_mat_name) is None:
+            print('Importing {} from empty_brain file'.format(cur_mat_name))
+            bpy.ops.wm.append(filename=cur_mat_name, directory=empty_brain_path)
+    # bpy.context.scene['slice_plane_flipped'] = {'coronal': False, 'axial': False, 'sagital': False}
     SlicerPanel.init = True
     register()
 
