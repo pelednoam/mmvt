@@ -18,13 +18,14 @@ def run(mmvt):
     mmvt.show_hide.hide_head()
     mmvt.show_hide.show_hemis()
     mmvt.show_hide.hide_subcorticals()
-    mmvt.show_hide.show_coronal(show_frontal=True)
+    mmvt.show_hide.show_coronal()
+    mmvt.show_hide.show_coronal()
 
     if mmvt.appearance.flat_map_exists():
-        inf_range = np.arange(1, -1, -0.01)
+        inf_range = np.concatenate((np.arange(1, -1, -0.01), np.arange(-1, 1, 0.01)))
     else:
-        inf_range = np.arange(0, -1, -0.01)
-    # dz = 180 / (len(inf_range))
+        inf_range = np.concatenate((np.arange(0, -1, -0.01), np.arange(-1, 0, 0.01)))
+    dz = 360 / (len(inf_range))
     now, N = time.time(), len(inf_range)
     for run, inflating in enumerate(inf_range):
         mu.time_to_go(now, run, N, 1, do_write_to_stderr=True)
@@ -34,7 +35,7 @@ def run(mmvt):
         if bpy.context.scene.inflating_render_movie:
             mmvt.render.render_image('inflating_{}.{}'.format(
                 run, mmvt.render.get_figure_format()), set_to_camera_mode=True)
-        # mmvt.show_hide.rotate_brain(0, 0, dz)
+        mmvt.show_hide.rotate_brain(0, 0, dz)
 
 
 bpy.types.Scene.inflating_render_movie = bpy.props.BoolProperty(default=False, description='Renders each frame')
