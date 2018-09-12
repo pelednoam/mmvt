@@ -22,6 +22,11 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
     if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
         return True
+    ct_fname = utils.select_one_file(glob.glob(op.join(ct_fol, '*.mgz')))
+    if op.isfile(ct_fname):
+        if utils.namebase(ct_fname) != 'ct_org':
+            utils.make_link(ct_fname, op.join(ct_fol, 'ct_org.mgz'))
+        return True
     output_fname = op.join(ct_fol, output_name)
     if op.isfile(output_fname):
         if not overwrite:
