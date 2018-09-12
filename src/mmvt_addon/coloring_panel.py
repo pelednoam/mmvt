@@ -115,6 +115,7 @@ def plot_stc(stc, t=-1, threshold=None, cb_percentiles=None, save_image=False,
     n_jobs = mu.get_n_jobs(n_jobs)
 
     def create_stc_t(stc, t):
+        print('Creating stc_t ({}) from stc ({})'.format(t, stc.shape))
         if len(stc.times) == 1:
             return stc
         C = max([stc.rh_data.shape[0], stc.lh_data.shape[0]])

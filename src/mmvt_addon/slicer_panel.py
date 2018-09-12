@@ -221,7 +221,7 @@ def slice_brain(cut_pos=None, save_image=False, render_image=False):
         bpy.ops.mesh.primitive_cube_add(radius=10)
         bpy.context.object.name = 'masking_cube'
     cube_location = [0, 0, 0]
-    if cut_pos[option_ind] > 0 or cut_type == 'axial':
+    if cut_pos[option_ind] > 0 or cut_type in ['axial','coronal']:
         cube_location[option_ind] = cut_pos[option_ind] + 9.98
         is_coordinate_positive = True
     elif cut_pos[option_ind] < 0:

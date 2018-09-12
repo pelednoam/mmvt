@@ -56,7 +56,7 @@ if __name__ == '__main__':
     ft = 'jpeg'
     root = op.join(MMVT_DIR, 'matt_hibert', 'figures')
     # for fol in [d for d in glob.glob(op.join(root, '*')) if op.isdir(d)]:
-    for fol in [op.join(root, d) for d in ['inflating_movie']]:
+    for fol in [op.join(root, d) for d in ['slicing_movie']]:
         remove_dup_file_type(fol, ft)
         # remove_odd_files(fol, ft)
         make_movie(fol, '{}_20'.format(utils.namebase(fol)), 20, True)
