@@ -8,7 +8,7 @@ def run(mmvt):
     mu = mmvt.utils
     output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', 'slicing_movie'))
     mmvt.render.set_output_path(output_fol)
-    mmvt.render.set_render_quality(60)
+    mmvt.render.set_render_quality(bpy.context.scene.quality)
     mmvt.transparency.set_brain_transparency(0)
 
     mmvt.appearance.show_hide_meg_sensors(False)
@@ -54,6 +54,7 @@ bpy.types.Scene.slicing_save_movie = bpy.props.BoolProperty(default=False, descr
 
 def draw(self, context):
     layout = self.layout
+    layout.prop(context.scene, 'quality', text='Rendering quality')
     layout.prop(context.scene, 'slicing_movie_from_y', text='from')
     layout.prop(context.scene, 'slicing_movie_to_y', text='to')
     layout.prop(context.scene, 'slicing_movie_dy', text='dy')
