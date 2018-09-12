@@ -18,7 +18,7 @@ def run(mmvt):
     mmvt.appearance.show_hide_connections(False)
     mmvt.show_hide.hide_head()
     mmvt.show_hide.show_hemis()
-    mmvt.show_hide.hide_subcorticals()
+    mmvt.show_hide.show_subcorticals()
     mmvt.show_hide.show_coronal(show_frontal=True)
 
     if mmvt.appearance.flat_map_exists():
