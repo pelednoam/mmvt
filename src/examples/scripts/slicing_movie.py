@@ -45,6 +45,8 @@ def run(mmvt):
         if bpy.context.scene.slicing_render_movie:
             mmvt.render.render_image('slicing_{}.{}'.format(
                 run, mmvt.render.get_figure_format()), set_to_camera_mode=True)
+        if not bpy.context.scene.slicing_loop:
+            break
         mmvt.slicer.clear_slice()
         mmvt.where_am_i_panel.create_slices(pos=coordinates)
 
@@ -54,6 +56,7 @@ bpy.types.Scene.slicing_movie_to_y = bpy.props.FloatProperty(default=-9.2)
 bpy.types.Scene.slicing_movie_dy = bpy.props.FloatProperty(default=-0.1)
 bpy.types.Scene.slicing_render_movie = bpy.props.BoolProperty(default=False, description='Renders each frame')
 bpy.types.Scene.slicing_save_movie = bpy.props.BoolProperty(default=False, description='Saves each frame')
+bpy.types.Scene.slicing_loop = bpy.props.BoolProperty(default=True, description='Loop slices')
 
 
 def draw(self, context):
@@ -64,4 +67,5 @@ def draw(self, context):
     layout.prop(context.scene, 'slicing_movie_dy', text='dy')
     layout.prop(context.scene, 'slicing_render_movie', text='Render frames')
     layout.prop(context.scene, 'slicing_save_movie', text='Save frames')
+    layout.prop(context.scene, 'slicing_loop', text='Loop slices')
 
