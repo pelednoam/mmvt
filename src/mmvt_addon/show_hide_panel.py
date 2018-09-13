@@ -146,15 +146,15 @@ def set_show_hide_cerebellum(val):
         'Left-Cerebellum-Cortex_fmri_activity', 'Right-Cerebellum-Cortex_fmri_activity',
         'Left-Cerebellum-Cortex_meg_activity', 'Right-Cerebellum-Cortex_meg_activity']
     for obj_name in obj_names:
-        show_hide_hierarchy(val, obj_name)
+        show_hide_hierarchy(not val, obj_name)
 
 
 def show_cerebellum():
-    set_show_hide_cerebellum(False)
+    bpy.context.scene.show_hide_cerebellum = True
 
 
 def hide_cerebellum():
-    set_show_hide_cerebellum(True)
+    bpy.context.scene.show_hide_cerebellum = False
 
 
 def show_hide_hierarchy(do_hide, obj_name, hemi='both'):
@@ -669,8 +669,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
                 layout.prop(context.scene, 'hide_half_subcorticals', text='{} only one side'.format(
                     'Hide' if sub_vis else 'Show'))
         if context.scene.show_hide_settings:
-            action = 'Show' if context.scene.show_hide_cerebellum else 'Hide'
-            layout.prop(context.scene, 'show_hide_cerebellum', text='{} Cerebellum'.format(action))
+            layout.prop(context.scene, 'show_hide_cerebellum', text='Show Cerebellum')
 
         # if bpy.data.objects.get('Cerebellum'):
         #     sub_vis = not bpy.context.scene.objects_show_hide_cerebellum
@@ -776,7 +775,8 @@ def init(addon):
     bpy.context.scene.objects_show_hide_rh_subs = \
         bpy.context.scene.objects_show_hide_lh_subs = \
         bpy.context.scene.objects_show_hide_sub_cortical
-    bpy.context.scene.hide_half_subcorticals = bpy.context.scene.show_hide_cerebellum = False
+    bpy.context.scene.hide_half_subcorticals = False
+    bpy.context.scene.show_hide_cerebellum = True
     show_hide_sub_corticals(False)
     show_hemis()
     bpy.context.scene.show_only_render = False

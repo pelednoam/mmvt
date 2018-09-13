@@ -5,7 +5,7 @@ import os.path as op
 def run(mmvt):
     mu = mmvt.utils
     output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', bpy.context.scene.render_rot_head_type))
-    dz = 360/ (bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from) * \
+    dz = 360 / (bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from) * \
          bpy.context.scene.render_rot_head_dt
     mu.write_to_stderr('Setting dz to {}'.format(dz))
 
