@@ -152,12 +152,28 @@ def isotropization(ct_fname, isotropization_type=1, iso_vector_override=None):
         else:
             ct_new_data = ndimage.interpolation.zoom(ct_data, zf)
 
+    elif isotropization_type == 4: # To 256 by zoom:
+        from scipy.ndimage import zoom
+        ratio = [255.0 / ct_data.shape[k] for k in range(3)]
+        print(ratio)
+        ct_new_data = zoom(ct_data, ratio)
+
+
+    elif isotropization_type == 5: # To 256 by zoom:
+        from scipy.ndimage import zoom
+        max_axis = np.max(ct_data.shape)
+        ratio = [255.0 /max_axis for _ in range(3)]
+        print(ratio)
+        ct_new_data = zoom(ct_data, ratio)
+
+
     if ct_new_data is not None:
         new_shape = ct_new_data.shape
         # for i in range(3):
         #     vox2ras[i,i] *= 1/zf[i]
         print('Inital CT shape:{}, new shape:{}'.format(initial_shape, new_shape))
         iso_img = nib.Nifti1Image(ct_new_data, vox2ras, ct.header)
+
 
     return iso_img
 

@@ -265,14 +265,21 @@ def calc_slice_pixels(mmvt, data, sizes, max_sizes, clim, colors_ratio, colormap
                       mark_voxel=True, pial_vol_mask_data=None, dural_vol_mask_data=None, fmri_vol_data=None,
                       t1_ct_mask=None):
     colors = calc_colors(data, clim[0], colors_ratio, colormap)
+    max_sizes = [256, 256, 256]
 
     extra = [int((max_sizes[0] - sizes[0]) / 2), int((max_sizes[1] - sizes[1]) / 2)]
-    if max_sizes[0] > sizes[0] and max_sizes[1] == sizes[1]:
+    if max_sizes[0] > sizes[0]: # and max_sizes[1] == sizes[1]:
         dark = np.zeros((colors.shape[0], extra[0], 3))
         colors = np.concatenate((dark, colors, dark), axis=1)
-    if max_sizes[1] > sizes[1] and max_sizes[0] == sizes[0]:
+    if max_sizes[1] > sizes[1]: # and max_sizes[0] == sizes[0]:
         dark = np.zeros((extra[1], colors.shape[1], 3))
         colors = np.concatenate((dark, colors, dark), axis=0)
+
+    extra = [max_sizes[0] - colors.shape[0], max_sizes[1] - colors.shape[1]]
+    if extra[0] > 0:
+        colors = np.concatenate((np.zeros((extra[0], colors.shape[1], 3)), colors), axis=0)
+    if extra[1] > 0:
+        colors = np.concatenate((np.zeros((colors.shape[0], extra[1], 3)), colors), axis=1)
 
     if zoom_around_voxel and mark_voxel:
         # todo: in very close zoom the red doesn't cover the whole pixel
