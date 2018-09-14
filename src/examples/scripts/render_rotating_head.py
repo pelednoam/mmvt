@@ -75,3 +75,7 @@ def draw(self, context):
     layout.prop(context.scene, 'render_rot_head_from', text='from')
     layout.prop(context.scene, 'render_rot_head_to', text='to')
     layout.prop(context.scene, 'render_rot_head_dt', text='dt')
+
+    layout.prop(context.scene, 'render_rot_head_cb_min', text='cb min')
+    layout.prop(context.scene, 'render_rot_head_cb_max', text='cb max')
+    layout.prop(context.scene, 'render_rot_head_cm', text='cm')
