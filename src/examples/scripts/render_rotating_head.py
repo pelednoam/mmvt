@@ -29,7 +29,10 @@ def run(mmvt):
     mmvt.render.set_render_quality(60)
 
     mmvt.transparency.set_brain_transparency(0)
-    mmvt.transparency.set_head_transparency(0.5)
+    if bpy.context.scene.render_rot_head_type in ['meg']:
+        mmvt.transparency.set_head_transparency(0.5)
+    else:
+        mmvt.transparency.set_head_transparency(1)
 
     if from_to > 360:
         dz = 360 / from_to * bpy.context.scene.render_rot_head_dt
