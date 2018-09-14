@@ -51,7 +51,7 @@ def run(mmvt):
                     mmvt.play.plot_something(cur_frame=frame)
                 bpy.context.scene.frame_current = frame
                 mmvt.render.render_image('{}_{}.{}'.format(
-                    bpy.context.scene.render_rot_head_type, frame, mmvt.render.get_figure_format()))
+                    bpy.context.scene.render_rot_head_type, run, mmvt.render.get_figure_format()))
                 mmvt.render.camera_mode('ORTHO')
                 mmvt.show_hide.rotate_brain(0, 0, 1)
                 mmvt.render.camera_mode('CAMERA')
