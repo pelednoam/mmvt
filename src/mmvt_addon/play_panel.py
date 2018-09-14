@@ -204,6 +204,7 @@ def plot_something(self=None, context=None, cur_frame=0, uuid='', camera_fname='
         #     _addon().default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
         _addon().coloring.plot_meg()
+        _addon().colorbar.lock_colorbar_values(False)
         # successful_ret = _addon().plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
         #     PlayPanel.meg_sub_activity, plot_subcorticals)
     if play_type in ['fmri']:
