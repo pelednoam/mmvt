@@ -24,7 +24,7 @@ def run(mmvt):
     mmvt.colorbar.set_colormap(bpy.context.scene.render_rot_head_cm)
 
     mmvt.render.set_output_path(output_fol)
-    mmvt.render.set_render_quality(10)
+    mmvt.render.set_render_quality(60)
 
     mmvt.transparency.set_brain_transparency(0)
     mmvt.transparency.set_head_transparency(0.5)
