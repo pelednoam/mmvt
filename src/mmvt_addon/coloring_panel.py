@@ -1752,7 +1752,7 @@ def color_eeg_helmet(use_abs=None):
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
 
-def color_meg_helmet(use_abs=None):
+def color_meg_helmet(use_abs=None, threshold = 0):
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     fol = mu.get_user_fol()
@@ -1770,7 +1770,6 @@ def color_meg_helmet(use_abs=None):
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('MEG sensors conditions difference')
     lookup = np.load(op.join(fol, 'meg', 'meg_faces_verts.npy'))
-    threshold = 0
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
     else:
@@ -1786,10 +1785,10 @@ def color_meg_helmet(use_abs=None):
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
 
-def color_meg_sensors():
+def color_meg_sensors(threshold=0):
     _addon().show_hide_meg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
-    threshold = bpy.context.scene.coloring_lower_threshold
+    # threshold = bpy.context.scene.coloring_lower_threshold
     data, meta = get_meg_sensors_data()
     if _addon().colorbar_values_are_locked():
         data_max, data_min = _addon().get_colorbar_max_min()
