@@ -6,7 +6,7 @@ import time
 
 def run(mmvt):
     mu = mmvt.utils
-    from_to = bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from
+    from_to = bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from + 1
     output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', bpy.context.scene.render_rot_head_type))
     mu.write_to_stderr('output fol: {}'.format(output_fol))
 
@@ -47,6 +47,8 @@ def run(mmvt):
         for frame, plot_chunk in enumerate(plot_chunks):
             for ind, _ in enumerate(plot_chunk):
                 mu.time_to_go(now, run, 360, 1, do_write_to_stderr=True)
+                mu.write_to_stderr('run: {}/360, frame: {}/{}'.format(run, frame, from_to - 1))
+                run += 1
                 if ind == 0:
                     mmvt.play.plot_something(cur_frame=frame)
                 bpy.context.scene.frame_current = frame
@@ -55,7 +57,6 @@ def run(mmvt):
                 mmvt.render.camera_mode('ORTHO')
                 mmvt.show_hide.rotate_brain(0, 0, 1)
                 mmvt.render.camera_mode('CAMERA')
-                run += 1
 
 
 items_names = [
