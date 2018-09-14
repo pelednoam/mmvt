@@ -54,9 +54,9 @@ def combine_movies(fol, final_movie_name, fps=60, movie_type='mp4'):
 
 if __name__ == '__main__':
     ft = 'jpeg'
-    root = op.join(MMVT_DIR, 'matt_hibert', 'figures')
+    root = op.join(MMVT_DIR, 'matt_hibert', 'figures', 'modalities_movie')
     # for fol in [d for d in glob.glob(op.join(root, '*')) if op.isdir(d)]:
-    for fol in [op.join(root, d) for d in ['slicing_movie']]:
+    for fol in [op.join(root, d) for d in ['slicing_movie_no_flick']]:
         remove_dup_file_type(fol, ft)
         # remove_odd_files(fol, ft)
         make_movie(fol, '{}_20'.format(utils.namebase(fol)), 20, True)

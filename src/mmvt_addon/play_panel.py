@@ -178,8 +178,9 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
             mu.write_to_stderr(('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)))
 
 
-
-def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_camera_mode=True):
+def plot_something(self=None, context=None, cur_frame=0, uuid='', camera_fname='', set_to_camera_mode=True):
+    if context is None:
+        context = bpy.context
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
