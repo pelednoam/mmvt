@@ -681,10 +681,11 @@ def get_inv_src(inv_fname, src=None, cond_name=''):
     return inverse_operator, src
 
 
-def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='', norm_by_percentile=False,
+def calc_evokes(epochs, events, mri_subject, normalize_data=True, epo_fname='', evoked_fname='', norm_by_percentile=False,
                 norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
                 overwrite_evoked=False, task='', set_eeg_reference=True, average_per_event=True):
     try:
+        epo_fname = get_epo_fname(epo_fname)
         evoked_fname = get_evo_fname(evoked_fname)
         fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
         task_str = '{}_'.format(task) if task != '' else ''
@@ -696,11 +697,13 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
             return True, evoked
         events_keys = list(events.keys())
         if epochs is None:
-            epochs = mne.read_epochs(EPO)
+            epochs = mne.read_epochs(epo_fname)
         if average_per_event and not (len(events_keys) == 1 and events_keys[0] == 'rest'):
             if any([event not in epochs.event_id for event in events_keys]):
                 print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
                 events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
+                if len(events_keys) == 0:
+                    events_keys = list(set(epochs.event_id.keys()))
                 # return False, None
             evokes = [epochs[event].average() for event in events_keys] # if event in list(epochs.event_id.keys())]
         else:
@@ -3035,7 +3038,7 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
 
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
-            epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
+            epochs, conditions, mri_subject, args.normalize_data, args.epo_fname, args.evo_fname,
             args.norm_by_percentile, args.norm_percs, args.modality, args.calc_max_min_diff,
             args.calc_evoked_for_all_epoches, args.overwrite_evoked, args.task,
             args.set_eeg_reference, args.average_per_event)

@@ -44,8 +44,8 @@ def run(mmvt):
     else:
         plot_chunks = np.array_split(np.arange(0, 360, 1), from_to)
         now, run = time.time(), 0
-        for plot_chunk in plot_chunks:
-            for ind, frame in enumerate(plot_chunk):
+        for frame, plot_chunk in enumerate(plot_chunks):
+            for ind, _ in enumerate(plot_chunk):
                 mu.time_to_go(now, run, 360, 1, do_write_to_stderr=True)
                 if ind == 0:
                     mmvt.play.plot_something(cur_frame=frame)
