@@ -1,6 +1,7 @@
 import bpy
 import os.path as op
 import numpy as np
+import time
 
 
 def run(mmvt):
@@ -38,8 +39,10 @@ def run(mmvt):
             bpy.context.scene.render_rot_head_to, play_dt=bpy.context.scene.render_rot_head_dt, rotate_brain=True)
     else:
         plot_chunks = np.array_split(np.arange(0, 360, 1), from_to)
+        now, run = time.time(), 0
         for plot_chunk in plot_chunks:
             for ind, frame in enumerate(plot_chunk):
+                mu.time_to_go(now, run, 360, 1, do_write_to_stderr=True)
                 if ind == 0:
                     mmvt.play.plot_something(cur_frame=frame)
                 bpy.context.scene.frame_current = frame
@@ -48,6 +51,7 @@ def run(mmvt):
                 mmvt.render.camera_mode('ORTHO')
                 mmvt.show_hide.rotate_brain(0, 0, 1)
                 mmvt.render.camera_mode('CAMERA')
+                run += 1
 
 
 items_names = [
