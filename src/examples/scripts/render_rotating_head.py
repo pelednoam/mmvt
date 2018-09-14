@@ -19,8 +19,9 @@ def run(mmvt):
 
     mmvt.coloring.set_lower_threshold(2)
     mmvt.coloring.set_current_time(0)
-    mmvt.colorbar.set_colorbar_min_max(-bpy.context.scene.render_rot_head_cb, bpy.context.scene.render_rot_head_cb)
-    mmvt.colorbar.set_colormap('BuPu-YlOrRd')
+    mmvt.colorbar.set_colorbar_min_max(
+        -bpy.context.scene.render_rot_head_cb_min, bpy.context.scene.render_rot_head_cb_max)
+    mmvt.colorbar.set_colormap(bpy.context.scene.render_rot_head_cm)
 
     mmvt.render.set_output_path(output_fol)
     mmvt.render.set_render_quality(10)
@@ -58,7 +59,9 @@ bpy.types.Scene.render_rot_head_type = bpy.props.EnumProperty(items=items)
 bpy.types.Scene.render_rot_head_from = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_rot_head_to = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_rot_head_dt = bpy.props.IntProperty(min=1, default=1)
-bpy.types.Scene.render_rot_head_cb = bpy.props.FloatProperty(min=0, default=1)
+bpy.types.Scene.render_rot_head_cb_min = bpy.props.FloatProperty(default=-1)
+bpy.types.Scene.render_rot_head_cb_max = bpy.props.FloatProperty(default=1)
+bpy.types.Scene.render_rot_head_cm = bpy.props.StringProperty(default='BuPu-YlOrRd')
 
 
 def draw(self, context):
