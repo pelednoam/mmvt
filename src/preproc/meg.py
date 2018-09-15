@@ -3944,6 +3944,23 @@ def collect_raw_files(subjects='all', meg_root_fol='', excludes=()):
     return raw_files
 
 
+def stc_time_average(subject, dt, stc_template='*rh.stc'):
+    if stc_template == '':
+        stc_template = '*rh.stc'
+    stc_files = glob.glob(op.join(MMVT_DIR, subject, 'meg', stc_template))
+    stc_fname = utils.select_one_file(stc_files)
+    if not op.isfile(stc_fname):
+        return False
+    stc = mne.read_source_estimate(stc_fname, subject)
+    V, T = stc.data.shape
+    trim_data = stc.data[:, :-(T % dt)]
+    avg_data = trim_data.reshape(V, -1, dt).mean(axis=2)
+    residue = stc.data[:, -(T % dt):].mean(axis=1)
+    residue = residue[:, np.newaxis]
+    avg_data = np.hstack((avg_data, residue))
+    print("sdf")
+
+
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
                                    overwrite_nii_file=False, overwrite_surface=False, overwrite_stc=False):
     volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
@@ -4137,6 +4154,10 @@ def main(tup, remote_subject_dir, org_args, flags=None):
     if 'find_trans_file' in args.function:
         flags['find_trans_file'] = op.isfile(find_trans_file(
             '', args.remote_subject_dir, MRI_SUBJECT, SUBJECTS_MRI_DIR))
+
+    if 'stc_time_average' in args.function:
+        flags['stc_time_average'] = stc_time_average(subject, args.stc_time_average_dt, args.stc_template)
+
     return flags
 
 
@@ -4210,6 +4231,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_stc_for_all', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
+    parser.add_argument('--stc_time_average_dt', help='', required=False, default=10, type=int)
     parser.add_argument('--baseline_min', help='', required=False, default=None, type=float)
     parser.add_argument('--baseline_max', help='', required=False, default=0, type=au.float_or_none)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
