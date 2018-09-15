@@ -2344,6 +2344,7 @@ def draw(self, context):
 
     if ColoringMakerPanel.meg_sensors_exist:
         col = layout.box().column()
+        col.prop(context.scene, 'meg_sensors_files', text='')
         col.prop(context.scene, "meg_sensors_conditions", text="")
         col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensors", icon='POTATO')
         if not bpy.data.objects.get('meg_helmet', None) is None:
@@ -2467,6 +2468,7 @@ bpy.types.Scene.connectivity_degree_save_image = bpy.props.BoolProperty(default=
 bpy.types.Scene.show_labels_plotted = bpy.props.BoolProperty(default=True, description="Show labels list")
 bpy.types.Scene.labels_folder = bpy.props.StringProperty(subtype='DIR_PATH')
 bpy.types.Scene.fmri_vol_files = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.meg_sensors_files = bpy.props.EnumProperty(items=[])
 
 # bpy.types.Scene.set_current_time = bpy.props.IntProperty(name="Current time:", min=0,
 #                                                          max=bpy.data.scenes['Scene'].frame_preview_end,
@@ -2564,7 +2566,7 @@ def init(addon, do_register=True):
     init_labels_groups()
     init_labels_vertices()
     init_eeg_sensors()
-    init_meg_sensors()
+    init_meg_sensors_data()
     init_connectivity_labels_avg()
     init_static_conn()
 
@@ -2695,17 +2697,27 @@ def init_electrodes():
         bpy.context.scene.electrodes_conditions = 'diff'
 
 
-
-def init_meg_sensors():
+def init_meg_sensors_data():
     user_fol = mu.get_user_fol()
-    meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))
+    meg_data_files = glob.glob(op.join(user_fol, 'meg', '*sensors_evoked_data.npy'))
     if len(meg_data_files) == 0:
         return
+    items = [(mu.namebase(f), mu.namebase(f), '', ind + 1) for ind, f in enumerate(meg_data_files)]
+    bpy.types.Scene.meg_sensors_files = bpy.props.EnumProperty(
+        items=items, description='Selects the MEG sensors evoked activity file.', update=init_meg_sensors_data_update)
+    bpy.context.scene.meg_sensors_files = mu.namebase(meg_data_files[0])
+
+
+def init_meg_sensors_data_update(self, context):
+    user_fol = mu.get_user_fol()
+    # meg_data_files = glob.glob(op.join(user_fol, 'meg', '*sensors_evoked_data.npy'))
+    # if len(meg_data_files) == 0:
+    #     return
     # todo: should be according to the data panel
-    meg_data_files = mu.namebase(meg_data_files[0])
-    meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(meg_data_files))
-    meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_data_files))
-    meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(meg_data_files[:-5]))
+    meg_sensors_file = bpy.context.scene.meg_sensors_files
+    meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_files))
+    meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_sensors_file))
+    meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(meg_sensors_file[:-5]))
     if all([op.isfile(f) for f in [
             meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname]]) and \
             bpy.data.objects.get('MEG_sensors') is not None:

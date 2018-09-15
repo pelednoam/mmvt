@@ -3968,6 +3968,10 @@ def stc_time_average(subject, dt, stc_template='*rh.stc', overwrite=False):
     return utils.both_hemi_files_exist(new_stc_fname_template)
 
 
+def sensors_time_average(subject, dt, overwrite=False):
+    pass
+
+
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
                                    overwrite_nii_file=False, overwrite_surface=False, overwrite_stc=False):
     volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
