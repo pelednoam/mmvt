@@ -289,7 +289,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
             # events_fname = events_fname if events_fname != '' else EVE
             print('read events from {}'.format(events_fname))
             events = mne.read_events(events_fname)
-    elif use_demi_events or events.shape[0] == 0:
+    elif use_demi_events or (events is not None and events.shape[0] == 0):
         if task != 'rest':
             ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
             if ans != 'y':
@@ -301,8 +301,17 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
             print('Finding events in {}'.format(stim_channels))
             events = mne.find_events(raw, stim_channel=stim_channels)
         except:
-            raise Exception('No stim channels found!')
-            # events = np.array([])
+            print('No stim channels found!')
+
+    if events is None:
+        print('Trying to find events file')
+        events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
+        if events is None and event_fname_exist:
+            print('read events from {}'.format(events_fname))
+            events = mne.read_events(events_fname)
+
+    if events is None:
+        raise Exception('Can\'t find events!')
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
@@ -322,18 +331,23 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                         baseline=baseline, preload=True, reject=reject_dict)
     min_bad_num = len(events) * 0.5
     bad_channels_max_num = 20
+    min_good_epochs_num = 40
     bad_channels = Counter(utils.flat_list_of_lists(epochs.drop_log))
-    if len(epochs) < min_bad_num or max(bad_channels.values()) > bad_channels_max_num:
+    bad_channels = {ch_name: num for ch_name, num in bad_channels.items() if ch_name in raw.info['ch_names']}
+    if len(epochs) < min_bad_num and max(bad_channels.values()) > bad_channels_max_num:
         for bad_ch, cnt in bad_channels.items():
             if cnt > bad_channels_max_num:
                 raw.info['bads'].append(bad_ch)
         if raw_fname == '':
             raw_fname = get_raw_fname(raw_fname)
-        raw.save(raw_fname, overwrite=True)
+        try:
+            raw.save(raw_fname, overwrite=True)
+        except:
+            pass
         picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
         epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                             baseline=baseline, preload=True, reject=reject_dict)
-    if len(epochs) < min_bad_num:
+    if len(epochs) < min_good_epochs_num:
         raise Exception('Not enough good epochs!')
     print('{} good epochs'.format(len(epochs)))
     save_epochs(epochs, epo_fname)
@@ -681,7 +695,7 @@ def get_inv_src(inv_fname, src=None, cond_name=''):
     return inverse_operator, src
 
 
-def calc_evokes(epochs, events, mri_subject, normalize_data=True, epo_fname='', evoked_fname='', norm_by_percentile=False,
+def calc_evokes(epochs, events, mri_subject, normalize_data=False, epo_fname='', evoked_fname='', norm_by_percentile=False,
                 norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
                 overwrite_evoked=False, task='', set_eeg_reference=True, average_per_event=True):
     try:
@@ -772,7 +786,7 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     else:
         factor = 6 if modality == 'eeg' else 12 # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
         data *= np.power(10, factor)
-    if calc_max_min_diff:
+    if calc_max_min_diff and len(events_keys) == 2:
         data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
         data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)
     else:
@@ -1462,7 +1476,7 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
         except:
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
-    if calc_stcs_diff and len(events) > 1:
+    if calc_stcs_diff and len(events) == 2:
         calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
@@ -2929,6 +2943,10 @@ def get_fname_format(task, fname_format='', fname_format_cond='', args_condition
             fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
             fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
             conditions = dict(low_risk=1, med_risk=2, high_risk=3)
+        elif task == 'audvis':
+            conditions = dict(LA=1, RA=2, LV=3, RV=4, smiley=5, button=32)
+            fname_format_cond = '{subject}_audvis_{cond}_{ana_type}.{file_type}'
+            fname_format = '{subject}_audvis_{ana_type}.{file_type}'
         elif task == 'rest':
             fname_format = fname_format_cond = '{subject}_{cleaning_method}-rest-{ana_type}.{file_type}'
             conditions = dict(rest=1)
@@ -4184,8 +4202,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--apply_SSP_projection_vectors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--add_eeg_ref', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--pick_ori', help='', required=False, default=None)
-    parser.add_argument('--t_min', help='', required=False, default=0.0, type=float)
-    parser.add_argument('--t_max', help='', required=False, default=0.0, type=float)
+    parser.add_argument('--t_min', help='', required=False, default=-0.2, type=float) # MNE python defaults
+    parser.add_argument('--t_max', help='', required=False, default=0.5, type=float) # MNE python defaults
     parser.add_argument('--noise_t_min', help='', required=False, default=None, type=au.float_or_none)
     parser.add_argument('--noise_t_max', help='', required=False, default=0, type=float)
     parser.add_argument('--snr', help='', required=False, default=3.0, type=float)
@@ -4233,7 +4251,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--read_only_from_annot', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
-    parser.add_argument('--normalize_data', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--normalize_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')

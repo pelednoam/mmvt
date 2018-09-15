@@ -2441,7 +2441,7 @@ bpy.types.Scene.coloring_use_abs = bpy.props.BoolProperty(default=True,
 bpy.types.Scene.fmri_files = bpy.props.EnumProperty(items=[('', '', '', 0)],
     description='Selects the contrast to plot the fMRI activity.\n\nScript:mmvt.coloring.get_select_fMRI_contrast()\n\nCurrent contrast')
 bpy.types.Scene.stc_files = bpy.props.EnumProperty(items=[('', '', '', 0)], description="STC files")
-bpy.types.Scene.meg_sensors_conditions= bpy.props.EnumProperty(items=[],
+bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=[],
     description='Selects the condition to plot the MEG sensors activity.\n\nCurrent condition')
 bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[],
     description='Selects the condition to plot the EEG sensors activity.\n\nCurrent condition')
