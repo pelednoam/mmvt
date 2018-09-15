@@ -3969,7 +3969,10 @@ def stc_time_average(subject, dt, stc_template='*rh.stc', overwrite=False):
 
 
 def sensors_time_average(subject, dt, overwrite=False):
-    pass
+    sensors_evoked_files = glob.glob(op.join(MMVT_DIR, subject, 'meg', '*sensors_evoked_data.npy'))
+    if len(sensors_evoked_files) == 0:
+        return
+    sensors_evoked_file = utils.select_one_file(sensors_evoked_files)
 
 
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,

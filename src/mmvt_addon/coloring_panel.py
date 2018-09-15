@@ -2710,10 +2710,6 @@ def init_meg_sensors_data():
 
 def init_meg_sensors_data_update(self, context):
     user_fol = mu.get_user_fol()
-    # meg_data_files = glob.glob(op.join(user_fol, 'meg', '*sensors_evoked_data.npy'))
-    # if len(meg_data_files) == 0:
-    #     return
-    # todo: should be according to the data panel
     meg_sensors_file = bpy.context.scene.meg_sensors_files
     meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_files))
     meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(meg_sensors_file))
