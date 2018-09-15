@@ -3944,13 +3944,18 @@ def collect_raw_files(subjects='all', meg_root_fol='', excludes=()):
     return raw_files
 
 
-def stc_time_average(subject, dt, stc_template='*rh.stc'):
+def stc_time_average(subject, dt, stc_template='*rh.stc', overwrite=False):
     if stc_template == '':
         stc_template = '*rh.stc'
     stc_files = glob.glob(op.join(MMVT_DIR, subject, 'meg', stc_template))
     stc_fname = utils.select_one_file(stc_files)
     if not op.isfile(stc_fname):
         return False
+    new_stc_fname = op.join(utils.get_parent_fol(stc_fname), '{}_{}'.format(
+        utils.namebase(stc_fname)[:-len('-rh')], dt))
+    new_stc_fname_template = '{}-{}.stc'.format(new_stc_fname, '{hemi}')
+    if utils.both_hemi_files_exist(new_stc_fname_template) and not overwrite:
+        return True
     stc = mne.read_source_estimate(stc_fname, subject)
     V, T = stc.data.shape
     trim_data = stc.data[:, :-(T % dt)]
@@ -3958,7 +3963,9 @@ def stc_time_average(subject, dt, stc_template='*rh.stc'):
     residue = stc.data[:, -(T % dt):].mean(axis=1)
     residue = residue[:, np.newaxis]
     avg_data = np.hstack((avg_data, residue))
-    print("sdf")
+    avg_data_stc = mne.SourceEstimate(avg_data, stc.vertices, stc.tmin, stc.tstep * dt, subject)
+    avg_data_stc.save(new_stc_fname)
+    return utils.both_hemi_files_exist(new_stc_fname_template)
 
 
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
