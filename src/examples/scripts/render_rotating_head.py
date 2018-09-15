@@ -77,6 +77,7 @@ bpy.types.Scene.render_rot_head_cm = bpy.props.StringProperty(default='BuPu-YlOr
 def draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'render_rot_head_type', text='')
+    layout.prop(context.scene, 'meg_files', '')
     layout.prop(context.scene, 'render_rot_head_from', text='from')
     layout.prop(context.scene, 'render_rot_head_to', text='to')
     layout.prop(context.scene, 'render_rot_head_dt', text='dt')
