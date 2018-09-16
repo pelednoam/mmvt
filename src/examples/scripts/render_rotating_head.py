@@ -71,17 +71,21 @@ bpy.types.Scene.render_rot_head_to = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_rot_head_dt = bpy.props.IntProperty(min=1, default=1)
 bpy.types.Scene.render_rot_head_cb_min = bpy.props.FloatProperty(default=-1)
 bpy.types.Scene.render_rot_head_cb_max = bpy.props.FloatProperty(default=1)
-bpy.types.Scene.render_rot_head_cm = bpy.props.StringProperty(default='BuPu-YlOrRd')
 
 
 def draw(self, context):
     layout = self.layout
     layout.prop(context.scene, 'render_rot_head_type', text='')
-    layout.prop(context.scene, 'meg_files', '')
+    if bpy.context.scene.render_rot_head_type in ['meg', 'meg_helmet_source']:
+        layout.prop(context.scene, 'meg_files', '')
+    elif bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source']:
+        layout.prop(context.scene, 'meg_sensors_files', text='')
+        layout.prop(context.scene, 'meg_sensors_types', text='')
+        layout.prop(context.scene, "meg_sensors_conditions", text="")
     layout.prop(context.scene, 'render_rot_head_from', text='from')
     layout.prop(context.scene, 'render_rot_head_to', text='to')
     layout.prop(context.scene, 'render_rot_head_dt', text='dt')
 
-    layout.prop(context.scene, 'render_rot_head_cb_min', text='cb min')
-    layout.prop(context.scene, 'render_rot_head_cb_max', text='cb max')
-    layout.prop(context.scene, 'render_rot_head_cm', text='cm')
+    # layout.prop(context.scene, 'colorbar_min', text='cb min')
+    # layout.prop(context.scene, 'colorbar_max', text='cb max')
+    # layout.prop(context.scene, 'colorbar_files', text='cm')

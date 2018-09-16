@@ -1793,6 +1793,7 @@ def color_meg_helmet(use_abs=None, threshold = 0):
 def color_meg_sensors(threshold=0):
     _addon().show_hide_meg_sensors()
     ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
+    ColoringMakerPanel.what_is_colored.add(WIC_MEG_SENSORS)
     # threshold = bpy.context.scene.coloring_lower_threshold
     data, meta = get_meg_sensors_data()
     inds = np.unique(ColoringMakerPanel.meg_helmet_indices[bpy.context.scene.meg_sensors_types])
