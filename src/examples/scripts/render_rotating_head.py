@@ -21,9 +21,9 @@ def run(mmvt):
 
     mmvt.coloring.set_lower_threshold(2)
     mmvt.coloring.set_current_time(0)
-    mmvt.colorbar.set_colorbar_min_max(
-        -bpy.context.scene.render_rot_head_cb_min, bpy.context.scene.render_rot_head_cb_max)
-    mmvt.colorbar.set_colormap(bpy.context.scene.render_rot_head_cm)
+    # mmvt.colorbar.set_colorbar_min_max(
+    #     -bpy.context.scene.render_rot_head_cb_min, bpy.context.scene.render_rot_head_cb_max)
+    # mmvt.colorbar.set_colormap(bpy.context.scene.render_rot_head_cm)
 
     mmvt.render.set_output_path(output_fol)
     mmvt.render.set_render_quality(60)
