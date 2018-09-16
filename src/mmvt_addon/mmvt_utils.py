@@ -1630,7 +1630,7 @@ def round_np_to_int(x):
     return np.rint(x).astype(int)
 
 
-def get_data_max_min(data, norm_by_percentile=False, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):
+def get_data_max_min(data, norm_by_percentile=False, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=True):
     if data_per_hemi:
         if norm_by_percentile:
             no_nan_data = {hemi:data[hemi][~np.isnan(data[hemi])] for hemi in hemis}
