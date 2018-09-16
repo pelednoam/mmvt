@@ -10,7 +10,6 @@ def run(mmvt):
     output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', bpy.context.scene.render_rot_head_type))
     mu.write_to_stderr('output fol: {}'.format(output_fol))
 
-    mmvt.coloring.clear_colors()
     mmvt.appearance.show_hide_meg_sensors(bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source'])
     mmvt.appearance.show_hide_eeg_sensors(bpy.context.scene.render_rot_head_type in ['eeg_helmet', 'eeg_helmet_source'])
     mmvt.appearance.show_hide_electrodes(False)
@@ -19,6 +18,7 @@ def run(mmvt):
     mmvt.show_hide.show_subcorticals()
     mmvt.show_hide.show_coronal(show_frontal=True)
     mmvt.show_hide.show_head()
+    mmvt.coloring.clear_colors()
 
     mmvt.coloring.set_lower_threshold(2)
     mmvt.coloring.set_current_time(0)
