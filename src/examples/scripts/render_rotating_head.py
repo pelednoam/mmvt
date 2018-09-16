@@ -79,7 +79,7 @@ def draw(self, context):
     layout.prop(context.scene, 'render_rot_head_type', text='')
     if bpy.context.scene.render_rot_head_type in ['meg', 'meg_helmet_source']:
         layout.prop(context.scene, 'meg_files', '')
-    elif bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source']:
+    if bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source']:
         layout.prop(context.scene, 'meg_sensors_files', text='')
         layout.prop(context.scene, 'meg_sensors_types', text='')
         layout.prop(context.scene, "meg_sensors_conditions", text="")

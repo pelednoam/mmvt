@@ -3969,10 +3969,38 @@ def stc_time_average(subject, dt, stc_template='*rh.stc', overwrite=False):
 
 
 def sensors_time_average(subject, dt, overwrite=False):
-    sensors_evoked_files = glob.glob(op.join(MMVT_DIR, subject, 'meg', '*sensors_evoked_data.npy'))
+    fol = op.join(MMVT_DIR, subject, 'meg')
+    sensors_evoked_files = glob.glob(op.join(fol, '*sensors_evoked_data.npy'))
     if len(sensors_evoked_files) == 0:
         return
-    sensors_evoked_file = utils.select_one_file(sensors_evoked_files)
+    sensors_evoked_fname = utils.select_one_file(sensors_evoked_files)
+    if not op.isfile(sensors_evoked_fname):
+        return False
+    prefix = op.basename(sensors_evoked_fname)[:-len('sensors_evoked_data.npy')]
+    sensors_evoked_new_fname = op.join(fol, '{}_{}.npy'.format(utils.namebase(sensors_evoked_fname), dt))
+    meta_fname = op.join(fol, '{}sensors_evoked_data_meta.npz'.format(prefix))
+    meta_new_fname = op.join(fol, '{}_{}.npz'.format(utils.namebase(meta_fname), dt))
+    evoked_minmax_new_fname = op.join(fol, '{}_sensors_evoked_minmax_{}.npy'.format(prefix, dt))
+    if op.isfile(sensors_evoked_new_fname) and op.isfile(meta_new_fname) and op.isfile(evoked_minmax_new_fname) \
+            and not overwrite:
+        return True
+    data = np.load(op.join(sensors_evoked_fname))
+
+    C, T, K = data.shape
+    trim_data = data[:, :-(T % dt), :]
+    avg_data = trim_data.reshape(C, -1, dt, K).mean(axis=2)
+    residue = data[:, -(T % dt):, :].mean(axis=1)
+    residue = residue[:, np.newaxis, :]
+    avg_data = np.hstack((avg_data, residue))
+    data_max, data_min = utils.get_data_max_min(avg_data, True, (1, 99))
+
+    np.save(sensors_evoked_new_fname, avg_data)
+    meta = utils.Bag(np.load(meta_fname))
+    np.savez(meta_new_fname, names=meta.names, conditions=meta.conditions, dt=meta.dt * dt)
+    np.save(evoked_minmax_new_fname, [data_min, data_max])
+    return op.isfile(sensors_evoked_new_fname) and op.isfile(meta_new_fname) and op.isfile(evoked_minmax_new_fname)
+
+
 
 
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
@@ -4171,6 +4199,9 @@ def main(tup, remote_subject_dir, org_args, flags=None):
 
     if 'stc_time_average' in args.function:
         flags['stc_time_average'] = stc_time_average(subject, args.stc_time_average_dt, args.stc_template)
+
+    if 'sensors_time_average' in args.function:
+        flags['sensors_time_average'] = sensors_time_average(subject, args.stc_time_average_dt)
 
     return flags
 
