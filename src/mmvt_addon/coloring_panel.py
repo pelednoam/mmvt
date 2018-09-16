@@ -2221,7 +2221,8 @@ def clear_colors():
     clear_subcortical_fmri_activity()
     for root in ['Subcortical_meg_activity_map', 'Deep_electrodes', 'EEG_sensors', 'MEG_sensors']:
         clear_colors_from_parent_childrens(root)
-    clear_connections()
+    # todo: fix!
+    # clear_connections()
     for cur_obj in [bpy.data.objects.get(helmet) for helmet in ['eeg_helmet', 'meg_helmet']]:
         clear_object_vertex_colors(cur_obj)
     ColoringMakerPanel.what_is_colored = set()
