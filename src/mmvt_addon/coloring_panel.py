@@ -1767,10 +1767,9 @@ def color_meg_helmet(use_abs=None, threshold = 0):
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
     else:
-        if data.shape[2] == 1:
-            data = data.squeeze()
-        else:
-            data = np.diff(data, axis=2).squeeze()
+        C = data.shape[2]
+        data = data.squeeze() if C == 1 else np.diff(data, axis=2).squeeze() if C == 2 else \
+            np.mean(data, axis=2).squeeze()
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('MEG sensors conditions difference')
     lookup = np.load(op.join(fol, 'meg', 'meg_faces_verts.npy'))
@@ -1785,7 +1784,7 @@ def color_meg_helmet(use_abs=None, threshold = 0):
     colors_ratio = 256 / (data_max - data_min)
 
     cur_obj = bpy.data.objects['meg_helmet']
-    data_t = data[ColoringMakerPanel.meg_helmet_indices[bpy.context.scene.meg_sensors_types], bpy.context.scene.frame_current]
+    data_t = data[:, bpy.context.scene.frame_current]
     activity_map_obj_coloring(cur_obj, data_t, lookup, threshold, True, data_min=data_min,
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
@@ -1810,6 +1809,9 @@ def color_meg_sensors(threshold=0):
         data = data[:, :, cond_ind]
         _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
     else:
+        C = data.shape[2]
+        data = data.squeeze() if C == 1 else np.diff(data, axis=2).squeeze() if C == 2 else \
+            np.mean(data, axis=2).squeeze()
         _addon().set_colorbar_title('MEG sensors conditions difference')
     names = np.array([obj.name for obj in bpy.data.objects['MEG_sensors'].children])[inds]
     color_objects_homogeneously(data, names, meta['conditions'], data_min, colors_ratio, threshold)
