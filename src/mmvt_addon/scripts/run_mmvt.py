@@ -26,7 +26,7 @@ def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=
     su.call_script(__file__, args, run_in_background=run_in_background)
     mmvt = su.get_mmvt_object(args.subject)
     if mmvt is not None:
-        print('We got the mmvt object!')
+        print('We got the mmvt object ({})!'.format(list(mmvt._proxy_agent.connections.keys())[0]))
     return mmvt
 
 

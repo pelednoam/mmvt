@@ -226,10 +226,12 @@ def make_dir(fol):
     return fol
 
 
-def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=True,
+def call_script(script_fname, args, log_name='', blend_fname=None, call_args=None, run_in_background=None,
                 only_verbose=False, err_pipe=None, std_pipe=None, stay_alive=True):
     # if args.blender_fol == '':
     #     args.blender_fol = get_blender_dir()
+    if run_in_background is None:
+        run_in_background = args.back
     blender_fol = get_blender_dir()
     if not op.isdir(blender_fol):
         print('No Blender folder!')
@@ -357,6 +359,7 @@ def add_default_args():
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
     parser.add_argument('-d', '--debug', help='debug', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite', help='overwrite', required=False, default=1, type=au.is_true)
+    parser.add_argument('--back', help='run_in_background', required=False, default=1, type=au.is_true)
     # parser.add_argument('--blender_fol', help='blender folder', required=False, default='')
     return parser
 

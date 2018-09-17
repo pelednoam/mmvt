@@ -1,14 +1,17 @@
-import bpy
+try:
+    import bpy
+except:
+    from src.mmvt_addon.mmvt_utils import empty_bpy as bpy
+
 import os.path as op
 import numpy as np
 import time
 
 
 def run(mmvt):
-    mu = mmvt.utils
     from_to = (bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from + 1)
-    output_fol = mu.make_dir(op.join(mu.get_user_fol(), 'figures', bpy.context.scene.render_rot_head_type))
-    mu.write_to_stderr('output fol: {}'.format(output_fol))
+    output_fol = mmvt.utils.make_dir(op.join(mmvt.utils.get_user_fol(), 'figures', bpy.context.scene.render_rot_head_type))
+    mmvt.utils.write_to_stderr('output fol: {}'.format(output_fol))
 
     mmvt.appearance.show_hide_meg_sensors(bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source'])
     mmvt.appearance.show_hide_eeg_sensors(bpy.context.scene.render_rot_head_type in ['eeg_helmet', 'eeg_helmet_source'])
@@ -37,7 +40,7 @@ def run(mmvt):
 
     if from_to > 360:
         dz = 360 / from_to * bpy.context.scene.render_rot_head_dt
-        mu.write_to_stderr('Setting dz to {}'.format(dz))
+        mmvt.utils.write_to_stderr('Setting dz to {}'.format(dz))
         mmvt.show_hide.set_rotate_brain(dz=dz)
         mmvt.play.render_movie(
             bpy.context.scene.render_rot_head_type, bpy.context.scene.render_rot_head_from,
@@ -47,10 +50,10 @@ def run(mmvt):
         now, run = time.time(), 0
         for frame, plot_chunk in enumerate(plot_chunks):
             for ind, _ in enumerate(plot_chunk):
-                mu.time_to_go(now, run, 360, 1, do_write_to_stderr=True)
-                mu.write_to_stderr('run: {}/360, frame: {}/{}'.format(run, frame, from_to - 1))
+                mmvt.utils.time_to_go(now, run, 360, 1, do_write_to_stderr=True)
+                mmvt.utils.write_to_stderr('run: {}/360, frame: {}/{}'.format(run, frame, from_to - 1))
                 if ind == 0:
-                    mu.write_to_stderr('plotting something for frame {}'.format(frame))
+                    mmvt.utils.write_to_stderr('plotting something for frame {}'.format(frame))
                     mmvt.play.plot_something(cur_frame=frame)
                 bpy.context.scene.frame_current = frame
                 mmvt.render.render_image('{}_{}.{}'.format(
@@ -90,3 +93,26 @@ def draw(self, context):
     # layout.prop(context.scene, 'colorbar_min', text='cb min')
     # layout.prop(context.scene, 'colorbar_max', text='cb max')
     # layout.prop(context.scene, 'colorbar_files', text='cm')
+
+
+if __name__ == '__main__':
+    '''
+    python -m src.mmvt_addon.scripts.run_a_script -s matt_hibert --script_name render_rotating_head --back 0 --script_params 
+    'render_rot_head_type:meg_helmet_source,render_rot_head_from:0,render_rot_head_to:24,render_rot_head_dt:1,
+    meg_sensors_files:meg_audvis_10_sensors_evoked_data,meg_sensors_types:mag,meg_sensors_conditions:RV,meg_files:matt_hibert_audvis_RV_dSPM_10'
+    '''
+    from src.mmvt_addon.scripts import run_mmvt
+
+    subject, atlas = 'matt_hibert', 'dkt'
+    mmvt = run_mmvt.run(subject, atlas, debug=True)
+    mmvt.scripts.set_script('render_rotating_head')
+    mmvt.set_param('render_rot_head_type', 'meg_helmet_source')
+    mmvt.set_param('render_rot_head_type', 'meg_helmet_source')
+    mmvt.set_param('render_rot_head_from', 0)
+    mmvt.set_param('render_rot_head_to', 24)
+    mmvt.set_param('render_rot_head_dt', 1)
+    mmvt.set_param('meg_sensors_files', 'meg_audvis_10_sensors_evoked_data')
+    mmvt.set_param('meg_sensors_types', 'mag')
+    mmvt.set_param('meg_sensors_conditions', 'RV')
+    mmvt.set_param('meg_files', 'matt_hibert_audvis_RV_dSPM_10')
+    run(mmvt)

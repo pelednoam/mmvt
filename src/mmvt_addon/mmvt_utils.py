@@ -73,6 +73,8 @@ class empty_bpy(object):
             def __init__(self, **kargs): pass
         class FloatProperty(object):
             def __init__(self, **kargs): pass
+        class IntProperty(object):
+            def __init__(self, **kargs): pass
 
 
 class empty_bpy_extras(object):
@@ -1691,13 +1693,13 @@ def queue_get(queue):
     except Empty:
         return None
 
-
-class dummy_bpy(object):
-    class types(object):
-        class Operator(object):
-            pass
-        class Panel(object):
-            pass
+#
+# class dummy_bpy(object):
+#     class types(object):
+#         class Operator(object):
+#             pass
+#         class Panel(object):
+#             pass
 
 
 def caller_func():

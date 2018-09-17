@@ -12,6 +12,10 @@ def _addon():
     return ScriptsPanel.addon
 
 
+def set_script(script_name):
+    bpy.context.scene.scripts_files = script_name.replace(' ', '_')
+
+
 def scripts_items_update(self, context):
     script_name = bpy.context.scene.scripts_files.replace(' ', '_')
     run_func, init_func, draw_func, params = ScriptsPanel.funcs[script_name]
