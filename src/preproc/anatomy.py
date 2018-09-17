@@ -1630,6 +1630,10 @@ def read_cmd_args(argv=None):
     if 'labeling' in args.function:
         args.function.extend(['create_annotation', 'save_labels_vertices', 'calc_labeles_contours',
                               'calc_labels_center_of_mass', 'save_labels_coloring'])
+    if 'create_dural' in args.function and len(args.function) == 1:
+        args.function = ['create_surfaces', 'create_pial_volume_mask', 'create_spatial_connectivity']
+        args.surf_name = 'dural'
+    # python -m src.preproc.anatomy -s nmr00479 -f create_surfaces,create_pial_volume_mask,create_spatial_connectivity --surf_name dural
     # print(args)
     return args
 
