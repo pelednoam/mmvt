@@ -13,11 +13,37 @@ def _addon():
 
 
 def set_param(param_name, val):
-    bpy.context.scene[param_name] = val
+    script_name = bpy.context.scene.scripts_files.replace(' ', '_')
+    set_param_func = get_func(ScriptsPanel.libs[script_name], 'set_{}'.format(param_name))
+    if set_param_func is not None:
+        return set_param_func(val)
+    set_param_func = get_func(ScriptsPanel.libs[script_name], 'set_param')
+    if set_param_func is not None:
+        return set_param_func(param_name, val)
+    else:
+        print('The script {} does not have the set_param func!'.format(script_name))
+        try:
+            bpy.context.scene[param_name] = val
+        except:
+            print(traceback.format_exc())
+        return None
 
 
 def get_param(param_name):
-    return bpy.context.scene[param_name]
+    script_name = bpy.context.scene.scripts_files.replace(' ', '_')
+    get_param_func = get_func(ScriptsPanel.libs[script_name], 'get_{}'.format(param_name))
+    if get_param_func is not None:
+        return get_param_func()
+    get_param_func = get_func(ScriptsPanel.libs[script_name], 'get_param')
+    if get_param_func is not None:
+        return get_param_func(param_name)
+    else:
+        print('The script {} does not have the get_param func!'.format(script_name))
+        try:
+            return bpy.context.scene[param_name]
+        except:
+            print(traceback.format_exc())
+        return None
 
 
 def set_script(script_name):
@@ -44,6 +70,7 @@ def check_script(script_name, return_all=False):
             init_func = get_func(lib, 'init')
             draw_func = get_func(lib, 'draw')
             ScriptsPanel.funcs[script_name] = (run_func, init_func, draw_func, func_signature.parameters)
+            ScriptsPanel.libs[script_name] = lib
             if return_all:
                 return lib, ScriptsPanel.funcs[script_name]
             else:
@@ -131,6 +158,7 @@ class ScriptsPanel(bpy.types.Panel):
     addon = None
     init = False
     funcs = {}
+    libs = {}
     scripts_names = []
     cb_min_max_exist = False
 

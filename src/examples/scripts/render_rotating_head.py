@@ -9,11 +9,10 @@ import time
 
 
 def run(mmvt):
-    render_rot_head_to = mmvt.get_param('render_rot_head_to')
-    render_rot_head_from = mmvt.get_param('render_rot_head_from')
-    render_rot_head_type = mmvt.get_param('render_rot_head_type')
-    render_rot_head_dt = mmvt.get_param('render_rot_head_dt')
-    frame_current = mmvt.get_param('frame_current')
+    render_rot_head_to = mmvt.scripts.get_param('render_rot_head_to')
+    render_rot_head_from = mmvt.scripts.get_param('render_rot_head_from')
+    render_rot_head_type = mmvt.scripts.get_param('render_rot_head_type')
+    render_rot_head_dt = mmvt.scripts.get_param('render_rot_head_dt')
 
     from_to = (render_rot_head_to - render_rot_head_from + 1)
     output_fol = mmvt.utils.make_dir(op.join(mmvt.utils.get_user_fol(), 'figures', render_rot_head_type))
@@ -79,8 +78,8 @@ bpy.types.Scene.render_rot_head_type = bpy.props.EnumProperty(items=items)
 bpy.types.Scene.render_rot_head_from = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_rot_head_to = bpy.props.IntProperty(min=0, default=0)
 bpy.types.Scene.render_rot_head_dt = bpy.props.IntProperty(min=1, default=1)
-bpy.types.Scene.render_rot_head_cb_min = bpy.props.FloatProperty(default=-1)
-bpy.types.Scene.render_rot_head_cb_max = bpy.props.FloatProperty(default=1)
+# bpy.types.Scene.render_rot_head_cb_min = bpy.props.FloatProperty(default=-1)
+# bpy.types.Scene.render_rot_head_cb_max = bpy.props.FloatProperty(default=1)
 
 
 def draw(self, context):
@@ -101,6 +100,46 @@ def draw(self, context):
     # layout.prop(context.scene, 'colorbar_files', text='cm')
 
 
+def set_param(param_name, val):
+    bpy.context.scene[param_name] = val
+
+
+def get_param(param_name):
+    return bpy.context.scene[param_name]
+
+
+def set_render_rot_head_type(val):
+    bpy.context.scene.render_rot_head_type = val
+
+
+def get_render_rot_head_type():
+    return bpy.context.scene.render_rot_head_type
+
+
+def set_render_rot_head_from(val):
+    bpy.context.scene.render_rot_head_from = val
+
+
+def get_render_rot_head_from():
+    return bpy.context.scene.render_rot_head_from
+
+
+def set_render_rot_head_to(val):
+    bpy.context.scene.render_rot_head_to = val
+
+
+def get_render_rot_head_to():
+    return bpy.context.scene.render_rot_head_to
+
+
+def set_render_rot_head_dt(val):
+    bpy.context.scene.render_rot_head_dt = val
+
+
+def get_render_rot_head_dt():
+    return bpy.context.scene.render_rot_head_dt
+
+
 if __name__ == '__main__':
     '''
     python -m src.mmvt_addon.scripts.run_a_script -s matt_hibert --script_name render_rotating_head --back 0 --script_params 
@@ -113,12 +152,12 @@ if __name__ == '__main__':
     mmvt = run_mmvt.run(subject, atlas, debug=False, run_blender=False)
     mmvt.scripts.set_script('render_rotating_head')
     mmvt.scripts.set_param('render_rot_head_type', 'meg_helmet_source')
-    mmvt.scripts.set_param('render_rot_head_type', 'meg_helmet_source')
     mmvt.scripts.set_param('render_rot_head_from', 0)
     mmvt.scripts.set_param('render_rot_head_to', 24)
     mmvt.scripts.set_param('render_rot_head_dt', 1)
-    mmvt.scripts.set_param('meg_sensors_files', 'meg_audvis_10_sensors_evoked_data')
-    mmvt.scripts.set_param('meg_sensors_types', 'mag')
-    mmvt.scripts.set_param('meg_sensors_conditions', 'RV')
-    mmvt.scripts.set_param('meg_files', 'matt_hibert_audvis_RV_dSPM_10')
+
+    mmvt.coloring.set_meg_files('matt_hibert_audvis_RV_dSPM_10')
+    mmvt.coloring.set_meg_sensors_files('meg_audvis_10_sensors_evoked_data')
+    mmvt.coloring.set_meg_sensors_types('mag')
+    mmvt.coloring.set_meg_sensors_conditions('RV')
     run(mmvt)

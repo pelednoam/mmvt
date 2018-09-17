@@ -239,6 +239,14 @@ set_no_plotting = coloring_panel.set_no_plotting
 plot_fmri = coloring_panel.plot_fmri
 init_labels_colorbar = coloring_panel.init_labels_colorbar
 get_meg_data_minmax = coloring_panel.get_meg_data_minmax
+get_meg_sensors_files = coloring_panel.get_meg_sensors_files
+set_meg_sensors_files = coloring_panel.set_meg_sensors_files
+get_meg_sensors_types = coloring_panel.get_meg_sensors_types
+set_meg_sensors_types = coloring_panel.set_meg_sensors_types
+get_meg_sensors_conditions = coloring_panel.get_meg_sensors_conditions
+set_meg_sensors_conditions = coloring_panel.set_meg_sensors_conditions
+get_meg_files = coloring_panel.get_meg_files
+set_meg_files = coloring_panel.set_meg_files
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 filter = filter_panel
 find_obj_with_val = filter_panel.find_obj_with_val

@@ -2291,6 +2291,38 @@ def get_current_time():
     return bpy.context.scene.frame_current
 
 
+def get_meg_sensors_files():
+    return bpy.context.scene.meg_sensors_files
+
+
+def set_meg_sensors_files(val):
+    bpy.context.scene.meg_sensors_files = val
+
+
+def set_meg_sensors_types(val):
+    bpy.context.scene.meg_sensors_types = val
+
+
+def get_meg_sensors_types():
+    return bpy.context.scene.meg_sensors_types
+
+
+def set_meg_sensors_conditions(val):
+    bpy.context.scene.meg_sensors_conditions = val
+
+
+def get_meg_sensors_conditions():
+    return bpy.context.scene.meg_sensors_conditions
+
+
+def get_meg_files():
+    return bpy.context.scene.meg_files
+
+
+def set_meg_files(val):
+    bpy.context.scene.meg_files = val
+
+
 def draw(self, context):
     layout = self.layout
     user_fol = mu.get_user_fol()
