@@ -11,6 +11,7 @@ import re
 from src.utils import utils
 from src.utils import args_utils as au
 
+
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
