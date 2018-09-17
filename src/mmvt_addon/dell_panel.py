@@ -142,7 +142,8 @@ def export_electrodes(group_hemi_default='G'):
     if len(DellPanel.groups) > 0:
         groups = DellPanel.groups
     else:
-        groups = [[k for k, o in enumerate(_addon().electrodes_panel_parent_obj.children)]]
+        parent_obj = bpy.data.objects.get('Deep_electrodes') # _addon().electrodes_panel_parent_obj
+        groups = [[k for k, o in enumerate(parent_obj.children)]]
         if len(DellPanel.pos) != len(groups[0]):
             print('len(DellPanel.pos) ({}) != len(groups[0]) ({})!'.format(len(DellPanel.pos), len(groups[0])))
             return
