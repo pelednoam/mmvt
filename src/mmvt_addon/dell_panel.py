@@ -286,20 +286,28 @@ def mark_elc_as_noise(elc_obj=None, elc_ind=-1):
 
 
 def create_new_electrode():
-    name = bpy.context.selected_objects[0].name
-    elc_ind = DellPanel.names.index(name)
     new_pos = _addon().where_am_i.get_tkreg_ras()
-    hemi = DellPanel.hemis[elc_ind]
+    name = bpy.context.selected_objects[0].name if len(bpy.context.selected_objects) == 1 else ''
+    if len(bpy.context.selected_objects) == 1 and name in DellPanel.names:
+        elc_ind = DellPanel.names.index(name)
+        hemi = DellPanel.hemis[elc_ind]
+    else:
+        elc_ind = 0
+        hemi = fect.find_electrodes_hemis(
+            mu.get_user_fol(), [new_pos], None, bpy.context.scene.dell_brain_mask_sigma, DellPanel.verts_dural,
+            DellPanel.normals_dural)[0]
+        name = '{}UNx'.format('L' if hemi == 'lh' else 'R' if hemi == 'rh' else 'U')
     new_num = max([int(n[3:]) for n in DellPanel.names if n.startswith(name[:3])]) + 1
     new_name = '{}{}'.format(name[:3], new_num)
-    group_ind = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g][0]
-    color = bpy.context.selected_objects[0].active_material.diffuse_color
     DellPanel.names.append(new_name)
-    new_index = DellPanel.names.index(new_name)
+    group_inds = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g]
+    if len(group_inds) == 1:
+        new_index = DellPanel.names.index(new_name)
+        DellPanel.groups[group_inds[0]].append(new_index)
     DellPanel.pos = np.vstack((DellPanel.pos, new_pos))
     DellPanel.hemis.append(hemi)
-    DellPanel.groups[group_ind].append(new_index)
     _addon().data.create_electrode(new_pos, new_name)
+    color = bpy.data.objects['Deep_electrodes'].children[0].active_material.diffuse_color
     _addon().object_coloring(bpy.data.objects[new_name], tuple(color))
     # save_dell_objects()
 
@@ -795,8 +803,8 @@ def dell_draw(self, context):
         row = layout.row(align=True)
         row.operator(SaveElectrodesObjects.bl_idname, text="Save", icon='SAVE_PREFS')
         row.operator(RefreshElectrodesObjects.bl_idname, text="Load", icon='OUTLINER_OB_FORCE_FIELD')
+        layout.operator(CreateNewElectrode.bl_idname, text="Create new electrode", icon='OUTLINER_OB_META')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
-            layout.operator(CreateNewElectrode.bl_idname, text="Create new electrode", icon='OUTLINER_OB_META')
             if not electrode_with_group_selected:
                 layout.operator(FindElectrodeLead.bl_idname, text="Find selected electrode's lead", icon='PARTICLE_DATA')
             else:
@@ -1301,8 +1309,8 @@ class DellPanel(bpy.types.Panel):
 
     def draw(self, context):
         if DellPanel.init:
-            # dell_draw(self, context)
-            dell_draw_presentation(self, context)
+            dell_draw(self, context)
+            # dell_draw_presentation(self, context)
 
 
 def init(addon, ct_name='ct_reg_to_mr.mgz', brain_mask_name='brain.mgz', aseg_name='aseg.mgz', debug=True):
