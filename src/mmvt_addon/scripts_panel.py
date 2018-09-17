@@ -12,16 +12,24 @@ def _addon():
     return ScriptsPanel.addon
 
 
+def set_param(param_name, val):
+    bpy.context.scene[param_name] = val
+
+
+def get_param(param_name):
+    return bpy.context.scene[param_name]
+
+
 def set_script(script_name):
-    bpy.context.scene.scripts_files = script_name.replace(' ', '_')
+    bpy.context.scene.scripts_files = script_name.replace('_', ' ')
 
 
 def scripts_items_update(self, context):
     script_name = bpy.context.scene.scripts_files.replace(' ', '_')
     run_func, init_func, draw_func, params = ScriptsPanel.funcs[script_name]
-    func_params = [str(p) for p in params]
-    ScriptsPanel.cb_min_max_exist = 'cb_min' in func_params and 'cb_max' in func_params
-    ScriptsPanel.threshold_exist = 'threshold' in func_params
+    # func_params = [str(p) for p in params]
+    # ScriptsPanel.cb_min_max_exist = 'cb_min' in func_params and 'cb_max' in func_params
+    # ScriptsPanel.threshold_exist = 'threshold' in func_params
     if init_func is not None:
         init_func(_addon())
 

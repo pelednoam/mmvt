@@ -498,10 +498,8 @@ scripts = scripts_panel
 get_scripts_names = scripts_panel.get_scripts_names
 run_script = scripts_panel.run_script
 set_script = scripts_panel.set_script
-
-
-def set_param(param_name, val):
-    bpy.context.scene[param_name] = val
+set_param = scripts_panel.set_param
+get_param = scripts_panel.get_param
 
 
 def get_max_time_steps(default_val=2500):

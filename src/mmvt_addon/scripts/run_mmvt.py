@@ -10,7 +10,7 @@ except:
     import scripts_utils as su
 
 
-def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=True):
+def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=True, run_blender=True):
     args = None
     if sys.argv[0] == __file__:
         args = read_args(raise_exp=raise_exp)
@@ -23,11 +23,30 @@ def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=
         args.atlas = atlas
     if debug is not None:
         args.debug = debug
-    su.call_script(__file__, args, run_in_background=run_in_background)
-    mmvt = su.get_mmvt_object(args.subject)
-    if mmvt is not None:
-        print('We got the mmvt object ({})!'.format(list(mmvt._proxy_agent.connections.keys())[0]))
-    return mmvt
+    if run_blender:
+        su.call_script(__file__, args, run_in_background=run_in_background)
+    mmvt_agent = su.get_mmvt_object(args.subject)
+    if mmvt_agent is not None:
+        print('We got the mmvt object ({})!'.format(list(mmvt_agent._proxy_agent.connections.keys())[0]))
+    return MMVT(mmvt_agent)
+
+
+class MMVT(object):
+    def __init__(self, mmvt_agent):
+        self.mmvt_agent = mmvt_agent
+
+    def __getattr__(self, item):
+        if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play', 'utils']:
+            return self
+        else:
+            return self.mmvt_agent.__getattr__(item)
+
+    def __setattr__(self, item, value):
+        if item == 'mmvt_agent':
+            super().__setattr__(item, value)
+        else:
+            return self.mmvt_agent.__setattr__(item, value)
+
 
 
 def read_args(argv=None, raise_exp=True):

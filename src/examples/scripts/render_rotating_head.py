@@ -9,12 +9,18 @@ import time
 
 
 def run(mmvt):
-    from_to = (bpy.context.scene.render_rot_head_to - bpy.context.scene.render_rot_head_from + 1)
-    output_fol = mmvt.utils.make_dir(op.join(mmvt.utils.get_user_fol(), 'figures', bpy.context.scene.render_rot_head_type))
+    render_rot_head_to = mmvt.get_param('render_rot_head_to')
+    render_rot_head_from = mmvt.get_param('render_rot_head_from')
+    render_rot_head_type = mmvt.get_param('render_rot_head_type')
+    render_rot_head_dt = mmvt.get_param('render_rot_head_dt')
+    frame_current = mmvt.get_param('frame_current')
+
+    from_to = (render_rot_head_to - render_rot_head_from + 1)
+    output_fol = mmvt.utils.make_dir(op.join(mmvt.utils.get_user_fol(), 'figures', render_rot_head_type))
     mmvt.utils.write_to_stderr('output fol: {}'.format(output_fol))
 
-    mmvt.appearance.show_hide_meg_sensors(bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source'])
-    mmvt.appearance.show_hide_eeg_sensors(bpy.context.scene.render_rot_head_type in ['eeg_helmet', 'eeg_helmet_source'])
+    mmvt.appearance.show_hide_meg_sensors(render_rot_head_type in ['meg_helmet', 'meg_helmet_source'])
+    mmvt.appearance.show_hide_eeg_sensors(render_rot_head_type in ['eeg_helmet', 'eeg_helmet_source'])
     mmvt.appearance.show_hide_electrodes(False)
     mmvt.appearance.show_hide_connections(False)
     mmvt.show_hide.show_hemis()
@@ -33,18 +39,18 @@ def run(mmvt):
     mmvt.render.set_render_quality(60)
 
     mmvt.transparency.set_brain_transparency(0)
-    if bpy.context.scene.render_rot_head_type in ['meg']:
+    if render_rot_head_type in ['meg']:
         mmvt.transparency.set_head_transparency(1)
     else:
         mmvt.transparency.set_head_transparency(0.5)
 
     if from_to > 360:
-        dz = 360 / from_to * bpy.context.scene.render_rot_head_dt
+        dz = 360 / from_to * render_rot_head_dt
         mmvt.utils.write_to_stderr('Setting dz to {}'.format(dz))
         mmvt.show_hide.set_rotate_brain(dz=dz)
         mmvt.play.render_movie(
-            bpy.context.scene.render_rot_head_type, bpy.context.scene.render_rot_head_from,
-            bpy.context.scene.render_rot_head_to, play_dt=bpy.context.scene.render_rot_head_dt, rotate_brain=True)
+            render_rot_head_type, render_rot_head_from,
+            render_rot_head_to, play_dt=render_rot_head_dt, rotate_brain=True)
     else:
         plot_chunks = np.array_split(np.arange(0, 360, 1), from_to)
         now, run = time.time(), 0
@@ -55,9 +61,9 @@ def run(mmvt):
                 if ind == 0:
                     mmvt.utils.write_to_stderr('plotting something for frame {}'.format(frame))
                     mmvt.play.plot_something(cur_frame=frame)
-                bpy.context.scene.frame_current = frame
+                mmvt.set_current_time(frame)
                 mmvt.render.render_image('{}_{}.{}'.format(
-                    bpy.context.scene.render_rot_head_type, run, mmvt.render.get_figure_format()))
+                    render_rot_head_type, run, mmvt.render.get_figure_format()))
                 mmvt.render.camera_mode('ORTHO')
                 mmvt.show_hide.rotate_brain(0, 0, 1)
                 mmvt.render.camera_mode('CAMERA')
@@ -104,15 +110,15 @@ if __name__ == '__main__':
     from src.mmvt_addon.scripts import run_mmvt
 
     subject, atlas = 'matt_hibert', 'dkt'
-    mmvt = run_mmvt.run(subject, atlas, debug=True)
+    mmvt = run_mmvt.run(subject, atlas, debug=False, run_blender=False)
     mmvt.scripts.set_script('render_rotating_head')
-    mmvt.set_param('render_rot_head_type', 'meg_helmet_source')
-    mmvt.set_param('render_rot_head_type', 'meg_helmet_source')
-    mmvt.set_param('render_rot_head_from', 0)
-    mmvt.set_param('render_rot_head_to', 24)
-    mmvt.set_param('render_rot_head_dt', 1)
-    mmvt.set_param('meg_sensors_files', 'meg_audvis_10_sensors_evoked_data')
-    mmvt.set_param('meg_sensors_types', 'mag')
-    mmvt.set_param('meg_sensors_conditions', 'RV')
-    mmvt.set_param('meg_files', 'matt_hibert_audvis_RV_dSPM_10')
+    mmvt.scripts.set_param('render_rot_head_type', 'meg_helmet_source')
+    mmvt.scripts.set_param('render_rot_head_type', 'meg_helmet_source')
+    mmvt.scripts.set_param('render_rot_head_from', 0)
+    mmvt.scripts.set_param('render_rot_head_to', 24)
+    mmvt.scripts.set_param('render_rot_head_dt', 1)
+    mmvt.scripts.set_param('meg_sensors_files', 'meg_audvis_10_sensors_evoked_data')
+    mmvt.scripts.set_param('meg_sensors_types', 'mag')
+    mmvt.scripts.set_param('meg_sensors_conditions', 'RV')
+    mmvt.scripts.set_param('meg_files', 'matt_hibert_audvis_RV_dSPM_10')
     run(mmvt)
