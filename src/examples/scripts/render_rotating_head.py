@@ -59,7 +59,7 @@ def run(mmvt):
                 mmvt.utils.write_to_stderr('run: {}/360, frame: {}/{}'.format(run, frame, from_to - 1))
                 if ind == 0:
                     mmvt.utils.write_to_stderr('plotting something for frame {}'.format(frame))
-                    mmvt.play.plot_something(cur_frame=frame)
+                    mmvt.play.plot_something(play_type=render_rot_head_type, cur_frame=frame)
                 mmvt.set_current_time(frame)
                 mmvt.render.render_image('{}_{}.{}'.format(
                     render_rot_head_type, run, mmvt.render.get_figure_format()))
@@ -67,19 +67,6 @@ def run(mmvt):
                 mmvt.show_hide.rotate_brain(0, 0, 1)
                 mmvt.render.camera_mode('CAMERA')
                 run += 1
-
-
-items_names = [
-    ("meg", "MEG activity"),("meg_helmet", "MEG helmet"), ("eeg_helmet", "EEG helmet"),
-    ('meg_helmet_source', 'MEG helmet & source'), ('eeg_helmet_source', 'EEG helmet & source')]
-items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
-bpy.types.Scene.render_rot_head_type = bpy.props.EnumProperty(items=items)
-# bpy.types.Scene.render_rot_head_type = bpy.props.StringProperty(default='meg_helmet_source')
-bpy.types.Scene.render_rot_head_from = bpy.props.IntProperty(min=0, default=0)
-bpy.types.Scene.render_rot_head_to = bpy.props.IntProperty(min=0, default=0)
-bpy.types.Scene.render_rot_head_dt = bpy.props.IntProperty(min=1, default=1)
-# bpy.types.Scene.render_rot_head_cb_min = bpy.props.FloatProperty(default=-1)
-# bpy.types.Scene.render_rot_head_cb_max = bpy.props.FloatProperty(default=1)
 
 
 def draw(self, context):
@@ -95,9 +82,19 @@ def draw(self, context):
     layout.prop(context.scene, 'render_rot_head_to', text='to')
     layout.prop(context.scene, 'render_rot_head_dt', text='dt')
 
-    # layout.prop(context.scene, 'colorbar_min', text='cb min')
-    # layout.prop(context.scene, 'colorbar_max', text='cb max')
-    # layout.prop(context.scene, 'colorbar_files', text='cm')
+
+def init(mmvt):
+    items_names = [
+        ("meg", "MEG activity"), ("meg_helmet", "MEG helmet"), ("eeg_helmet", "EEG helmet"),
+        ('meg_helmet_source', 'MEG helmet & source'), ('eeg_helmet_source', 'EEG helmet & source')]
+    items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
+    bpy.types.Scene.render_rot_head_type = bpy.props.EnumProperty(items=items)
+
+
+bpy.types.Scene.render_rot_head_type = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.render_rot_head_from = bpy.props.IntProperty(min=0, default=0)
+bpy.types.Scene.render_rot_head_to = bpy.props.IntProperty(min=0, default=0)
+bpy.types.Scene.render_rot_head_dt = bpy.props.IntProperty(min=1, default=1)
 
 
 def set_param(param_name, val):
@@ -151,11 +148,14 @@ if __name__ == '__main__':
     subject, atlas = 'matt_hibert', 'dkt'
     mmvt = run_mmvt.run(subject, atlas, debug=False, run_blender=False)
     mmvt.scripts.set_script('render_rotating_head')
+
+    # Set the current script's params
     mmvt.scripts.set_param('render_rot_head_type', 'meg_helmet_source')
     mmvt.scripts.set_param('render_rot_head_from', 0)
     mmvt.scripts.set_param('render_rot_head_to', 24)
     mmvt.scripts.set_param('render_rot_head_dt', 1)
 
+    # Setting the MEG params
     mmvt.coloring.set_meg_files('matt_hibert_audvis_RV_dSPM_10')
     mmvt.coloring.set_meg_sensors_files('meg_audvis_10_sensors_evoked_data')
     mmvt.coloring.set_meg_sensors_types('mag')

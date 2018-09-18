@@ -59,7 +59,11 @@ class MMVT_Server(Server):
 
         try:
             if action == 'exec':
-                attr = getattr(self.served_object, options['name'])
+                if options['name'].startswith('mmvt_utils.'):
+                    func_name = options['name'].split('.')[-1]
+                    attr = getattr(mu, func_name)
+                else:
+                    attr = getattr(self.served_object, options['name'])
                 meth = getattr(attr, options['method'])
                 PizcoPanel.q_in.put((options, attr, meth))
                 ret = mu.queue_get(PizcoPanel.q_out)
@@ -75,7 +79,11 @@ class MMVT_Server(Server):
                 return PSMessage('return', None)
 
             elif action == 'get':
-                attr = getattr(self.served_object, options['name'])
+                if options['name'].startswith('mmvt_utils.'):
+                    func_name = options['name'].split('.')[-1]
+                    attr = getattr(mu, func_name)
+                else:
+                    attr = getattr(self.served_object, options['name'])
                 if options.get('force_as_object', False) or self.force_as_object(attr):
                     ret = attr
                 elif self.return_as_remote(attr):

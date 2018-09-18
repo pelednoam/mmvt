@@ -32,12 +32,15 @@ def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=
 
 
 class MMVT(object):
+
     def __init__(self, mmvt_agent):
         self.mmvt_agent = mmvt_agent
 
     def __getattr__(self, item):
-        if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play', 'utils']:
+        if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play']:
             return self
+        elif item == 'utils':
+            return MMVTUtils(self.mmvt_agent)
         else:
             return self.mmvt_agent.__getattr__(item)
 
@@ -47,6 +50,13 @@ class MMVT(object):
         else:
             return self.mmvt_agent.__setattr__(item, value)
 
+
+class MMVTUtils(MMVT):
+    def __init__(self, mmvt_agent):
+        self.mmvt_agent = mmvt_agent
+
+    def __getattr__(self, item):
+        return self.mmvt_agent.__getattr__('mmvt_utils.{}'.format(item))
 
 
 def read_args(argv=None, raise_exp=True):

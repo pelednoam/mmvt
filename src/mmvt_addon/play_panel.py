@@ -178,14 +178,16 @@ def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_
             mu.write_to_stderr(('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)))
 
 
-def plot_something(self=None, context=None, cur_frame=0, uuid='', camera_fname='', set_to_camera_mode=True):
+def plot_something(self=None, context=None, cur_frame=0, uuid='', camera_fname='', set_to_camera_mode=True,
+                   play_type=None):
     if context is None:
         context = bpy.context
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
     plot_subcorticals = True
-    play_type = bpy.context.scene.play_type
+    if play_type is None:
+        play_type = bpy.context.scene.play_type
 
     # todo: implement the important times
     # imp_time = False

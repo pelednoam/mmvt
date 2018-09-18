@@ -313,6 +313,7 @@ view_all = show_hide_panel.view_all
 rotate_view = show_hide_panel.rotate_view
 view_name = show_hide_panel.view_name
 show_hemis = show_hide_panel.show_hemis
+show_head = show_hide_panel.show_head
 set_normal_view = show_hide_panel.set_normal_view
 hide_hemi = show_hide_panel.hide_hemi
 show_hemi = show_hide_panel.show_hemi
@@ -370,6 +371,7 @@ capture_graph = play_panel.capture_graph
 render_movie = play_panel.render_movie
 get_current_t = play_panel.get_current_t
 set_current_t = play_panel.set_current_t
+plot_something = play_panel.plot_something
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ electrodes links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 electrodes = electrodes_panel
 color_the_relevant_lables = electrodes_panel.color_the_relevant_lables
@@ -437,6 +439,7 @@ select_connection = connections_panel.select_connection
 transparency = transparency_panel
 set_brain_transparency = transparency_panel.set_brain_transparency
 set_light_layers_depth = transparency_panel.set_light_layers_depth
+set_head_transparency = transparency_panel.set_head_transparency
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where_am_i_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 where_am_i = where_am_i_panel
 set_mni = where_am_i_panel.set_mni
