@@ -446,7 +446,11 @@ def calc_masked_con_names(d, threshold, threshold_type, connections_type, condit
 
 # d: labels, locations, hemis, con_colors (L, W, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
 # def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
-def plot_connections(d, plot_time, threshold=None, calc_t=True, data_minmax=None):
+def plot_connections(d=None, plot_time=None, threshold=None, calc_t=True, data_minmax=None):
+    if d is None:
+        d = get_connections_data()
+    if plot_time is None:
+        plot_time = bpy.context.scene.frame_current
     _addon().show_hide_connections()
     windows_num = d.con_values.shape[1] if d.con_values.ndim >= 2 else 1
     if calc_t:

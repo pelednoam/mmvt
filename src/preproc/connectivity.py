@@ -29,7 +29,7 @@ ROIS_TYPE, ELECTRODES_TYPE = range(2)
 
 #todo: Add the necessary parameters
 # args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
-def calc_electrodes_connectivity(subject, args, overwrite=False):
+def calc_electrodes_connectivity(subject, args, overwrite=True):
     data_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_data.npz')
     if op.isfile(data_fname):
         data_dict = utils.Bag(np.load(data_fname))
@@ -53,7 +53,7 @@ def calc_electrodes_connectivity(subject, args, overwrite=False):
     coh_fname = op.join(fol, 'electrodes_coh.npy')
     # elif op.isfile(args.mat_fname):
     #     data_dict = sio.loadmat(args.mat_fname)
-    if not op.isfile(coh_fname):
+    if not op.isfile(coh_fname) or overwrite:
         coh = calc_electrodes_coh(
             subject, data_dict, args.windows_length, args.windows_shift, sfreq=1000, fmin=55, fmax=110, bw=15,
             max_windows_num=args.max_windows_num, n_jobs=6)

@@ -212,6 +212,11 @@ def show_hemis():
     #     show_hide_hierarchy(False, obj_name)
 
 
+def hide_hemis():
+    for hemi in mu.HEMIS:
+        show_hide_hemi(True, hemi)
+
+
 def hide_obj(obj, val=True):
     obj.hide = val
     obj.hide_render = val
