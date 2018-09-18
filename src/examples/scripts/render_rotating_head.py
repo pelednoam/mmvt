@@ -13,6 +13,7 @@ def run(mmvt):
     render_rot_head_from = mmvt.scripts.get_param('render_rot_head_from')
     render_rot_head_type = mmvt.scripts.get_param('render_rot_head_type')
     render_rot_head_dt = mmvt.scripts.get_param('render_rot_head_dt')
+    threshold = mmvt.coloring.get_lower_threshold()
 
     from_to = (render_rot_head_to - render_rot_head_from + 1)
     output_fol = mmvt.utils.make_dir(op.join(mmvt.utils.get_user_fol(), 'figures', render_rot_head_type))
@@ -20,7 +21,7 @@ def run(mmvt):
 
     mmvt.appearance.show_hide_meg_sensors(render_rot_head_type in ['meg_helmet', 'meg_helmet_source'])
     mmvt.appearance.show_hide_eeg_sensors(render_rot_head_type in ['eeg_helmet', 'eeg_helmet_source'])
-    mmvt.appearance.show_hide_electrodes(False)
+    mmvt.appearance.show_hide_electrodes(render_rot_head_type in ['elecs', 'elecs_coh', 'elecs_act_coh'])
     mmvt.appearance.show_hide_connections(False)
     mmvt.show_hide.show_hemis()
     mmvt.show_hide.show_subcorticals()
@@ -28,11 +29,8 @@ def run(mmvt):
     mmvt.show_hide.show_head()
     mmvt.coloring.clear_colors()
 
-    mmvt.coloring.set_lower_threshold(2)
+    mmvt.coloring.set_lower_threshold(threshold)
     mmvt.coloring.set_current_time(0)
-    # mmvt.colorbar.set_colorbar_min_max(
-    #     -bpy.context.scene.render_rot_head_cb_min, bpy.context.scene.render_rot_head_cb_max)
-    # mmvt.colorbar.set_colormap(bpy.context.scene.render_rot_head_cm)
 
     mmvt.render.set_output_path(output_fol)
     mmvt.render.set_render_quality(60)
@@ -71,13 +69,14 @@ def run(mmvt):
 
 def draw(self, context):
     layout = self.layout
+    layout.prop(context.scene, 'coloring_lower_threshold', text='Threshold')
     layout.prop(context.scene, 'render_rot_head_type', text='')
     if bpy.context.scene.render_rot_head_type in ['meg', 'meg_helmet_source']:
-        layout.prop(context.scene, 'meg_files', '')
+        layout.prop(context.scene, 'meg_files', 'MEG')
     if bpy.context.scene.render_rot_head_type in ['meg_helmet', 'meg_helmet_source']:
-        layout.prop(context.scene, 'meg_sensors_files', text='')
-        layout.prop(context.scene, 'meg_sensors_types', text='')
-        layout.prop(context.scene, "meg_sensors_conditions", text="")
+        layout.prop(context.scene, 'meg_sensors_files', text='MEG sensors')
+        layout.prop(context.scene, 'meg_sensors_types', text='MEG sensors type')
+        layout.prop(context.scene, "meg_sensors_conditions", text="MEG sensors cond")
     layout.prop(context.scene, 'render_rot_head_from', text='from')
     layout.prop(context.scene, 'render_rot_head_to', text='to')
     layout.prop(context.scene, 'render_rot_head_dt', text='dt')
@@ -86,7 +85,9 @@ def draw(self, context):
 def init(mmvt):
     items_names = [
         ("meg", "MEG activity"), ("meg_helmet", "MEG helmet"), ("eeg_helmet", "EEG helmet"),
-        ('meg_helmet_source', 'MEG helmet & source'), ('eeg_helmet_source', 'EEG helmet & source')]
+        ('meg_helmet_source', 'MEG helmet & source'), ('eeg_helmet_source', 'EEG helmet & source'),
+        ("elecs", "Electrodes"), ("elecs_coh", "Electrodes Connectivity"),
+        ("elecs_act_coh", "Electrodes & Connectivity")]
     items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
     bpy.types.Scene.render_rot_head_type = bpy.props.EnumProperty(items=items)
 

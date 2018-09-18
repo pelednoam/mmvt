@@ -44,7 +44,7 @@ def calc_electrodes_con(args):
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
         atlas='laus250',
-        function='save_electrodes_coh',
+        function='calc_electrodes_coh',
         threshold_percentile=95,
         conditions='interference,non-interference'))
     pu.run_on_subjects(args, con.main)
