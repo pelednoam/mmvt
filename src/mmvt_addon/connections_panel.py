@@ -44,7 +44,7 @@ def connections_exist(parent_name=''):
     return not bpy.data.objects.get(parent_name, None) is None
 
 
-def connections_data():
+def get_connections_data():
     return ConnectionsPanel.d
 
 
@@ -211,6 +211,14 @@ def set_connections_show_vertices(val):
     bpy.context.scene.connections_show_vertices = val
 
 
+def connections_width_update(self, context):
+    connection_parent = get_connection_parent()
+    for c in connection_parent.children:
+        if c.data is None:
+            continue
+        c.data.bevel_depth = bpy.context.scene.connections_width
+
+
 def connections_show_vertices_update(self, context):
     vertices_obj = get_vertices_obj()
     if vertices_obj is not None:
@@ -222,12 +230,17 @@ def connections_show_vertices_update(self, context):
 
 def get_vertices_obj():
     vertices_obj = None
-    connection_parent = bpy.data.objects.get('connections_{}'.format(bpy.context.scene.connectivity_files))
+    connection_parent = get_connection_parent()
     if connection_parent is not None:
         vertices_objs = [c for c in connection_parent.children if c.name == 'connections_vertices']
         if len(vertices_objs) == 1:
             vertices_obj = vertices_objs[0]
     return vertices_obj
+
+
+def get_connection_parent():
+    return bpy.data.objects.get('connections_{}'.format(bpy.context.scene.connectivity_files))
+
 
 @mu.timeit
 def update_vertices_location():
@@ -433,10 +446,13 @@ def calc_masked_con_names(d, threshold, threshold_type, connections_type, condit
 
 # d: labels, locations, hemis, con_colors (L, W, 3), con_values (L, W, 2), indices, con_names, conditions, con_types
 # def plot_connections(self, context, d, plot_time, connections_type, condition, threshold, abs_threshold=True):
-def plot_connections(d, plot_time, threshold=None):
+def plot_connections(d, plot_time, threshold=None, calc_t=True, data_minmax=None):
     _addon().show_hide_connections()
     windows_num = d.con_values.shape[1] if d.con_values.ndim >= 2 else 1
-    t = int(plot_time / ConnectionsPanel.T * windows_num) if windows_num > 1 else 0
+    if calc_t:
+        t = int(plot_time / ConnectionsPanel.T * windows_num) if windows_num > 1 else 0
+    else:
+        t = plot_time
     print('plotting connections for t:{}'.format(t))
     if 1 < windows_num <= t:
         print('time out of bounds! {}'.format(plot_time))
@@ -446,7 +462,10 @@ def plot_connections(d, plot_time, threshold=None):
         selected_indices = ConnectionsPanel.selected_indices
         if len(selected_objects) == 0:
             selected_objects, selected_indices = get_all_selected_connections(d)
-        if _addon().colorbar_values_are_locked():
+        if data_minmax is not None:
+            data_min, data_max = -data_minmax, data_minmax
+            _addon().set_colorbar_max_min(data_max, data_min)
+        elif _addon().colorbar_values_are_locked():
             data_min = _addon().get_colorbar_min()
             data_max = _addon().get_colorbar_max()
         else:
@@ -636,9 +655,11 @@ def capture_graph_data(per_condition):
 #     ConnectionsPanel.addon.play_panel.save_graph_data(data, colors, image_fol)
 
 
-def load_connections_file():
+def load_connections_file(connectivity_files=''):
+    if connectivity_files == '':
+        connectivity_files = bpy.context.scene.connectivity_files
     d, vertices, vertices_lookup = None, None, None
-    conn_file_name = bpy.context.scene.connectivity_files.replace(' ', '_')
+    conn_file_name = connectivity_files.replace(' ', '_')
     connectivity_file = op.join(mu.get_user_fol(), 'connectivity', '{}.npz'.format(conn_file_name))
     vertices_file = op.join(mu.get_user_fol(), 'connectivity', '{}_vertices.pkl'.format(
         conn_file_name.replace('_static', '')))
@@ -897,6 +918,7 @@ def connections_draw(self, context):
         layout.operator(FilterNodes.bl_idname, text=filter_text, icon='BORDERMOVE')
     layout.operator(UpdateNodesLocations.bl_idname, text='Update locations', icon='IPO')
     layout.prop(context.scene, 'connections_show_vertices', text='Show nodes')
+    layout.prop(context.scene, 'connections_width', text='Width')
     # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
@@ -928,6 +950,8 @@ bpy.types.Scene.connections_min = bpy.props.FloatProperty(default=0)
 bpy.types.Scene.connections_max = bpy.props.FloatProperty(default=0)
 bpy.types.Scene.connections_show_vertices = bpy.props.BoolProperty(
     default=True, description='Show/hide nodes', update=connections_show_vertices_update)
+bpy.types.Scene.connections_width = bpy.props.FloatProperty(
+    default=0, min=0, max=0.2, update=connections_width_update, description='Connections depth')
 
 
 class ConnectionsPanel(bpy.types.Panel):
@@ -990,6 +1014,7 @@ def init(addon):
     ConnectionsPanel.T = addon.get_max_time_steps()
     ConnectionsPanel.addon = addon
     bpy.context.scene.connections_threshold = 0
+    bpy.context.scene.connections_width = 0.1
     check_connections()
     ConnectionsPanel.init = True
     register()

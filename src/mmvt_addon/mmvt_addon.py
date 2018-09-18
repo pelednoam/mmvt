@@ -428,7 +428,7 @@ load_fmri_cluster = fMRI_panel.load_fmri_cluster
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 connections = connections_panel
 connections_exist = connections_panel.connections_exist
-connections_data = connections_panel.connections_data
+get_connections_data = connections_panel.get_connections_data
 plot_connections = connections_panel.plot_connections
 vertices_selected = connections_panel.vertices_selected
 create_connections = connections_panel.create_connections

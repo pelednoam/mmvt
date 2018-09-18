@@ -36,11 +36,14 @@ def calc_electrodes_connectivity(subject, args, overwrite=False):
     else:
         print('No data file!')
         return False
+
+    calc_avg_electrodes_data(
+        subject, data_dict, args.windows_length, args.windows_shift, args.max_windows_num, overwrite)
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     output_fname = op.join(fol, 'electrodes.npz')
     args.conditions = [utils.to_str(c) for c in data_dict['conditions']]
-    # if op.isfile(output_fname) and not overwrite:
-    #     return True
+    if op.isfile(output_fname) and not overwrite:
+        return True
     # utils.remove_file(output_fname)
     con_vertices_fname = op.join(fol, 'electrodes_vertices.pkl')
     d = dict()
@@ -66,6 +69,30 @@ def calc_electrodes_connectivity(subject, args, overwrite=False):
     # 'con_types', 'data_max', 'data_min', 'connectivity_method'
     np.savez(output_fname, **d)
     print('Electodes coh was saved to {}'.format(output_fname))
+    return op.isfile(output_fname)
+
+
+def calc_avg_electrodes_data(subject, data_dict, windows_length, windows_shift, max_windows_num, overwrite=False):
+    elecs_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
+    output_fname = op.join(elecs_fol, 'electrodes_data_for_connectivity.npz')
+    # if op.isfile(output_fname) and not overwrite:
+    #     return True
+
+    # data_diff = np.diff(data_dict.data, axis=2).squeeze()
+    data = data_dict.data
+    names = [utils.to_str(n) for n in data_dict.names]
+    conditions = [utils.to_str(c) for c in data_dict['conditions']]
+    CH, T, CN = data.shape
+    windows = calc_windows(windows_length, windows_shift, T)
+    if max_windows_num is not None and max_windows_num != np.inf:
+        windows = windows[:max_windows_num]
+    for cond_ind in range(CN):
+        for w in range(max_windows_num):
+            if cond_ind == 0 and w == 0:
+                data_avg = np.zeros((CH, len(windows), CN))
+            w1, w2 = int(windows[w, 0]), int(windows[w, 1])
+            data_avg[:, w, cond_ind] = np.mean(data[:, w1:w2, cond_ind], axis=1).squeeze()
+    np.savez(output_fname, data=data_avg, names=names, conditions=conditions)
     return op.isfile(output_fname)
 
 

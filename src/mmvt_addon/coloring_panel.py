@@ -1862,14 +1862,21 @@ def color_electrodes_dists():
     _addon().show_electrodes()
 
 
-def color_electrodes():
+def color_electrodes(threshold=None, data_minmax=None, condition=None):
     # mu.set_show_textured_solid(False)
     # bpy.context.scene.show_hide_electrodes = True
     # _addon().show_hide_electrodes(True)
     ColoringMakerPanel.what_is_colored.add(WIC_ELECTRODES)
-    threshold = bpy.context.scene.coloring_lower_threshold
+    if threshold is None:
+        threshold = bpy.context.scene.coloring_lower_threshold
+    if condition is not None:
+        bpy.context.scene.electrodes_conditions = condition
     data, names, conditions = _addon().load_electrodes_data()
-    if not _addon().colorbar_values_are_locked():
+    if data_minmax is not None:
+        data_max, data_min = -data_minmax, data_minmax
+        colors_ratio = 256 / (data_max - data_min)
+        _addon().set_colorbar_max_min(data_max, data_min)
+    elif not _addon().colorbar_values_are_locked():
         norm_percs = (bpy.context.scene.electrodes_min_prec, bpy.context.scene.electrodes_max_prec)
         data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
         colors_ratio = 256 / (data_max - data_min)
@@ -1886,18 +1893,6 @@ def color_electrodes():
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('Electrodes conditions difference')
     color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
-    # _addon().show_electrodes()
-    # for obj in bpy.data.objects['Deep_electrodes'].children:
-    #     bpy.ops.object.editmode_toggle()
-    #     bpy.ops.object.editmode_toggle()
-
-    # mu.update()
-    # mu.set_show_textured_solid(True)
-    # _addon().change_to_rendered_brain()
-
-
-    # deselect_all()
-    # mu.select_hierarchy('Deep_electrodes', False)
 
 
 def what_is_colored():
@@ -1917,7 +1912,7 @@ def color_electrodes_stim():
 
 def color_connections(threshold=None):
     clear_connections()
-    _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current, threshold)
+    _addon().plot_connections(_addon().get_connections_data(), bpy.context.scene.frame_current, threshold)
 
 
 def clear_and_recolor():
@@ -2235,7 +2230,7 @@ def clear_connections():
     vertices_obj = _addon().connections.get_vertices_obj() # bpy.data.objects.get('connections_vertices')
     if vertices_obj:
         if any([obj.hide for obj in vertices_obj.children]):
-            _addon().plot_connections(_addon().connections_data(), bpy.context.scene.frame_current, 0)
+            _addon().plot_connections(_addon().get_connections_data(), bpy.context.scene.frame_current, 0)
             if _addon().connections.get_connections_show_vertices():
                 _addon().filter_nodes(False)
                 _addon().filter_nodes(True)
@@ -2341,7 +2336,7 @@ def draw(self, context):
     if _addon() is None:
         connections_files_exit = False
     else:
-        connections_files_exit = _addon().connections_exist() and not _addon().connections_data() is None
+        connections_files_exit = _addon().connections_exist() and not _addon().get_connections_data() is None
     layout.prop(context.scene, 'coloring_lower_threshold', text="Threshold")
     # row = layout.row(align=True)
     # row.prop(context.scene, 'coloring_add_upper_threhold', text="Add upper threhold")
@@ -2725,8 +2720,8 @@ def init_electrodes():
     user_fol = mu.get_user_fol()
     bip = 'bipolar_' if bpy.context.scene.bipolar else ''
     ColoringMakerPanel.electrodes_files_exist = \
-        op.isfile(op.join(user_fol, 'electrodes', 'electrodes_{}data.npz'.format(bip))) or \
-        op.isfile(op.join(user_fol, 'electrodes', 'electrodes_{}data.npy'.format(bip)))
+        len(glob.glob(op.join(user_fol, 'electrodes', 'electrodes_{}data*.npz'.format(bip)))) > 0 or \
+        len(glob.glob(op.join(user_fol, 'electrodes', 'electrodes_{}data*.npy'.format(bip)))) > 0
     ColoringMakerPanel.electrodes_dists_exist = op.isfile(op.join(mu.get_user_fol(), 'electrodes', 'electrodes_dists.npy'))
     ColoringMakerPanel.electrodes_stim_files_exist = len(glob.glob(op.join(
         mu.get_user_fol(), 'electrodes', 'stim_electrodes_*.npz'))) > 0

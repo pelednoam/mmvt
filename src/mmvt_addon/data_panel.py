@@ -810,7 +810,8 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
     else:
         data = DataMakerPanel.meg_data = np.load(data_fname, mmap_mode='r')
         meta = DataMakerPanel.meg_meta = np.load(meta_fname)
-        add_data_to_electrodes(data, meta)
+        if data.shape[2] > 1:
+            add_data_to_electrodes(data, meta)
         add_data_to_electrodes_parent_obj(parent_obj, data, meta, stat)
         bpy.types.Scene.eeg_data_exist = True
     if bpy.data.objects.get(' '):
@@ -1090,7 +1091,13 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     N = len(sources_names)
     # T = _addon().get_max_time_steps() # len(sources[sources_names[0]]) + 2
     fcurves_num = mu.count_fcurves(parent_obj)
+    clear_animation = False
+    if parent_obj.animation_data is not None:
+        if len(parent_obj.animation_data.action.fcurves[0].keyframe_points) != T + 2:
+            clear_animation = True
     if fcurves_num < len(sources_names):
+        clear_animation = True
+    if clear_animation:
         now = time.time()
         parent_obj.animation_data_clear()
         for obj_counter, source_name in enumerate(sources_names):
@@ -1220,8 +1227,7 @@ def add_data_to_electrodes_and_parent():
     data, meta = DataMakerPanel.electrodes_data, DataMakerPanel.electrodes_meta_data
     if not data is None and not meta is None:
         print('Loading electordes data from {}'.format(source_file))
-        if len(meta['conditions']) > 1:
-            add_data_to_electrodes_parent_obj(parent_obj, data, meta)
+        add_data_to_electrodes_parent_obj(parent_obj, data, meta)
         add_data_to_electrodes(data, meta)
         # selection_panel.set_conditions_enum(conditions)
         bpy.types.Scene.electrodes_data_exist = True
