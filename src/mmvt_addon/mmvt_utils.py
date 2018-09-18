@@ -512,15 +512,19 @@ def view_all_in_graph_editor(context=None):
         pass
 
 
-def show_hide_hierarchy(val, obj_name, also_parent=False, select=True):
-    if bpy.data.objects.get(obj_name) is not None:
-        if also_parent:
-            bpy.data.objects[obj_name].hide_render = not val
-        for child in bpy.data.objects[obj_name].children:
-            child.hide = not val
-            child.hide_render = not val
-            if select:
-                child.select = val
+def show_hide_hierarchy(val, obj, also_parent=False, select=True):
+    if isinstance(obj, str):
+        obj = bpy.data.objects.get(obj, None)
+    if obj is None:
+        print('show_hide_hierarchy: obj is None!')
+        return
+    if also_parent:
+        obj.hide_render = not val
+    for child in obj.children:
+        child.hide = not val
+        child.hide_render = not val
+        if select:
+            child.select = val
 
 
 def show_hide_obj(obj, val=True):

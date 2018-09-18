@@ -203,6 +203,32 @@ def create_vertices(d, mask, verts_color='green'):
         cur_obj.parent = parent_obj
 
 
+def get_connections_show_vertices():
+    return bpy.context.scene.connections_show_vertices
+
+
+def set_connections_show_vertices(val):
+    bpy.context.scene.connections_show_vertices = val
+
+
+def connections_show_vertices_update(self, context):
+    vertices_obj = get_vertices_obj()
+    if vertices_obj is not None:
+        do_show = bpy.context.scene.connections_show_vertices
+        mu.show_hide_hierarchy(do_show, vertices_obj)
+        if do_show:
+            _addon().filter_nodes(True)
+
+
+def get_vertices_obj():
+    vertices_obj = None
+    connection_parent = bpy.data.objects.get('connections_{}'.format(bpy.context.scene.connectivity_files))
+    if connection_parent is not None:
+        vertices_objs = [c for c in connection_parent.children if c.name == 'connections_vertices']
+        if len(vertices_objs) == 1:
+            vertices_obj = vertices_objs[0]
+    return vertices_obj
+
 @mu.timeit
 def update_vertices_location():
     if not ConnectionsPanel.connections_files_exist or ConnectionsPanel.d is None:
@@ -210,7 +236,7 @@ def update_vertices_location():
     d = ConnectionsPanel.d
     if 'verts' not in d:
         return
-    vertices_obj = bpy.data.objects.get('connections_vertices')
+    vertices_obj = get_vertices_obj()
     if vertices_obj is None:
         print('connections_vertices is None!')
         return
@@ -870,6 +896,7 @@ def connections_draw(self, context):
         filter_text = '{} nodes'.format('Filter' if ConnectionsPanel.do_filter else 'Remove filter from')
         layout.operator(FilterNodes.bl_idname, text=filter_text, icon='BORDERMOVE')
     layout.operator(UpdateNodesLocations.bl_idname, text='Update locations', icon='IPO')
+    layout.prop(context.scene, 'connections_show_vertices', text='Show nodes')
     # layout.operator("mmvt.export_graph", text="Export graph", icon='SNAP_NORMAL')
     # layout.operator("mmvt.clear_connections", text="Clear", icon='PANEL_CLOSE')
 
@@ -899,6 +926,8 @@ bpy.types.Scene.connections_num = bpy.props.IntProperty(min=0, default=0, descri
 
 bpy.types.Scene.connections_min = bpy.props.FloatProperty(default=0)
 bpy.types.Scene.connections_max = bpy.props.FloatProperty(default=0)
+bpy.types.Scene.connections_show_vertices = bpy.props.BoolProperty(
+    default=True, description='Show/hide nodes', update=connections_show_vertices_update)
 
 
 class ConnectionsPanel(bpy.types.Panel):

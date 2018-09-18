@@ -30,21 +30,27 @@ ROIS_TYPE, ELECTRODES_TYPE = range(2)
 #todo: Add the necessary parameters
 # args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
 def calc_electrodes_connectivity(subject, args, overwrite=False):
+    data_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_data.npz')
+    if op.isfile(data_fname):
+        data_dict = utils.Bag(np.load(data_fname))
+    else:
+        print('No data file!')
+        return False
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
     output_fname = op.join(fol, 'electrodes.npz')
-    if op.isfile(output_fname) and not overwrite:
-        return True
-    utils.remove_file(output_fname)
+    args.conditions = [utils.to_str(c) for c in data_dict['conditions']]
+    # if op.isfile(output_fname) and not overwrite:
+    #     return True
+    # utils.remove_file(output_fname)
+    con_vertices_fname = op.join(fol, 'electrodes_vertices.pkl')
     d = dict()
+    d['connectivity_method'] = 'coh'
     d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
     d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
     coh_fname = op.join(fol, 'electrodes_coh.npy')
+    # elif op.isfile(args.mat_fname):
+    #     data_dict = sio.loadmat(args.mat_fname)
     if not op.isfile(coh_fname):
-        data_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_data.npz')
-        if op.isfile(data_fname):
-            data_dict = utils.Bag(np.load(data_fname))
-        elif op.isfile(args.mat_fname):
-            data_dict = sio.loadmat(args.mat_fname)
         coh = calc_electrodes_coh(
             subject, data_dict, args.windows_length, args.windows_shift, sfreq=1000, fmin=55, fmax=110, bw=15,
             max_windows_num=args.max_windows_num, n_jobs=6)
@@ -52,7 +58,12 @@ def calc_electrodes_connectivity(subject, args, overwrite=False):
         coh = np.load(coh_fname)
     (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
      d['data_max'], d['data_min']) = calc_connectivity(coh, d['labels'], d['hemis'], args)
-    d['conditions'] = args.conditions # ['interference', 'neutral']
+    d['conditions'] = data_dict['conditions']
+    vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
+    utils.save((vertices, vertices_lookup), con_vertices_fname)
+
+    # 'conditions', 'labels', 'locations', 'hemis', 'con_indices', 'con_names', 'con_values',
+    # 'con_types', 'data_max', 'data_min', 'connectivity_method'
     np.savez(output_fname, **d)
     print('Electodes coh was saved to {}'.format(output_fname))
     return op.isfile(output_fname)
@@ -86,7 +97,7 @@ def calc_electrodes_coh(subject, data_dict, windows_length, windows_shift, sfreq
         data = data_dict.data[:, :, cond_ind]
         cond_name = utils.to_str(cond_name)
         if cond_ind == 0:
-            coh_mat = np.zeros((data.shape[0], data.shape[0], len(windows), 2))
+            coh_mat = np.zeros((data.shape[0], data.shape[0], max_windows_num, 2))
             # coh_mat = np.load(output_file)
             # continue
         # ds_data = downsample_data(data)
