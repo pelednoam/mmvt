@@ -33,8 +33,9 @@ def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=
 
 class MMVT(object):
 
-    def __init__(self, mmvt_agent):
+    def __init__(self, mmvt_agent, prefix=''):
         self.mmvt_agent = mmvt_agent
+        self.prefix = prefix
 
     def __getattr__(self, item):
         if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play']:

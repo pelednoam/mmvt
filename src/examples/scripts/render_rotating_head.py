@@ -147,6 +147,8 @@ if __name__ == '__main__':
 
     subject, atlas = 'matt_hibert', 'dkt'
     mmvt = run_mmvt.run(subject, atlas, debug=False, run_blender=False)
+    output_fol = mmvt.utils.make_dir(op.join(mmvt.utils.get_user_fol(), 'figures', 'xxxx'))
+
     mmvt.scripts.set_script('render_rotating_head')
 
     # Set the current script's params
