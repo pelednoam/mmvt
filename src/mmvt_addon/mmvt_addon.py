@@ -439,6 +439,8 @@ create_connections = connections_panel.create_connections
 filter_nodes = connections_panel.filter_nodes
 get_connections_parent_name = connections_panel.get_connections_parent_name
 select_connection = connections_panel.select_connection
+get_connections_width = connections_panel.get_connections_width
+set_connections_width = connections_panel.set_connections_width
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ transparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 transparency = transparency_panel
 set_brain_transparency = transparency_panel.set_brain_transparency

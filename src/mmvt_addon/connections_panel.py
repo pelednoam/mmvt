@@ -211,6 +211,14 @@ def set_connections_show_vertices(val):
     bpy.context.scene.connections_show_vertices = val
 
 
+def get_connections_width():
+    return bpy.context.scene.connections_width
+
+
+def set_connections_width(val):
+    bpy.context.scene.connections_width = val
+
+
 def connections_width_update(self, context):
     connection_parent = get_connection_parent()
     for c in connection_parent.children:

@@ -810,9 +810,11 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
     else:
         data = DataMakerPanel.meg_data = np.load(data_fname, mmap_mode='r')
         meta = DataMakerPanel.meg_meta = np.load(meta_fname)
-        if data.shape[2] > 1:
-            add_data_to_electrodes(data, meta)
-        add_data_to_electrodes_parent_obj(parent_obj, data, meta, stat)
+        animation_conditions = mu.get_animation_conditions(parent_obj)
+        data_conditions = meta['conditions']
+        clear_animation = set(animation_conditions) != set(data_conditions)
+        add_data_to_electrodes(data, meta, clear_animation=clear_animation)
+        add_data_to_electrodes_parent_obj(parent_obj, data, meta, stat, clear_animation=clear_animation)
         bpy.types.Scene.eeg_data_exist = True
     if bpy.data.objects.get(' '):
         bpy.context.scene.objects.active = bpy.data.objects[' ']
@@ -1014,7 +1016,7 @@ class AddfMRIDynamicsToBrain(bpy.types.Operator):
 #         return {"FINISHED"}
 
 @mu.tryit()
-def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None):
+def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None, clear_animation=False):
     print('Adding data to Electrodes')
     now = time.time()
     N = len(meta_data['names'])
@@ -1032,6 +1034,8 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
         obj_name = obj_name.astype(str)
         # print(obj_name)
         if bpy.data.objects.get(obj_name, None) is None:
+            obj_name = obj_name.replace(' ', '')
+        if bpy.data.objects.get(obj_name, None) is None:
             mu.log_err("{} doesn't exist!".format(obj_name), logging)
             continue
         cur_obj = bpy.data.objects[obj_name]
@@ -1040,7 +1044,9 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
             fcurve_len = len(cur_obj.animation_data.action.fcurves[0].keyframe_points)
         else:
             fcurve_len = T
-        if fcurves_num < len(conditions) or fcurve_len != T:
+        if not clear_animation:
+            clear_animation = fcurves_num < len(conditions) or fcurve_len != T
+        if clear_animation:
             cur_obj.animation_data_clear()
             for cond_ind, cond_str in enumerate(conditions):
                 cond_str = cond_str.astype(str) if not isinstance(cond_str, str) else cond_str
@@ -1070,7 +1076,8 @@ def add_data_to_electrodes(all_data, meta_data, window_len=None, conditions=None
 
 
 @mu.tryit()
-def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None, condition_ind=None):
+def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF, window_len=None, condition_ind=None,
+                                      clear_animation=False):
     # todo: merge with add_data_to_brain_parent_obj, same code
     sources = {}
     # for obj_name, data in zip(f['names'], f['data']):
@@ -1081,9 +1088,9 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
         if data_stat is None:
             if condition_ind is not None:
                 data_stat = data[:, condition_ind]
-            elif stat == STAT_AVG or data.shape[1] == 1:
+            elif stat == STAT_AVG or data.shape[1] != 2:
                 data_stat = np.squeeze(np.mean(data, axis=1))
-            elif stat == STAT_DIFF:
+            elif stat == STAT_DIFF and data.shape[1] == 2:
                 data_stat = np.squeeze(np.diff(data, axis=1))
         sources[obj_name] = data_stat
 
@@ -1091,7 +1098,6 @@ def add_data_to_electrodes_parent_obj(parent_obj, all_data, meta, stat=STAT_DIFF
     N = len(sources_names)
     # T = _addon().get_max_time_steps() # len(sources[sources_names[0]]) + 2
     fcurves_num = mu.count_fcurves(parent_obj)
-    clear_animation = False
     if parent_obj.animation_data is not None:
         if len(parent_obj.animation_data.action.fcurves[0].keyframe_points) != T + 2:
             clear_animation = True

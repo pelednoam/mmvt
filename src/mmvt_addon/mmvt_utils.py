@@ -1378,6 +1378,10 @@ def change_fcurve_color(fcurve, color, exclude=[]):
     fcurve.hide = False
 
 
+def get_animation_conditions(parent_obj):
+    return [get_fcurve_name(f).split('_')[-1] for f in parent_obj.children[0].animation_data.action.fcurves]
+
+
 def count_fcurves(objs, recursive=False):
     if not isinstance(objs, Iterable):
         objs = [objs]

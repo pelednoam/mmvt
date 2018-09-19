@@ -33,6 +33,7 @@ def run(mmvt):
 
     mmvt.transparency.set_brain_transparency(0)
     mmvt.transparency.set_head_transparency(1)
+    mmvt.connections.set_connections_width(0.05)
 
     plot_chunks = np.array_split(np.arange(0, 360, 1), T)
     now, run = time.time(), 0

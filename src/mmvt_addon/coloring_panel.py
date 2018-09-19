@@ -364,7 +364,7 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         return
     if names is None:
         data, names, conditions = data['data'], data['names'], data['conditions']
-    # default_color = (1, 1, 1)
+    default_color = (1, 1, 1)
     cur_frame = bpy.context.scene.frame_current
     for obj_name, values in zip(names, data):
         if not isinstance(obj_name, str):
@@ -376,29 +376,17 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
             value = values[t_ind]
         elif len(values[t_ind]) == 1:
             value = np.array(values[t_ind]).squeeze()
-        # elif bpy.context.scene.selection_type == 'spec_cond':
-        #     cond_inds = np.where(conditions == bpy.context.scene.conditions_selection)[0]
-        #     if len(cond_inds) == 0:
-        #         print("!!! Can't find the current condition in the data['conditions'] !!!")
-        #         return
-        #     else:
-        #         cond_ind = cond_inds[0]
-        #         object_colors = object_colors[:, cond_ind]
-        #         value = values[t_ind, cond_ind]
         else:
             value = np.diff(values[t_ind])[0] if values.shape[1] > 1 else np.squeeze(values[t_ind])
         # todo: there is a difference between value and real_value, what should we do?
         # real_value = mu.get_fcurve_current_frame_val('Deep_electrodes', obj_name, cur_frame)
-        # new_color = object_colors[cur_frame] if abs(value) > threshold else default_color
-        new_color = calc_colors([value], data_min, colors_ratio)[0]
+        new_color = calc_colors([value], data_min, colors_ratio)[0] if abs(value) >= threshold else default_color
+        # new_color = calc_colors([value], data_min, colors_ratio)[0]
         # todo: check if the stat should be avg or diff
         obj = bpy.data.objects.get(obj_name.replace(' ', '') + postfix_str)
         if obj is None:
             print('{} is None!'.format(obj_name))
             continue
-        # if obj and not obj.hide:
-        #     print('trying to color {} with {}'.format(obj_name+postfix_str, new_color))
-        # obj.active_material = bpy.data.materials['selected_label_Mat_subcortical']
         ret = object_coloring(obj, new_color)
         # if not ret:
         #     print('color_objects_homogeneously: Error in coloring the object {}!'.format(obj_name))
@@ -406,7 +394,6 @@ def color_objects_homogeneously(data, names, conditions, data_min, colors_ratio,
         # else:
         #     print('color_objects_homogeneously: {} was not loaded!'.format(obj_name))
 
-    # _addon().show_rois()
     # print('Finished coloring!!')
 
 
@@ -1755,7 +1742,8 @@ def color_eeg_helmet(use_abs=None):
                               colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
 
 
-def color_meg_helmet(use_abs=None, threshold = 0):
+def color_meg_helmet(use_abs=None, threshold=0):
+    threshold = bpy.context.scene.coloring_lower_threshold
     if use_abs is None:
         use_abs = bpy.context.scene.coloring_use_abs
     fol = mu.get_user_fol()
