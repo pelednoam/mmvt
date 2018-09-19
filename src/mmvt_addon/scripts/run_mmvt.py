@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path as op
+import glob
 
 try:
     from src.mmvt_addon.scripts import scripts_utils as su
@@ -35,10 +36,12 @@ class MMVT(object):
 
     def __init__(self, mmvt_agent, prefix=''):
         self.mmvt_agent = mmvt_agent
-        self.prefix = prefix
+        # self.prefix = prefix
 
     def __getattr__(self, item):
-        if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play']:
+        panels = [su.namebase(f)[:-len('_panel')] for f in glob.glob(op.join(su.get_mmvt_addon_dir(), '*_panel.py'))]
+        # if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play']:
+        if item in panels:
             return self
         elif item == 'utils':
             return MMVTUtils(self.mmvt_agent)

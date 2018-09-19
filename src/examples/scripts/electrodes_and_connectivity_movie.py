@@ -56,3 +56,11 @@ def run(mmvt):
                 mmvt.show_hide.rotate_brain(0, 0, 1)
             run += 1
 
+
+if __name__ == '__main__':
+    from src.mmvt_addon.scripts import run_mmvt
+
+    subject, atlas = 'matt_hibert', 'dkt'
+    mmvt = run_mmvt.run(subject, atlas, debug=False, run_blender=False)
+    mmvt.scripts.set_script('electrodes_and_connectivity_movie')
+    run(mmvt)
