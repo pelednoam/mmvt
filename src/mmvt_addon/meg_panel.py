@@ -179,7 +179,7 @@ def get_meg_sensors_files_names():
 def meg_sensors_files_update(self, context):
     meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname = get_meg_sensors_files_names()
     if all([op.isfile(f) for f in [
-            meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname]]) and \
+            meg_sensors_data_fname, meg_sensors_meta_data_fname]]) and \
             bpy.data.objects.get('MEG_sensors') is not None:
         MEGPanel.meg_sensors_exist = True
         # ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta, = \
@@ -235,7 +235,7 @@ def init_eeg_sensors():
 def eeg_sensors_files_update(self, context):
     eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname= get_eeg_sensors_files_names()
     if all([op.isfile(f) for f in [
-            eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname]]) and \
+            eeg_sensors_data_fname, eeg_sensors_meta_data_fname]]) and \
             bpy.data.objects.get('EEG_sensors') is not None:
         # data_min, data_max = np.load(eeg_sensors_data_minmax_fname)
         # MEGPanel.eeg_sensors_colors_ratio = 256 / (data_max - data_min)
