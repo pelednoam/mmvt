@@ -79,7 +79,8 @@ def get_eeg_sensors_data():
 
 
 def get_meg_sensors_data():
-    return ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta
+    return _addon().data.get_meg_sensors_data(), _addon().data.get_meg_sensors_meta_data()
+    # return ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta
 
 
 def plot_meg():
@@ -2771,16 +2772,20 @@ def init_meg_sensors_data_update(self, context):
             meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname]]) and \
             bpy.data.objects.get('MEG_sensors') is not None:
         ColoringMakerPanel.meg_sensors_exist = True
-        ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta, = \
-            _addon().load_meg_sensors_data(meg_sensors_data_fname, meg_sensors_meta_data_fname)
+        # ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta, = \
+        #     _addon().load_meg_sensors_data(meg_sensors_data_fname, meg_sensors_meta_data_fname)
         data_min, data_max = np.load(meg_sensors_data_minmax_fname)
         ColoringMakerPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
         ColoringMakerPanel.meg_sensors_data_minmax = (data_min, data_max)
-        items = [(c, c, '', ind + 1) for ind, c in enumerate(ColoringMakerPanel.meg_sensors_meta['conditions'])]
-        items.append(('diff', 'Conditions difference', '', len(ColoringMakerPanel.meg_sensors_meta['conditions']) +1))
+        meg_sensors_meta_data = _addon().data.get_meg_sensors_meta_data()
+        if meg_sensors_meta_data is not None:
+            items = [(c, c, '', ind + 1) for ind, c in enumerate(meg_sensors_meta_data['conditions'])]
+            items.append(('diff', 'Conditions difference', '', len(meg_sensors_meta_data['conditions']) +1))
+            bpy.context.scene.meg_sensors_conditions = 'diff'
+        else:
+            items = []
         bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=items,
             description='Selects the condition to plot the MEG sensors activity.\n\nCurrent condition')
-        bpy.context.scene.meg_sensors_conditions = 'diff'
         ColoringMakerPanel.activity_types.append('meg_sensors')
 
     meg_helmet = bpy.data.objects.get('meg_helmet')

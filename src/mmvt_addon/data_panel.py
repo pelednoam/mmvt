@@ -44,7 +44,7 @@ bpy.types.Scene.meg_evoked_files = bpy.props.EnumProperty(items=[], description=
 bpy.types.Scene.evoked_objects = bpy.props.EnumProperty(items=[], description="meg_evoked_types")
 bpy.types.Scene.electrodes_positions_files = bpy.props.EnumProperty(items=[],
     description='Selects the electrodes position file.\n\nCurrent file')
-bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=[],
+bpy.types.Scene.eeg_sensors_data_files = bpy.props.EnumProperty(items=[],
     description='Selects the EEG sensors data file.\n\nCurrent file')
 bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=[],
     description='Selects the MEG sensors data file.\n\nCurrent file')
@@ -803,13 +803,17 @@ def add_data_to_meg_sensors(stat=STAT_DIFF):
         layers_array = [False] * 20
         create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
 
-    data_fname = op.join(mu.get_user_fol(), 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_data_files))
-    meta_fname = op.join(mu.get_user_fol(), 'meg', '{}_meta.npz'.format(bpy.context.scene.meg_sensors_data_files))
-    if not op.isfile(data_fname) or not op.isfile(meta_fname):
-        mu.log_err('MEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
+    # data_fname = op.join(mu.get_user_fol(), 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_data_files))
+    # meta_fname = op.join(mu.get_user_fol(), 'meg', '{}_meta.npz'.format(bpy.context.scene.meg_sensors_data_files))
+    data = get_meg_sensors_data()
+    meta = get_meg_sensors_meta_data()
+    # if not op.isfile(data_fname) or not op.isfile(meta_fname):
+    if data is None or meta is None:
+        mu.log_err('Can\'t find MEG sensors data files!')
+        # mu.log_err('MEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
     else:
-        data = DataMakerPanel.meg_data = np.load(data_fname, mmap_mode='r')
-        meta = DataMakerPanel.meg_meta = np.load(meta_fname)
+        # data = DataMakerPanel.meg_data = np.load(data_fname, mmap_mode='r')
+        # meta = DataMakerPanel.meg_meta = np.load(meta_fname)
         animation_conditions = mu.get_animation_conditions(parent_obj)
         data_conditions = meta['conditions']
         clear_animation = set(animation_conditions) != set(data_conditions)
@@ -826,8 +830,8 @@ def add_data_to_eeg_sensors():
     if parent_obj is None:
         layers_array = [False] * 20
         create_empty_if_doesnt_exists(parnet_name, _addon().BRAIN_EMPTY_LAYER, layers_array, parnet_name)
-    data_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npy'.format(bpy.context.scene.eeg_data_files))
-    meta_fname = op.join(mu.get_user_fol(), 'eeg', '{}_meta.npz'.format(bpy.context.scene.eeg_data_files)) # 'eeg_sensors_evoked_data_meta.npz')
+    data_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npy'.format(bpy.context.scene.eeg_sensors_data_files))
+    meta_fname = op.join(mu.get_user_fol(), 'eeg', '{}_meta.npz'.format(bpy.context.scene.eeg_sensors_data_files)) # 'eeg_sensors_evoked_data_meta.npz')
     if not op.isfile(data_fname) or not op.isfile(meta_fname):
         mu.log_err('EEG data should be here {} (data) and here {} (meta data)'.format(data_fname, meta_fname), logging)
     else:
@@ -1143,24 +1147,44 @@ def load_meg_labels_data():
         return None, None, None
 
 
+def eeg_sensors_data_files_update(self, context):
+    load_eeg_sensors_data()
+
+
 def load_eeg_sensors_data(data_fname='', meta_fname=''):
     if data_fname == '':
-        data_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data.npy')
+        data_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npy'.format(bpy.context.scene.eeg_sensors_data_files))
     if meta_fname == '':
-        meta_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_sensors_evoked_data_meta.npz')
+        meta_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npz'.format(
+            bpy.context.scene.eeg_sensors_data_files.replace('data', 'data_meta')))
+    print('EEG sensros data files were loaded:\n{}\n{}'.format(data_fname, meta_fname))
     data = np.load(data_fname, mmap_mode='r')
     meta = np.load(meta_fname)
     return data, meta
+
+
+def meg_sensors_data_files_update(self, context):
+    load_meg_sensors_data()
 
 
 def load_meg_sensors_data(data_fname='', meta_fname=''):
     if data_fname == '':
-        data_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data.npy')
+        data_fname = op.join(mu.get_user_fol(), 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_data_files))
     if meta_fname == '':
-        meta_fname = op.join(mu.get_user_fol(), 'meg', 'meg_sensors_evoked_data_meta.npz')
+        meta_fname = op.join(mu.get_user_fol(), 'meg', '{}.npz'.format(
+            bpy.context.scene.meg_sensors_data_files.replace('data', 'data_meta')))
+    print('MEG sensros data files were loaded:\n{}\n{}'.format(data_fname, meta_fname))
     data = np.load(data_fname, mmap_mode='r')
     meta = np.load(meta_fname)
-    return data, meta
+    DataMakerPanel.meg_sensors_data, DataMakerPanel.meg_sensors_meta_data = data, meta
+
+
+def get_meg_sensors_data():
+    return DataMakerPanel.meg_sensors_data
+
+
+def get_meg_sensors_meta_data():
+    return DataMakerPanel.meg_sensors_meta_data
 
 
 def load_electrodes_dists():
@@ -1336,7 +1360,7 @@ def data_draw(self, context):
         else:
             col.operator(ImportEEGSensors.bl_idname, text="Export EEG sensors", icon='LAMP_AREA')
             if eeg_data_exist and eeg_meta_data_exist and eeg_data_minmax_exist:
-                col.prop(context.scene, 'eeg_data_files', text="")
+                col.prop(context.scene, 'eeg_sensors_data_files', text="")
                 col.operator(AddDataToEEGSensors.bl_idname, text="Add data to EEG", icon='FCURVE')
     
         # eeg_mesh_fname = op.join(mu.get_user_fol(), 'eeg', 'eeg_helmet.ply')
@@ -1442,8 +1466,11 @@ class DataMakerPanel(bpy.types.Panel):
     electrodes_conditions = None
     electrodes_positions_exist = False
     electrodes_data_exist = False
+    meg_sensors_data = None
+    meg_sensors_meta_data = None
 
-    def draw(self, context):
+
+def draw(self, context):
         data_draw(self, context)
 
 # def load_meg_evoked():
@@ -1542,21 +1569,23 @@ def init_electrodes_data():
 
 
 def init_eeg():
-    eeg_data_files = glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data.npy'))
-    if len(eeg_data_files) > 0:
-        files_names = [mu.namebase(fname) for fname in eeg_data_files]
+    eeg_sensors_data_files = glob.glob(op.join(mu.get_user_fol(), 'eeg', '*sensors_evoked_data*.npy'))
+    if len(eeg_sensors_data_files) > 0:
+        files_names = [mu.namebase(fname) for fname in eeg_sensors_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.eeg_data_files = bpy.props.EnumProperty(items=items,
+        bpy.types.Scene.eeg_sensors_data_files = bpy.props.EnumProperty(
+            items=items, update=eeg_sensors_data_files_update,
             description='Selects the EEG sensors data file.\n\nCurrent file')
-        bpy.context.scene.eeg_data_files = files_names[0]
+        bpy.context.scene.eeg_sensors_data_files = files_names[0]
 
 
 def init_meg():
-    meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data.npy'))
+    meg_data_files = glob.glob(op.join(mu.get_user_fol(), 'meg', '*sensors_evoked_data*.npy'))
     if len(meg_data_files) > 0:
         files_names = [mu.namebase(fname) for fname in meg_data_files]
         items = [(c, c, '', ind) for ind, c in enumerate(files_names)]
-        bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(items=items,
+        bpy.types.Scene.meg_sensors_data_files = bpy.props.EnumProperty(
+            items=items, update=meg_sensors_data_files_update,
             description='Selects the MEG sensors data file.\n\nCurrent file')
         bpy.context.scene.meg_sensors_data_files = files_names[0]
 

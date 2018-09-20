@@ -150,6 +150,8 @@ add_fmri_dynamics_to_parent_obj = data_panel.add_fmri_dynamics_to_parent_obj
 create_empty_if_doesnt_exists = data_panel.create_empty_if_doesnt_exists
 get_electrodes_radius = data_panel.get_electrodes_radius
 create_electrode = data_panel.create_electrode
+get_meg_sensors_data = data_panel.get_meg_sensors_data
+get_meg_sensors_meta_data = data_panel.get_meg_sensors_meta_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 selection = selection_panel
 select_brain_objects = selection_panel.select_brain_objects

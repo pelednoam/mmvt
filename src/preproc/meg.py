@@ -2947,6 +2947,10 @@ def get_fname_format(task, fname_format='', fname_format_cond='', args_condition
             conditions = dict(LA=1, RA=2, LV=3, RV=4, smiley=5, button=32)
             fname_format_cond = '{subject}_audvis_{cond}_{ana_type}.{file_type}'
             fname_format = '{subject}_audvis_{ana_type}.{file_type}'
+        elif task == 'vis':
+            conditions = dict(LV=3, RV=4)
+            fname_format_cond = '{subject}_audvis_{cond}_{ana_type}.{file_type}'
+            fname_format = '{subject}_audvis_{ana_type}.{file_type}'
         elif task == 'rest':
             fname_format = fname_format_cond = '{subject}_{cleaning_method}-rest-{ana_type}.{file_type}'
             conditions = dict(rest=1)
