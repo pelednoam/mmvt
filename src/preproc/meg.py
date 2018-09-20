@@ -3972,7 +3972,7 @@ def stc_time_average(subject, dt, stc_template='*rh.stc', overwrite=False):
     return utils.both_hemi_files_exist(new_stc_fname_template)
 
 
-def sensors_time_average(subject, dt, overwrite=False):
+def sensors_time_average(subject, dt=10, overwrite=False):
     fol = op.join(MMVT_DIR, subject, 'meg')
     sensors_evoked_files = glob.glob(op.join(fol, '*sensors_evoked_data.npy'))
     if len(sensors_evoked_files) == 0:
@@ -3983,8 +3983,8 @@ def sensors_time_average(subject, dt, overwrite=False):
     prefix = op.basename(sensors_evoked_fname)[:-len('sensors_evoked_data.npy')]
     sensors_evoked_new_fname = op.join(fol, '{}_{}.npy'.format(utils.namebase(sensors_evoked_fname), dt))
     meta_fname = op.join(fol, '{}sensors_evoked_data_meta.npz'.format(prefix))
-    meta_new_fname = op.join(fol, '{}_{}.npz'.format(utils.namebase(meta_fname), dt))
-    evoked_minmax_new_fname = op.join(fol, '{}_sensors_evoked_minmax_{}.npy'.format(prefix, dt))
+    meta_new_fname = op.join(fol, '{}_meta.npz'.format(utils.namebase(sensors_evoked_new_fname), dt))
+    evoked_minmax_new_fname = op.join(fol, '{}_minmax.npy'.format(utils.namebase(sensors_evoked_new_fname), dt))
     if op.isfile(sensors_evoked_new_fname) and op.isfile(meta_new_fname) and op.isfile(evoked_minmax_new_fname) \
             and not overwrite:
         return True
@@ -4205,7 +4205,7 @@ def main(tup, remote_subject_dir, org_args, flags=None):
         flags['stc_time_average'] = stc_time_average(subject, args.stc_time_average_dt, args.stc_template)
 
     if 'sensors_time_average' in args.function:
-        flags['sensors_time_average'] = sensors_time_average(subject, args.stc_time_average_dt)
+        flags['sensors_time_average'] = sensors_time_average(subject, args.stc_time_average_dt, args.overwrite)
 
     return flags
 
@@ -4239,6 +4239,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--average_per_event', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--set_eeg_reference', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--max_epochs_num', help='', required=False, default=0, type=int)
+    parser.add_argument('--overwrite', help='general overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_sensors', help='overwrite_sensors', required=False, default=0, type=au.is_true)

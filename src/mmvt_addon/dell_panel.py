@@ -297,7 +297,8 @@ def create_new_electrode():
             mu.get_user_fol(), [new_pos], None, bpy.context.scene.dell_brain_mask_sigma, DellPanel.verts_dural,
             DellPanel.normals_dural)[0]
         name = '{}UNx'.format('L' if hemi == 'lh' else 'R' if hemi == 'rh' else 'U')
-    new_num = max([int(n[3:]) for n in DellPanel.names if n.startswith(name[:3])]) + 1
+    elecs_group = [int(n[3:]) for n in DellPanel.names if n.startswith(name[:3])]
+    new_num = max(elecs_group) + 1 if len(elecs_group) > 0 else 1
     new_name = '{}{}'.format(name[:3], new_num)
     DellPanel.names.append(new_name)
     group_inds = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g]

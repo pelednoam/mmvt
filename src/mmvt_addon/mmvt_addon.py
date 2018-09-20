@@ -140,8 +140,6 @@ eeg_data_and_meta = data_panel.eeg_data_and_meta
 load_meg_labels_data = data_panel.load_meg_labels_data
 load_electrodes_data = data_panel.load_electrodes_data
 load_electrodes_dists = data_panel.load_electrodes_dists
-load_eeg_sensors_data = data_panel.load_eeg_sensors_data
-load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
 import_eeg_sensors = data_panel.import_eeg_sensors
 add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
@@ -150,8 +148,6 @@ add_fmri_dynamics_to_parent_obj = data_panel.add_fmri_dynamics_to_parent_obj
 create_empty_if_doesnt_exists = data_panel.create_empty_if_doesnt_exists
 get_electrodes_radius = data_panel.get_electrodes_radius
 create_electrode = data_panel.create_electrode
-get_meg_sensors_data = data_panel.get_meg_sensors_data
-get_meg_sensors_meta_data = data_panel.get_meg_sensors_meta_data
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Selection links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 selection = selection_panel
 select_brain_objects = selection_panel.select_brain_objects
@@ -209,8 +205,6 @@ clear_and_recolor = coloring_panel.clear_and_recolor
 set_lower_threshold = coloring_panel.set_lower_threshold
 get_lower_threshold = coloring_panel.get_lower_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
-color_eeg_helmet = coloring_panel.color_eeg_helmet
-color_meg_helmet = coloring_panel.color_meg_helmet
 calc_colors = coloring_panel.calc_colors
 init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
 color_connections = coloring_panel.color_connections
@@ -228,11 +222,8 @@ get_activity_colors = coloring_panel.get_activity_colors
 recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
 what_is_colored = coloring_panel.what_is_colored
+add_to_what_is_colored = coloring_panel.add_to_what_is_colored
 set_use_abs_threshold = coloring_panel.set_use_abs_threshold
-color_eeg_sensors = coloring_panel.color_eeg_sensors
-color_meg_sensors = coloring_panel.color_meg_sensors
-get_meg_sensors_data = coloring_panel.get_meg_sensors_data
-get_eeg_sensors_data = coloring_panel.get_eeg_sensors_data
 color_labels_data = coloring_panel.color_labels_data
 color_hemi_data = coloring_panel.color_hemi_data
 coloring_panel_initialized = coloring_panel.panel_initialized
@@ -241,14 +232,10 @@ set_no_plotting = coloring_panel.set_no_plotting
 plot_fmri = coloring_panel.plot_fmri
 init_labels_colorbar = coloring_panel.init_labels_colorbar
 get_meg_data_minmax = coloring_panel.get_meg_data_minmax
-get_meg_sensors_files = coloring_panel.get_meg_sensors_files
-set_meg_sensors_files = coloring_panel.set_meg_sensors_files
-get_meg_sensors_types = coloring_panel.get_meg_sensors_types
-set_meg_sensors_types = coloring_panel.set_meg_sensors_types
-get_meg_sensors_conditions = coloring_panel.get_meg_sensors_conditions
-set_meg_sensors_conditions = coloring_panel.set_meg_sensors_conditions
 get_meg_files = coloring_panel.get_meg_files
 set_meg_files = coloring_panel.set_meg_files
+get_activity_types = coloring_panel.get_activity_types
+add_activity_type = coloring_panel.add_activity_type
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 filter = filter_panel
 find_obj_with_val = filter_panel.find_obj_with_val
@@ -495,6 +482,25 @@ find_point_thickness = skull_panel.find_point_thickness
 meg = meg_panel
 select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
+
+eeg_sensors_exist = meg_panel.eeg_sensors_exist
+meg_sensors_exist = meg_panel.meg_sensors_exist
+
+get_meg_sensors_data = meg_panel.get_meg_sensors_data
+get_meg_sensors_file = meg_panel.get_meg_sensors_file
+set_meg_sensors_file = meg_panel.set_meg_sensors_file
+get_meg_sensors_types = meg_panel.get_meg_sensors_types
+set_meg_sensors_types = meg_panel.set_meg_sensors_types
+get_meg_sensors_conditions = meg_panel.get_meg_sensors_conditions
+set_meg_sensors_conditions = meg_panel.set_meg_sensors_conditions
+
+color_meg_sensors = meg_panel.color_meg_sensors
+
+get_eeg_sensors_data = meg_panel.get_eeg_sensors_data
+color_eeg_sensors = meg_panel.color_eeg_sensors
+
+color_eeg_helmet = meg_panel.color_eeg_helmet
+color_meg_helmet = meg_panel.color_meg_helmet
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # dell = dell_panel
 # dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected

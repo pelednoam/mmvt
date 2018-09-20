@@ -445,6 +445,20 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
             print ("Could not delete object")
 
 
+def delete_object(obj_name):
+    obj = bpy.data.objects.get(obj_name)
+    if obj is None:
+        return
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.animation_data_clear()
+    obj.select = True
+    result = bpy.ops.object.delete()
+    if result == {'FINISHED'}:
+        print("Successfully deleted {}".format(obj_name))
+    else:
+        print("Could not delete {}".format(obj_name))
+
+
 @functools.lru_cache(maxsize=None)
 def get_atlas():
     # name_split = namebase(bpy.data.filepath).split('_')
@@ -567,7 +581,7 @@ def get_fcurve_current_frame_val(parent_obj_name, obj_name, cur_frame):
 
 
 def get_fcurve_name(fcurve):
-    return fcurve.data_path.split('"')[1]
+    return fcurve.data_path.split('"')[1].replace(' ', '')
 
 
 def show_only_selected_fcurves(context):
@@ -1378,9 +1392,11 @@ def change_fcurve_color(fcurve, color, exclude=[]):
     fcurve.hide = False
 
 
-def get_animation_conditions(parent_obj):
-    return [get_fcurve_name(f).split('_')[-1] for f in parent_obj.children[0].animation_data.action.fcurves]
-
+def get_animation_conditions(obj, take_my_first_child=False):
+    if take_my_first_child:
+        return [get_fcurve_name(f).split('_')[-1] for f in obj.children[0].animation_data.action.fcurves]
+    else:
+        return [get_fcurve_name(f).split('_')[-1] for f in obj.animation_data.action.fcurves]
 
 def count_fcurves(objs, recursive=False):
     if not isinstance(objs, Iterable):
