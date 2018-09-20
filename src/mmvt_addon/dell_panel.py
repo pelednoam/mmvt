@@ -506,6 +506,10 @@ def delete_electrodes_from_selection():
     bpy.ops.object.delete()
 
 
+def create_new_group_from_selected_electrodes():
+    selected_electrodes_indices = [DellPanel.names.index(obj.name) for obj in bpy.context.selected_objects]
+
+
 def calc_threshold_precentile():
     bpy.context.scene.dell_ct_threshold = np.percentile(
         DellPanel.ct_data, bpy.context.scene.dell_ct_threshold_percentile)
@@ -821,6 +825,8 @@ def dell_draw(self, context):
         if len(bpy.context.selected_objects) > 0:
             layout.operator(MarkSelectedElectrodesAsNoise.bl_idname, text="Mark selected electrodes as noise", icon='PANEL_CLOSE')
             layout.operator(MarkSelectedNoiseAsElectrodes.bl_idname, text="Mark selected noise as electrodes", icon='EYEDROPPER')
+            layout.operator(CreateNewGroupFromSelectedElectrodes.bl_idname, text="Create New group from selection",
+                            icon='EDIT')
 
         # if len(bpy.context.selected_objects) == 4 and all(
         #         bpy.context.selected_objects[k].name in DellPanel.names for k in range(4)):
@@ -1204,6 +1210,16 @@ class MarkElectrodeLeadAsNoise(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
 
+class CreateNewGroupFromSelectedElectrodes(bpy.types.Operator):
+    bl_idname = "mmvt.create_new_group_from_selected_electrodes"
+    bl_label = "create_new_group_from_selected_electrodes"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        create_new_group_from_selected_electrodes()
+        return {'PASS_THROUGH'}
+
+
 class DeleteElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.delete_electrodes"
     bl_label = "delete_electrodes"
@@ -1472,6 +1488,7 @@ def register():
         bpy.utils.register_class(ClearGroups)
         bpy.utils.register_class(CheckIfElectrodeOutsidePial)
         bpy.utils.register_class(DeleteElectrodes)
+        bpy.utils.register_class(CreateNewGroupFromSelectedElectrodes)
         bpy.utils.register_class(MarkSelectedElectrodesAsNoise)
         bpy.utils.register_class(MarkSelectedNoiseAsElectrodes)
         bpy.utils.register_class(MarkNonGroupElectrodesAsNoise)
@@ -1504,6 +1521,7 @@ def unregister():
         bpy.utils.unregister_class(SaveCTNeighborhood)
         bpy.utils.unregister_class(PrevCTElectrode)
         bpy.utils.unregister_class(NextCTElectrode)
+        bpy.utils.unregister_class(CreateNewGroupFromSelectedElectrodes)
         bpy.utils.unregister_class(SaveCTElectrodesFigures)
         bpy.utils.unregister_class(ClearGroups)
         bpy.utils.unregister_class(CheckIfElectrodeOutsidePial)
