@@ -1255,17 +1255,31 @@ def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=Non
     return electrodes_fname
 
 
-def snap_electrodes_to_dural(subject, electrodes_group_name):
+def snap_electrodes_to_dural(subject, snap_all=False, overwrite_snap=False):
+    from src.utils import args_utils as au
     # todo: of over all the electrodes, check the groups, and run the snap in a loop only for the grids
-    names, pos = read_electrodes_file(subject, False)
-    return snap_electrodes_to_surface(
-        subject, pos, electrodes_group_name, SUBJECTS_DIR)
+    groups_pos_dict = defaultdict(list)
+    all_names, all_pos = read_electrodes_file(subject, False)
+    for elc_name, elc_pos in zip(all_names, all_pos):
+        group = utils.elec_group(elc_name, False)
+        groups_pos_dict[group].append(elc_pos)
+    snap_ret = True
+    for group in groups_pos_dict.keys():
+        pos = np.array(groups_pos_dict[group])
+        if not snap_all:
+            do_snap = au.is_true(input('Do you want to snap {}? '.format(group)))
+        else:
+            do_snap = True
+        if do_snap:
+            snap_ret = snap_ret and snap_electrodes_to_surface(
+                subject, pos, group, SUBJECTS_DIR, overwrite=overwrite_snap)
+    return snap_ret
 
 
 def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
                                max_steps=40000, giveup_steps=10000,
                                init_temp=1e-3, temperature_exponent=1,
-                               deformation_constant=1.):
+                               deformation_constant=1., overwrite=False):
     '''
     Transforms electrodes from surface space to positions on the surface
     using a simulated annealing "snapping" algorithm which minimizes an
@@ -1306,6 +1320,10 @@ def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
     There is no return value. The 'snap_coords' attribute will be used to
     store the snapped locations of the electrodes
     '''
+
+    output_fname = op.join(subjects_dir, subject, 'electrodes', '{}_snap_electrodes'.format(grid_name))
+    if op.isfile(output_fname) and not overwrite:
+        return True
 
     n = elecs_pos.shape[0]
     e_init = np.array(elecs_pos)
@@ -1466,10 +1484,9 @@ def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
     for ind, soln in enumerate(e_pia):
         snapped_electrodes_pial[ind] = pia[soln]
 
-    output_fname = op.join(subjects_dir, subject, 'electrodes', '{}_snap_electrodes'.format(grid_name))
     np.savez(output_fname, snapped_electrodes=snapped_electrodes, snapped_electrodes_pial=snapped_electrodes_pial)
     print('The snap electrodes were saved to {}'.format(output_fname))
-    return snapped_electrodes, snapped_electrodes_pial
+    return op.isfile(output_fname)
 
 
 def set_args(args):
@@ -1661,7 +1678,7 @@ def main(subject, remote_subject_dir, args, flags):
             args.n_jobs)
 
     if 'snap_electrodes_to_dural' in args.function:
-        flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(subject, args.grid_to_snap)
+        flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(subject, args.snap_all, args.overwrite_snap)
 
     return flags
 
@@ -1714,6 +1731,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_raw_data', required=False, default=0, type=au.is_true)
     parser.add_argument('--grid_to_snap', required=False, default='G')
     parser.add_argument('--snap', required=False, default=0, type=au.is_true)
+    parser.add_argument('--snap_all', required=False, default=1, type=au.is_true)
+    parser.add_argument('--overwrite_snap', required=False, default=0, type=au.is_true)
 
     parser.add_argument('--electrodes_groups_coloring_fname', help='', required=False, default='electrodes_groups_coloring.csv')
     parser.add_argument('--ras_xls_sheet_name', help='ras_xls_sheet_name', required=False, default='')

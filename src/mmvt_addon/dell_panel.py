@@ -40,7 +40,8 @@ def _addon():
 
 def ct_mark_noise_update(self, context):
     for p in DellPanel.noise:
-        bpy.data.objects[DellPanel.names[p]].hide = not bpy.context.scene.ct_mark_noise
+        if p < len(DellPanel.names):
+            bpy.data.objects[DellPanel.names[p]].hide = not bpy.context.scene.ct_mark_noise
 
 
 def ct_plot_lead_update(self, context):
@@ -915,7 +916,7 @@ def dell_draw(self, context):
         layout.prop(context.scene, 'dell_delete_electrodes', text='Delete electrodes')
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
-        layout.operator(ExportDellElectrodes.bl_idname, text="Export electrodes", icon='EXPORT')
+        layout.operator(ExportDellElectrodes.bl_idname, text="Rename & Export", icon='EXPORT')
         row = layout.row(align=True)
         row.prop(context.scene, 'dell_move_x')
         row.prop(context.scene, 'dell_move_y')
