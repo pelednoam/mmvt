@@ -2700,9 +2700,3 @@ def unregister():
     except:
         pass
         # print("Can't unregister Freeview Panel!")
-
-
-if __name__ == '__main__':
-    import mne
-    stc = mne.read_source_estimate('/homes/5/npeled/space1/mmvt/fsaverage5/meg/fsaverage5_msit_nTSSS_interference_diff_1-15-dSPM-lh.stc')
-    plot_stc(stc, 100, threshold=1, save_image=False, view_selected=False, subject='fsaverage5', n_jobs=4)
