@@ -1276,6 +1276,30 @@ def snap_electrodes_to_dural(subject, snap_all=False, overwrite_snap=False):
     return snap_ret
 
 
+def read_snapped_electrodes(subject, overwrite=False):
+    output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_snap_positions.npz')
+    if op.isfile(output_fname) and not overwrite:
+        return True
+    groups_names_dict = defaultdict(list)
+    all_names, all_pos = read_electrodes_file(subject, False)
+    for elc_name in all_names:
+        group = utils.elec_group(elc_name, False)
+        groups_names_dict[group].append(elc_name)
+    snap_names, snap_pos = [], None
+    for group_name in groups_names_dict.keys():
+        snap_fname = op.join(MMVT_DIR, subject, 'electrodes', '{}_snap_electrodes.npz'.format(group_name))
+        if not op.isfile(snap_fname):
+            print('The snap electrodes for group {} couldn\'t be found! {}'.format(group_name, snap_fname))
+            continue
+        group_snap_dict = np.load(snap_fname)
+        snap_to_dura_pos = group_snap_dict['snapped_electrodes']
+        # snap_to_pial_pos = group_snap_dict['snapped_electrodes_pial']
+        snap_names.extend(groups_names_dict[group_name])
+        snap_pos = snap_to_dura_pos if snap_pos is None else np.concatenate((snap_pos, snap_to_dura_pos))
+    np.savez(output_fname, pos=snap_pos, names=snap_names)
+    return op.isfile(output_fname)
+
+
 def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
                                max_steps=40000, giveup_steps=10000,
                                init_temp=1e-3, temperature_exponent=1,
@@ -1681,6 +1705,9 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'snap_electrodes_to_dural' in args.function:
         flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(subject, args.snap_all, args.overwrite_snap)
+
+    if 'read_snapped_electrodes' in args.function:
+        flags['read_snapped_electrodes'] = read_snapped_electrodes(subject)
 
     return flags
 
