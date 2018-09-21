@@ -341,13 +341,15 @@ def on_click(mmvt, ii, xy, state, modality='mri'):
     x = xy[0] - state[modality].extras[ii][0]
     y = xy[1] - state[modality].extras[ii][1]
     xax, yax = [[1, 2], [0, 2], [0, 1]][ii]
-    if modality in ['mri', 't2']:
-        trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
-    elif modality == 'ct':
-        trans = [[2, 1, 0], [1, 0, 2], [0, 2, 1]][ii]
-    else:
-        print('The trans should be first calculated for {}!'.format(modality))
-        trans = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
+    # if modality in ['mri', 't2']:
+    #     trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
+    # if modality == 'ct':
+    #     trans = [[2, 1, 0], [1, 0, 2], [0, 2, 1]][ii]
+    # else:
+    trans = [[0, 1, 2], [2, 0, 1], [1, 2, 0]][ii]
+    # else:
+    #     print('The trans should be first calculated for {}!'.format(modality))
+    #     trans = [[0, 1, 2], [0, 1, 2], [0, 1, 2]]
     x = s.sizes[xax] - x if s.flips[xax] else x
     y = s.sizes[yax] - y if s.flips[yax] else y
     idxs = [None, None, None]
