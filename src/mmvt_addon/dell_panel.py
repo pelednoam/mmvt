@@ -116,14 +116,16 @@ def init_groups():
     parent = bpy.data.objects.get('Deep_electrodes', None)
     if parent is None or len(parent.children) == 0:
         return
-    for ind, group in enumerate(DellPanel.groups):
-        color = next(DellPanel.colors)
-        for elc_ind in group:
-            _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
     for p in DellPanel.noise:
-        if p not in DellPanel.names:
+        if p >= len(DellPanel.names):
             continue
         _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], tuple(bpy.context.scene.dell_ct_noise_color))
+    for ind, group in enumerate(DellPanel.groups):
+        color = next(DellPanel.colors)
+        if np.all(color == tuple(bpy.context.scene.dell_ct_noise_color)):
+            color = next(DellPanel.colors)
+        for elc_ind in group:
+            _addon().object_coloring(bpy.data.objects[DellPanel.names[elc_ind]], tuple(color))
     if len(DellPanel.groups) == 0:
         clear_electrodes_color()
     # log_fname = op.join(DellPanel.output_fol, '{}_log.pkl'.format(
@@ -131,6 +133,18 @@ def init_groups():
     # if op.isfile(log_fname):
     #     DellPanel.log = mu.load(log_fname)
     # DellPanel.current_log = []
+
+
+def init_noise():
+    for p in DellPanel.noise:
+        if p >= len(DellPanel.names):
+            continue
+        group_inds = [k for k, g in enumerate(DellPanel.groups) if p in g]
+        if len(group_inds) > 0:
+            continue
+        _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], (1, 1, 1))
+    DellPanel.noise = []
+    init_groups()
 
 
 def load_electrodes_from_file():
@@ -829,6 +843,7 @@ def dell_draw(self, context):
         layout.prop(context.scene, 'dell_debug', text='debug')
         row = layout.row(align=0)
         row.prop(context.scene, 'ct_mark_noise', text='Mark noise')
+        row.operator(InitNoise.bl_idname, text="Init noise", icon='RECOVER_LAST')
         if bpy.context.scene.ct_mark_noise:
             row.prop(context.scene, 'dell_ct_noise_color', text='')
         row = layout.row(align=0)
@@ -1076,6 +1091,16 @@ class CreateNewElectrodeBetween(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         create_new_electrode_between()
+        return {'PASS_THROUGH'}
+
+
+class InitNoise(bpy.types.Operator):
+    bl_idname = "mmvt.dell_init_noise"
+    bl_label = "dell_init_noise"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        init_noise()
         return {'PASS_THROUGH'}
 
 
@@ -1526,6 +1551,7 @@ def register():
         bpy.utils.register_class(DeleteElectrodesFromGroup)
         bpy.utils.register_class(ExportDellElectrodes)
         bpy.utils.register_class(CreateNewElectrodeBetween)
+        bpy.utils.register_class(InitNoise)
         bpy.utils.register_class(CreateNewElectrode)
         bpy.utils.register_class(FindGroupBetweenTwoElectrodesOnDural)
         bpy.utils.register_class(SaveElectrodesObjects)
@@ -1564,6 +1590,7 @@ def unregister():
         bpy.utils.unregister_class(ExportDellElectrodes)
         bpy.utils.unregister_class(CreateNewElectrodeBetween)
         bpy.utils.unregister_class(CreateNewElectrode)
+        bpy.utils.unregister_class(InitNoise)
         bpy.utils.unregister_class(FindGroupBetweenTwoElectrodesOnDural)
         bpy.utils.unregister_class(SaveElectrodesObjects)
         bpy.utils.unregister_class(RefreshElectrodesObjects)
