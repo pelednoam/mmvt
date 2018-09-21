@@ -1321,9 +1321,11 @@ def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
     store the snapped locations of the electrodes
     '''
 
-    output_fname = op.join(subjects_dir, subject, 'electrodes', '{}_snap_electrodes'.format(grid_name))
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
+    output_fname = op.join(fol, '{}_snap_electrodes.npz'.format(grid_name))
     if op.isfile(output_fname) and not overwrite:
         return True
+    print('Snapping {} electrodes'.format(grid_name))
 
     n = elecs_pos.shape[0]
     e_init = np.array(elecs_pos)
