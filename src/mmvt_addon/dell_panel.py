@@ -143,7 +143,7 @@ def init_noise():
         if len(group_inds) > 0:
             continue
         _addon().object_coloring(bpy.data.objects[DellPanel.names[p]], (1, 1, 1))
-    DellPanel.noise = []
+    DellPanel.noise = set()
     init_groups()
 
 
@@ -323,7 +323,7 @@ def mark_non_group_electrodes_as_noise():
 
 
 def mark_elc_as_noise(elc_obj=None, elc_ind=-1):
-    if elc_obj is None and elc_ind in DellPanel.names:
+    if elc_obj is None and elc_ind < len(DellPanel.names):
         elc_obj = bpy.data.objects.get(DellPanel.names[elc_ind])
         if elc_obj is None:
             print('No object for {}!'.format(DellPanel.names[elc_ind]))
