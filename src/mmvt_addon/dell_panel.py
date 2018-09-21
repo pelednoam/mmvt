@@ -840,10 +840,10 @@ def dell_draw(self, context):
         #     layout.operator(OpenInteractiveCTViewer.bl_idname, text="Open interactive CT viewer", icon='LOGIC')
         # if len(DellPanel.dell_files) > 1:
         #     layout.prop(context.scene, 'dell_files', text='Dell files')
-        layout.operator(SaveElectrodesObjects.bl_idname, text="Save", icon='SAVE_PREFS')
         row = layout.row(align=True)
+        row.operator(SaveElectrodesObjects.bl_idname, text="Save", icon='SAVE_PREFS')
         row.operator(RefreshElectrodesObjects.bl_idname, text="Load", icon='OUTLINER_OB_FORCE_FIELD')
-        row.prop(context.scene, "dell_refresh_pos_and_names_overwrite", text='Overwrite')
+        # row.prop(context.scene, "dell_refresh_pos_and_names_overwrite", text='Overwrite')
         layout.operator(CreateNewElectrode.bl_idname, text="Create new electrode", icon='OUTLINER_OB_META')
         if len(bpy.context.selected_objects) == 1 and bpy.context.selected_objects[0].name in DellPanel.names:
             if not electrode_with_group_selected:
@@ -1041,7 +1041,7 @@ class RefreshElectrodesObjects(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def invoke(self, context, event=None):
-        refresh_pos_and_names(bpy.context.scene.dell_refresh_pos_and_names_overwrite)
+        refresh_pos_and_names()#bpy.context.scene.dell_refresh_pos_and_names_overwrite)
         return {'PASS_THROUGH'}
 
 
