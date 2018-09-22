@@ -1273,6 +1273,8 @@ def snap_electrodes_to_dural(subject, snap_all=False, overwrite_snap=False):
         if do_snap:
             snap_ret = snap_ret and snap_electrodes_to_surface(
                 subject, pos, group, SUBJECTS_DIR, overwrite=overwrite_snap)
+    if snap_ret:
+        read_snapped_electrodes(subject, overwrite_snap)
     return snap_ret
 
 

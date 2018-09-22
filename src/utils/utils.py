@@ -248,6 +248,15 @@ def read_ply_file(ply_file, npz_fname=''):
     return verts, faces
 
 
+def ply2fs(ply_fname, fs_fname=''):
+    import nibabel.freesurfer as fs
+    if fs_fname == '':
+        fs_fname = op.join(get_parent_fol(ply_fname), ply_fname[:-len('.ply')])
+    verts, faces = read_ply_file(ply_fname)
+    fs.io.write_geometry(fs_fname, verts, faces)
+    return op.isfile(fs_fname)
+
+
 def load_surf(subject, mmvt_dir, subjects_dir, surf_type='pial'):
     verts = {}
     for hemi in HEMIS:
