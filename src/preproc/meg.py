@@ -662,20 +662,24 @@ def calc_labels_connectivity(
 
 def spectral_connectivity(label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
                           cwt_frequencies=None, cwt_n_cycles=7, n_jobs=1):
-    if con_mode == 'cwt_morlet':
-        con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
-            label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=faverage, mt_adaptive=mt_adaptive,
-            cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
-    elif con_mode == 'multitaper':
-        con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
-            label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=faverage, mt_adaptive=True, n_jobs=n_jobs)
-    else:
-        con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
-            label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=True, n_jobs=n_jobs)
-    return con, freqs, times, n_epochs, n_tapers
+    try:
+        if con_mode == 'cwt_morlet':
+            con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
+                label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
+                fmax=fmax, faverage=faverage, mt_adaptive=mt_adaptive,
+                cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
+        elif con_mode == 'multitaper':
+            con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
+                label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
+                fmax=fmax, faverage=faverage, mt_adaptive=True, n_jobs=n_jobs)
+        else:
+            con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
+                label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
+                fmax=fmax, faverage=True, n_jobs=n_jobs)
+        return con, freqs, times, n_epochs, n_tapers
+    except:
+        print(traceback.format_exc())
+        return None, None, None, 0, 0
 
 
 def get_inv_src(inv_fname, src=None, cond_name=''):
