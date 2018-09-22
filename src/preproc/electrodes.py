@@ -1719,7 +1719,7 @@ def main(subject, remote_subject_dir, args, flags):
         flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(subject, args.snap_all, args.overwrite_snap)
 
     if 'read_snapped_electrodes' in args.function:
-        flags['read_snapped_electrodes'] = read_snapped_electrodes(subject)
+        flags['read_snapped_electrodes'] = read_snapped_electrodes(subject, args.overwrite_snap)
 
     return flags
 
