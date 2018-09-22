@@ -655,8 +655,11 @@ def calc_labels_connectivity(
         con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
             label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
             cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=1)
-        np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
-        ret = ret and op.isfile(output_fname)
+        if con is not None:
+            np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
+            ret = ret and op.isfile(output_fname)
+        else:
+            ret = False
     return ret
 
 
