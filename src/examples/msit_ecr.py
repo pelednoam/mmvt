@@ -306,7 +306,7 @@ def calc_meg_connectivity(args):
 
     for subject in good_subjects:
         args.subject = subject
-        for task in args.tasks:
+        for task in args.task:
             output_fname = op.join(
                 MMVT_DIR, subject, 'connectivity', '{}_{}_coh_cwt_morlet.npz'.format(task.lower(), em))
             if op.isfile(output_fname):
@@ -321,7 +321,7 @@ def calc_meg_connectivity(args):
             if not op.isfile(local_epo_fname):
                 utils.make_link(remote_epo_fname, local_epo_fname)
 
-            args = meg.read_cmd_args(utils.Bag(
+            con_args = meg.read_cmd_args(utils.Bag(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=args.atlas,
                 # meg_dir=args.meg_dir,
@@ -349,7 +349,7 @@ def calc_meg_connectivity(args):
                 # overwrite_labels_data=args.overwrite,
                 n_jobs=args.n_jobs
             ))
-            meg.call_main(args)
+            meg.call_main(con_args)
 
 
 def post_analysis(args):
