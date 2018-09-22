@@ -1365,6 +1365,7 @@ def create_pial_volume_mask(subject, overwrite=True):
     pial_output_fname = op.join(MMVT_DIR, subject, 'freeview', 'pial_vol_mask.npy')
     dural_output_fname = op.join(MMVT_DIR, subject, 'freeview', 'dural_vol_mask.npy')
     if op.isfile(pial_output_fname) and op.isfile(dural_output_fname) and not overwrite:
+        print('The files are already exist! Use --overwrite 1 to overwrite')
         return True
     pial_verts = utils.load_surf(subject, MMVT_DIR, SUBJECTS_DIR)
     dural_verts, _ = fu.read_surface(subject, SUBJECTS_DIR, 'dural')
