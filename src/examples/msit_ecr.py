@@ -306,7 +306,7 @@ def calc_meg_connectivity(args):
 
     for subject in good_subjects:
         args.subject = subject
-        for task in args.task:
+        for task in args.tasks:
             output_fname = op.join(
                 MMVT_DIR, subject, 'connectivity', '{}_{}_coh_cwt_morlet.npz'.format(task.lower(), em))
             if op.isfile(output_fname):
