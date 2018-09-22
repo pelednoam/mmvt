@@ -1350,6 +1350,7 @@ def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
     fol = utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
     output_fname = op.join(fol, '{}_snap_electrodes.npz'.format(grid_name))
     if op.isfile(output_fname) and not overwrite:
+        print('The output file {} is already exist! To overwrite use --overwrite_snap 1'.format(output_fname))
         return True
     print('Snapping {} electrodes'.format(grid_name))
 
@@ -1430,8 +1431,17 @@ def snap_electrodes_to_surface(subject, elecs_pos, grid_name, subjects_dir,
         return H
 
     # load the dural surface locations
-    lh_dura, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', 'lh.dural'))
-    rh_dura, _ = nib.freesurfer.read_geometry(op.join(subjects_dir, subject, 'surf', 'rh.dural'))
+    ply_template = op.join(MMVT_DIR, subject, 'surf', '{hemi}.dural.ply')
+    fs_template = op.join(SUBJECTS_DIR, subject, 'surf', '{hemi}.dural')
+    if utils.both_hemi_files_exist(ply_template):
+        lh_dura, _ = utils.read_ply_file(ply_template.format(hemi='lh'))
+        rh_dura, _ = utils.read_ply_file(ply_template.format(hemi='rh'))
+    elif utils.both_hemi_files_exist(fs_template):
+        lh_dura, _ = nib.freesurfer.read_geometry(fs_template.format(hemi='lh'))
+        rh_dura, _ = nib.freesurfer.read_geometry(fs_template.format(hemi='rh'))
+    else:
+        print('No dura can be found!')
+        return False
     dura = np.vstack((lh_dura, rh_dura))
 
     max_deformation = 3
