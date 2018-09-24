@@ -307,8 +307,8 @@ def plot_labels(labels_names, colors, atlas, atlas_labels_rh=[], atlas_labels_lh
 
 
 def check_annot_verts(atlas_labels_lh, atlas_labels_rh, atlas):
-    annot_verts_num_lh = max([max(l.vertices) for l in atlas_labels_lh])
-    annot_verts_num_rh = max([max(l.vertices) for l in atlas_labels_rh])
+    annot_verts_num_lh = max([max(l.vertices) for l in atlas_labels_lh]) if len(atlas_labels_lh) > 0 else 0
+    annot_verts_num_rh = max([max(l.vertices) for l in atlas_labels_rh]) if len(atlas_labels_rh) > 0 else 0
     hemi_verts_num_lh = len(bpy.data.objects['lh'].data.vertices)
     hemi_verts_num_rh = len(bpy.data.objects['rh'].data.vertices)
     if annot_verts_num_lh >= hemi_verts_num_lh or annot_verts_num_rh >= hemi_verts_num_rh:

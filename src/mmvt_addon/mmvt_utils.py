@@ -2332,7 +2332,7 @@ def read_labels_from_annots(atlas, hemi='both', labels_fol=''):
             labels_files = glob.glob(op.join(labels_fol, atlas, '*.label'))
             for label_fname in labels_files:
                 new_label = read_label_file(label_fname)
-                if new_label is not None:
+                if new_label is not None and new_label.hemi == hemi:
                     labels.append(new_label)
     return sorted(labels, key=lambda l: l.name)
 

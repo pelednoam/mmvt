@@ -171,6 +171,7 @@ def read_electrodes_file(subject, bipolar, postfix='', snap=False):
         return [], []
     else:
         try:
+            print('Loading {}'.format(electrodes_fname))
             d = np.load(electrodes_fname)
             # fix for a bug in ielu
             names = [n.replace('elec_unsorted', '') for n in d['names']]
@@ -596,12 +597,13 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
     return True
 
 
-def get_electrodes_hemis(subject):
+def get_electrodes_hemis(subject, bipolar=False, sigma=0, manual=False):
     fname = op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl')
     if op.isfile(fname):
         return utils.load(fname)
     else:
-        return None
+        find_electrodes_hemis(subject, bipolar, sigma=sigma, manual=manual)
+        return utils.load(fname) if op.isfile(fname) else None
 
 
 def get_group_hemi(group, electrodes_hemis):
@@ -1618,25 +1620,27 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
 
 
 def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='electrodes_labels',
-        label_r=5, snap=False, overwrite=False, n_jobs=4):
+        label_r=5, snap=False, sigma=1, overwrite=False, n_jobs=4):
     names, pos = read_electrodes_file(subject, bipolar, snap=snap)
     labels_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', labels_fol_name))
     verts = {}
     for hemi in utils.HEMIS:
         verts[hemi], _ = utils.read_pial(subject, MMVT_DIR, hemi)
-    electrodes_hemis = get_electrodes_hemis(subject)
+    electrodes_hemis = get_electrodes_hemis(subject, sigma=sigma)
     for elc_name, elc_pos in zip(names, pos):
         group = utils.elec_group(elc_name, bipolar)
         elc_hemi = get_group_hemi(group, electrodes_hemis)
-        label_name = '{}_label'.format(elc_name)
-        new_label_fname = op.join(labels_fol, '{}-{}.label'.format(label_name, elc_hemi))
+        # label_name = '{}_label'.format(elc_name)
+        new_label_fname = op.join(labels_fol, '{}-{}.label'.format(elc_name, elc_hemi))
         if not overwrite and op.isfile(new_label_fname):
             continue
-        dists = cdist([elc_pos], verts[hemi])
+        dists = cdist([elc_pos], verts[elc_hemi]).squeeze()
         elc_vert = np.argmin(dists)
-        lu.grow_label(subject, elc_vert, hemi, label_name, label_r, n_jobs, labels_fol)
+        print('vert {} is located {} from {}'.format(elc_vert, dists[elc_vert], elc_name))
+        lu.grow_label(subject, elc_vert, elc_hemi, elc_name, label_r, n_jobs, labels_fol)
     # ret = lu.labels_to_annot(subject, SUBJECTS_DIR, new_atlas_name, labels_fol, print_error=True)
     ret = lu.create_atlas_coloring(subject, labels_fol_name, n_jobs)
+    print('Done with create_labels_around_electrodes')
     return ret
 
 

@@ -15,9 +15,9 @@ MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
 
 
 def create_electrodes_labels(subject, bipolar=False, labels_fol_name='electrodes_labels',
-        label_r=5, snap=False, overwrite=False, n_jobs=-1):
+        label_r=5, snap=False, sigma=1, overwrite=False, n_jobs=-1):
     return electrodes.create_labels_around_electrodes(
-        subject, bipolar, labels_fol_name, label_r, snap, overwrite, n_jobs)
+        subject, bipolar, labels_fol_name, label_r, snap, sigma, overwrite, n_jobs)
 
 
 def create_atlas_coloring(subject, labels_fol_name='electrodes_labels', n_jobs=-1):
@@ -210,8 +210,8 @@ if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
-    parser.add_argument('-s', '--subject', help='subject name', required=False, default='nmr01209')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
+    parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
@@ -234,13 +234,14 @@ if __name__ == '__main__':
     labels_fol_name = atlas = 'electrodes_labels'
     label_r = 5
     snap = True
+    sigma = 3
 
     edf_name = 'SDohaseIIday2'
     low_freq, high_freq = 1, 100
 
     if args.function == 'create_electrodes_labels':
         create_electrodes_labels(
-            args.subject, bipolar, labels_fol_name, label_r, snap, overwrite_electrodes_labels, args.n_jobs)
+            args.subject, bipolar, labels_fol_name, label_r, snap, sigma, overwrite_electrodes_labels, args.n_jobs)
     elif args.function == 'create_atlas_coloring':
         create_atlas_coloring(args.subject, labels_fol_name, args.n_jobs)
     elif args.function == 'meg_remove_artifcats':
