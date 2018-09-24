@@ -3,6 +3,7 @@ import glob
 import numpy as np
 import scipy.interpolate
 import matplotlib.pyplot as plt
+import warnings
 
 from src.utils import utils
 from src.preproc import meg as meg
@@ -211,16 +212,8 @@ def check_mmvt_file(subject):
     plt.show()
 
 
-if __name__ == '__main__':
-    import argparse
-    from src.utils import args_utils as au
-    parser = argparse.ArgumentParser(description='MMVT')
-    parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
-    parser.add_argument('-f', '--function', help='function name', required=False, default='')
-    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
-    args = utils.Bag(au.parse_parser(parser))
-    args.n_jobs = utils.get_n_jobs(args.n_jobs)
 
+def main(args):
     remote_subject_dir = [d for d in [
         '/autofs/space/megraid_clinical/MEG-MRI/seder/freesurfer/{}'.format(args.subject),
         '/home/npeled/subjects/{}'.format(args.subject),
@@ -270,3 +263,17 @@ if __name__ == '__main__':
         check_mmvt_file(args.subject)
     elif args.function == 'compare_ps_from_epochs_and_from_time_series':
         compare_ps_from_epochs_and_from_time_series(args.subject)
+
+
+if __name__ == '__main__':
+    import argparse
+    from src.utils import args_utils as au
+    parser = argparse.ArgumentParser(description='MMVT')
+    parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='')
+    parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+    args = utils.Bag(au.parse_parser(parser))
+    args.n_jobs = utils.get_n_jobs(args.n_jobs)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        main(args)
