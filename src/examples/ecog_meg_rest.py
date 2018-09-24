@@ -12,6 +12,7 @@ from src.utils import labels_utils as lu
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
 MMVT_DIR = op.join(LINKS_DIR, 'mmvt')
+MEG_DIR = utils.get_link_dir(LINKS_DIR, 'meg')
 
 
 def create_electrodes_labels(subject, bipolar=False, labels_fol_name='electrodes_labels',
@@ -35,7 +36,11 @@ def meg_remove_artifcats(subject, raw_fname):
 
 
 def meg_preproc(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
-                meg_remote_dir='', empty_fname='', cor_fname='', overwrite=False, n_jobs=-1):
+                meg_remote_dir='', empty_fname='', cor_fname='', use_demi_events=True, calc_labels_avg=False,
+                overwrite=False, n_jobs=-1):
+    functions = 'calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator'
+    if calc_labels_avg:
+        functions += ',calc_stc,calc_labels_avg_per_condition'
     meg_args = meg.read_cmd_args(dict(
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
@@ -43,8 +48,8 @@ def meg_preproc(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_lab
         remote_subject_dir=remote_subject_dir,
         empty_fname=empty_fname,
         cor_fname=cor_fname,
-        function='calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator',
-        use_demi_events=True,
+        function=functions,
+        use_demi_events=use_demi_events,
         windows_length=10000,
         windows_shift=5000,
         # power_line_notch_widths=5,
@@ -218,13 +223,15 @@ if __name__ == '__main__':
 
     remote_subject_dir = [d for d in [
         '/autofs/space/megraid_clinical/MEG-MRI/seder/freesurfer/{}'.format(args.subject),
-        '/home/npeled/subjects/{}'.format(args.subject)] if op.isdir(d)][0]
+        '/home/npeled/subjects/{}'.format(args.subject),
+        op.join(SUBJECTS_DIR, args.subject)] if op.isdir(d)][0]
     meg_remote_dir = [d for d in [
         '/autofs/space/megraid_clinical/MEG/epilepsy/subj_6213848/171127',
-        '/home/npeled/meg/{}'.format(args.subject)] if op.isdir(d)][0]
+        '/home/npeled/meg/{}'.format(args.subject),
+        op.join(MEG_DIR, args.subject)] if op.isdir(d)][0]
     raw_fnames = glob.glob(op.join(meg_remote_dir, '*_??_raw.fif'))
-    raw_fname = raw_fnames[0] if len(raw_fnames) > 0 else ''
-    cor_fname = op.join(remote_subject_dir, 'mri', 'T1-neuromag', 'sets', 'COR-naoro-171130.fif') # Can be found automatically
+    raw_fname =  '' #utils.select_one_file(raw_fnames) # raw_fnames[0] if len(raw_fnames) > 0 else ''
+    cor_fname = '' #op.join(remote_subject_dir, 'mri', 'T1-neuromag', 'sets', 'COR-naoro-171130.fif') # Can be found automatically
     empty_fname = op.join(meg_remote_dir, 'empty_room_raw.fif')
     inv_method = 'dSPM' # 'MNE'
     em = 'mean_flip'
@@ -235,6 +242,8 @@ if __name__ == '__main__':
     label_r = 5
     snap = True
     sigma = 3
+    use_demi_events = False
+    calc_labels_avg = True
 
     edf_name = 'SDohaseIIday2'
     low_freq, high_freq = 1, 100
@@ -249,7 +258,7 @@ if __name__ == '__main__':
     elif args.function == 'meg_preproc':
         meg_preproc(
             args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir, empty_fname,
-            cor_fname, overwrite_meg, args.n_jobs)
+            cor_fname, use_demi_events, calc_labels_avg, overwrite_meg, args.n_jobs)
     elif args.function == 'calc_meg_power_spectrum':
         calc_meg_power_spectrum(
             args.subject, atlas, inv_method, em, overwrite_labels_power_spectrum, args.n_jobs)
