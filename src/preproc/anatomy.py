@@ -1563,6 +1563,11 @@ def main(subject, remote_subject_dir, org_args, flags):
             subject, args.atlas, args.template_subject, args.overwrite_morphing_labels, args.fs_labels_fol,
             args.n_jobs)
 
+    if 'solve_labels_collisions' in args.function:
+        flags['morph_labels_from_fsaverage'] = solve_labels_collisions(
+            subject, args.atlas, args.solve_labels_collision_surf_type, args.overwrite_vertices_labels_lookup,
+            args.n_jobs)
+
     return flags
 
 
