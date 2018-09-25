@@ -7,6 +7,7 @@ import shutil
 import collections
 import logging
 import re
+import warnings
 
 from src.utils import utils
 from src.utils import args_utils as au
@@ -79,9 +80,10 @@ def run_on_subjects(args, main_func, subjects_itr=None, subject_func=None):
                 if not au.is_true(ans):
                     continue
             flags['prepare_subject_folder'] = True
-
-            flags = main_func(tup, remote_subject_dir, args, flags)
-            subjects_flags[subject] = flags
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                flags = main_func(tup, remote_subject_dir, args, flags)
+                subjects_flags[subject] = flags
         except:
             subjects_errors[subject] = traceback.format_exc()
             print('Error in subject {}'.format(subject))

@@ -90,7 +90,7 @@ def _morph_labels_parallel(p):
 
 
 def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol='', overwrite=True, labels=[],
-                    fix_unknown=True, print_error=False):
+                    fix_unknown=True, print_error=False, n_jobs=6):
 
     if subjects_dir == '':
         subjects_dir = os.environ['SUBJECTS_DIR']
@@ -99,7 +99,12 @@ def labels_to_annot(subject, subjects_dir='', aparc_name='aparc250', labels_fol=
         op.join(subject_dir, 'label', '{}.{}.annot'.format('{hemi}', aparc_name)))
     if annot_files_exist and not overwrite:
         return True
+    if len(labels) > 1:
+        if isinstance(labels[0], str):
+            labels_fol = utils.get_parent_fol(labels[0])
+            labels = read_labels_parallel(subject, SUBJECTS_DIR, aparc_name, labels_fol=labels_fol, n_jobs=n_jobs)
     if len(labels) == 0:
+        labels = []
         labels_fol = op.join(subject_dir, 'label', aparc_name) if labels_fol=='' else labels_fol
         labels_files = glob.glob(op.join(labels_fol, '*.label'))
         if len(labels_files) == 0:
@@ -153,10 +158,12 @@ def check_labels(subject, atlas, subjects_dir, mmvt_dir):
 def solve_labels_collision(subject, atlas, subjects_dir, mmvt_dir, backup_atlas, overwrite_vertices_labels_lookup=False,
                            surf_type='inflated', n_jobs=1):
     backup_labels_fol = op.join(subjects_dir, subject, 'label', backup_atlas)
-    labels_fol = op.join(subjects_dir, subject, 'label', atlas)
-    if op.isdir(backup_labels_fol):
-        shutil.rmtree(backup_labels_fol)
-    shutil.copytree(labels_fol, backup_labels_fol)
+    backup_files = glob.glob(op.join(backup_labels_fol, '*.label'))
+    if not op.isdir(backup_labels_fol) or len(backup_files) < 4:
+        labels_fol = op.join(subjects_dir, subject, 'label', atlas)
+        if op.isdir(backup_labels_fol):
+            shutil.rmtree(backup_labels_fol)
+        shutil.copytree(labels_fol, backup_labels_fol)
     return save_labels_from_vertices_lookup(
         subject, atlas, subjects_dir, mmvt_dir, surf_type='pial', read_labels_from_fol=backup_labels_fol,
         overwrite_vertices_labels_lookup=overwrite_vertices_labels_lookup, n_jobs=n_jobs)

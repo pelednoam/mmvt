@@ -430,16 +430,20 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
 
     labels_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))
     # If there are only 2 files, most likely it's the unknowns
-    if len(labels_files) > 3:
-        if save_annot_file:
-            annot_was_written = labels_to_annot(subject, atlas, overwrite_annotation, surf_type,
-                                                overwrite_vertices_labels_lookup, n_jobs)
-            if annot_was_written:
-                return True
+    if len(labels_files) <= 3:
+        backup_labels_fol = op.join(SUBJECTS_DIR, subject, 'label', '{}_before_solve_collision'.format(atlas))
+        labels_files = glob.glob(op.join(backup_labels_fol, '*.label')) if \
+            op.isdir(backup_labels_fol) else []
+    if save_annot_file and len(labels_files) > 3:
+        annot_was_written = labels_to_annot(
+            subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup, labels_files,
+            n_jobs=n_jobs)
+        if annot_was_written:
+            return True
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
     remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
         hemi, atlas))) for hemi in HEMIS])
-    if remote_annotations_exist:
+    if remote_annotations_exist and not overwrite_annotation:
         for hemi in HEMIS:
             remote_fname = op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas))
             local_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
@@ -463,7 +467,8 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     if do_solve_labels_collisions:
         solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup, n_jobs)
+        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup,
+                        n_jobs=n_jobs)
     if save_annot_file:
         return both_annot_files_exist(subject, atlas)
     else:
@@ -477,13 +482,13 @@ def both_annot_files_exist(subject, atlas):
 
 
 def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
-                    overwrite_vertices_labels_lookup=False, n_jobs=6):
+                    overwrite_vertices_labels_lookup=False, labels=(), n_jobs=6):
     if fu.is_fs_atlas(atlas) and both_annot_files_exist(subject, atlas):
         return True
-    annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
+    annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, labels=labels, overwrite=overwrite_annotation)
     if not annot_was_created:
         print("Can't write labels to annotation! Trying to solve labels collision")
-        # print(traceback.format_exc())
+        print(traceback.format_exc())
         ret = solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
         if not ret:
             print('An error occurred in solve_labels_collisions!')
@@ -500,6 +505,8 @@ def solve_labels_collisions(subject, atlas, surf_type='inflated', overwrite_vert
     ret = lu.solve_labels_collision(subject, atlas, SUBJECTS_DIR, MMVT_DIR, backup_labels_fol,
                               overwrite_vertices_labels_lookup, surf_type, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, atlas)
+    labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type=surf_type,
+                    overwrite_vertices_labels_lookup=False, n_jobs=n_jobs)
     return ret
 
 

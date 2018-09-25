@@ -987,7 +987,7 @@ def calc_colors(vert_values, min_data=None, colors_ratio=None, cm=None):
         cm = _addon().get_cm()
     if cm is None:
         return np.zeros((len(vert_values), 3))
-    if min_data or colors_ratio is None:
+    if min_data is None or colors_ratio is None:
         max_data, min_data = _addon().colorbar.get_colorbar_max_min()
         colors_ratio = 256 / (max_data - min_data)
     return mu.calc_colors_from_cm(vert_values, min_data, colors_ratio, cm)
