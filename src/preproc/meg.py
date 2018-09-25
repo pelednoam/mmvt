@@ -507,9 +507,9 @@ def calc_epochs_wrapper(
 @utils.tryit()
 def calc_labels_power_spectrum(
         subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
-        fmin=0, fmax=200, bandwidth=2., max_epochs_num=0,
+        fmin=0, fmax=200, bandwidth=2., bands=None, max_epochs_num=0,
         mri_subject='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
-        add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial',
+        add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial', precentiles=(1, 99),
         epochs=None, src=None, overwrite=False, n_jobs=6):
     if mri_subject == '':
         mri_subject = subject
@@ -523,6 +523,7 @@ def calc_labels_power_spectrum(
     fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
     power_spectrum = None
     first_time = True
+    labels = None
     for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
         output_fname = op.join(fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
         if op.isfile(output_fname) and not overwrite:
@@ -581,7 +582,45 @@ def calc_labels_power_spectrum(
             power_spectrum[epoch_ind, :, :, cond_ind] = psds
 
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
+    calc_labels_power_bands(
+        mri_subject, atlas, events, inverse_method, extract_modes, precentiles, bands, labels, overwrite, n_jobs=n_jobs)
     return True
+
+
+def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
+                            precentiles=(1, 99), bands=None, labels=None, overwrite=False, n_jobs=6):
+    meg_fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
+    if bands is None:
+        bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    if labels is None:
+        labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, only_names=True, n_jobs=n_jobs)
+    ret = True
+    fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'labels', 'labels_data'))
+    for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        input_fname = op.join(meg_fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
+        if not op.isfile(input_fname):
+            print('No power specturm for {}!'.format(cond_name))
+            continue
+        d = utils.Bag(np.load(input_fname))
+        psd = d.power_spectrum # (epochs_num, len(labels), len(freqs), len(events))
+        freqs = d.frequencies
+        for band, (lf, hf) in bands.items():
+            output_fname = op.join(fol, '{}_labels_{}_{}_{}_power.npz'.format(cond_name, inverse_method, em, band))
+            # if op.isfile(output_fname) and not overwrite:
+            #     return True
+            band_mask = np.where((freqs >= lf) & (freqs <= hf))
+            band_power = np.empty((len(labels), psd.shape[0]))
+            for label_ind, label_name in enumerate(labels):
+                band_power[label_ind] = psd[:, label_ind, band_mask, cond_ind].mean(axis=2).squeeze()
+            band_power_mean = band_power.mean(axis=1).squeeze()
+            data_max = utils.calc_max(band_power_mean, norm_percs=precentiles)
+            print('calc_labels_power_bands: Saving results in {}'.format(output_fname))
+            np.savez(output_fname, names=np.array(labels), atlas=atlas, data=band_power_mean,
+                     title='labels {} power ({})'.format(band, cond_name), data_min=0, data_max=data_max, cmap='RdOrYl')
+            ret = ret and op.isfile(output_fname)
+
+    return ret
 
 
 @utils.tryit()
@@ -3470,7 +3509,7 @@ def calc_labels_func(subject, task, atlas, inv_method, em, func=None, tmin=None,
     return op.isfile(output_fname)
 
 
-def calc_labels_power_bands(
+def calc_labels_power_bands_from_timeseries(
         subject, task, atlas, inv_method, em, tmin, tmax, precentiles=(1, 99), func_name='power', norm_data=False,
         bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
         overwrite=False):
@@ -4189,9 +4228,9 @@ def main(tup, remote_subject_dir, org_args, flags=None):
     if 'calc_labels_power_spectrum' in args.function:
         flags['calc_labels_power_spectrum'] = calc_labels_power_spectrum(
             subject, args.atlas, conditions, inverse_method, args.extract_mode, args.fmin, args.fmax, args.bandwidth,
-            args.max_epochs_num, MRI_SUBJECT, args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
+            args.bands, args.max_epochs_num, MRI_SUBJECT, args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.surf_name,
-            overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
+            args.precentiles, overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
 
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
@@ -4335,12 +4374,13 @@ def read_cmd_args(argv=None):
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
     parser.add_argument('--meg_root_fol', required=False, default='')
-    parser.add_argument('--bands', required=False, default='')
+    parser.add_argument('--bands', required=False, default=None)
     parser.add_argument('--calc_inducde_power_per_label', required=False, default=1, type=au.is_true)
     parser.add_argument('--induced_power_normalize_proj', required=False, default=1, type=au.is_true)
     parser.add_argument('--fmin', required=False, default=0, type=int)
     parser.add_argument('--fmax', required=False, default=200, type=int)
     parser.add_argument('--bandwidth', required=False, default=2., type=float)
+    parser.add_argument('--precentiles', required=False, default='1,99', type=au.str_arr_type)
 
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
@@ -4406,7 +4446,10 @@ def read_cmd_args(argv=None):
         args.use_empty_room_for_noise_cov = True
         args.baseline_min = 0
         args.baseline_max = 0
-
+    try:
+        args.precentiles = [float(p) for p in args.precentiles]
+    except:
+        args.precentiles = [0, 100]
     # todo: Was set as a remark, why?
     if args.n_jobs == -1:
         args.n_jobs = utils.get_n_jobs(args.n_jobs)

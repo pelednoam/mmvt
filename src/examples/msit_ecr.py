@@ -152,7 +152,7 @@ def meg_preproc(args):
 
             output_fname = op.join(
                 MMVT_DIR, subject, 'meg', '{}_{}_{}_power_spectrum.npz'.format(task.lower(), inv_method, em))
-            if op.isfile(output_fname):
+            if op.isfile(output_fname) and args.check_file_modification_time:
                 file_mod_time = utils.file_modification_time_struct(output_fname)
                 if file_mod_time.tm_year >= 2018 and (file_mod_time.tm_mon == 9 and file_mod_time.tm_mday >= 21) or \
                         (file_mod_time.tm_mon > 9):
@@ -216,62 +216,62 @@ def meg_preproc(args):
     print(subjects_with_error)
 
 
-def calc_source_band_induced_power(args):
-    inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa_atlas'
-    bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-    times = (-2, 4)
-    subjects_with_error = []
-    good_subjects = get_good_subjects(args)
-    args.subject = good_subjects
-    prepare_files(args)
-    done_subjects = []
-
-    for subject in good_subjects:
-        args.subject = subject
-        empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
-        for task in args.tasks:
-            fol = utils.make_dir(op.join(MEG_DIR, task, subject, 'induced_power'))
-            output_fnames = glob.glob(op.join(fol, '{}*induced_power*.stc'.format(task)))
-            # If another thread is working on this subject / task, continue to another subject / task
-            # if len(output_fnames) > 0:
-            #     done_subjects.append(subject)
-            #     continue
-            meg_args = meg.read_cmd_args(dict(
-                subject=args.subject, mri_subject=args.subject,
-                task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
-                # meg_dir=args.meg_dir,
-                remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
-                get_task_defaults=False,
-                fname_format='{}_{}_Onset'.format('{subject}', task),
-                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
-                epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task)),
-                function='calc_stc',
-                calc_source_band_induced_power=True,
-                calc_inducde_power_per_label=True,
-                induced_power_normalize_proj=True,
-                overwrite_stc=args.overwrite,
-                conditions=task.lower(),
-                cor_fname=cors[task].format(subject=subject),
-                data_per_task=True,
-                n_jobs=args.n_jobs
-            ))
-            ret = meg.call_main(meg_args)
-            if not ret:
-                if args.throw:
-                    raise Exception("errors!")
-                else:
-                    subjects_with_error.append(subject)
-
-    print('#done_subjects: {}'.format(len(set(done_subjects))))
-    good_subjects = [s for s in good_subjects if
-           op.isfile(op.join(MMVT_DIR, subject, 'meg',
-                             'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
-           op.isfile(op.join(MMVT_DIR, subject, 'meg',
-                             'labels_data_ecr_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em)))]
-    print('Good subjects:')
-    print(good_subjects)
-    print('subjects_with_error:')
-    print(subjects_with_error)
+# def calc_source_band_induced_power(args):
+#     inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa_atlas'
+#     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+#     times = (-2, 4)
+#     subjects_with_error = []
+#     good_subjects = get_good_subjects(args)
+#     args.subject = good_subjects
+#     prepare_files(args)
+#     done_subjects = []
+#
+#     for subject in good_subjects:
+#         args.subject = subject
+#         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+#         for task in args.tasks:
+#             fol = utils.make_dir(op.join(MEG_DIR, task, subject, 'induced_power'))
+#             output_fnames = glob.glob(op.join(fol, '{}*induced_power*.stc'.format(task)))
+#             # If another thread is working on this subject / task, continue to another subject / task
+#             # if len(output_fnames) > 0:
+#             #     done_subjects.append(subject)
+#             #     continue
+#             meg_args = meg.read_cmd_args(dict(
+#                 subject=args.subject, mri_subject=args.subject,
+#                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
+#                 # meg_dir=args.meg_dir,
+#                 remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
+#                 get_task_defaults=False,
+#                 fname_format='{}_{}_Onset'.format('{subject}', task),
+#                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+#                 epo_fname=op.join(MEG_DIR, task, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task)),
+#                 function='calc_stc',
+#                 calc_source_band_induced_power=True,
+#                 calc_inducde_power_per_label=True,
+#                 induced_power_normalize_proj=True,
+#                 overwrite_stc=args.overwrite,
+#                 conditions=task.lower(),
+#                 cor_fname=cors[task].format(subject=subject),
+#                 data_per_task=True,
+#                 n_jobs=args.n_jobs
+#             ))
+#             ret = meg.call_main(meg_args)
+#             if not ret:
+#                 if args.throw:
+#                     raise Exception("errors!")
+#                 else:
+#                     subjects_with_error.append(subject)
+#
+#     print('#done_subjects: {}'.format(len(set(done_subjects))))
+#     good_subjects = [s for s in good_subjects if
+#            op.isfile(op.join(MMVT_DIR, subject, 'meg',
+#                              'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
+#            op.isfile(op.join(MMVT_DIR, subject, 'meg',
+#                              'labels_data_ecr_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em)))]
+#     print('Good subjects:')
+#     print(good_subjects)
+#     print('subjects_with_error:')
+#     print(subjects_with_error)
 
 
 def post_meg_preproc(args):
@@ -526,6 +526,7 @@ if __name__ == '__main__':
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
     parser.add_argument('--anatomy_preproc', required=False, default=True, type=au.is_true)
     parser.add_argument('--check_files', required=False, default=True, type=au.is_true)
+    parser.add_argument('--check_file_modification_time', required=False, default=False, type=au.is_true)
 
     parser.add_argument('--remote_root_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/')

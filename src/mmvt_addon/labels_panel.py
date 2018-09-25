@@ -79,7 +79,7 @@ def clear_contours():
 def plot_labels_data():
     # Support more than one file type (npz and mat)
     labels_data_template = op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
-        bpy.context.scene.cortical_labels_data_files.replace(' ', '_')))
+        bpy.context.scene.labels_data_files.replace(' ', '_')))
     labels_data_fnames = glob.glob(labels_data_template)
     if len(labels_data_fnames) == 1:
         load_labels_data(labels_data_fnames[0])
@@ -90,7 +90,7 @@ def plot_labels_data():
 def labels_data_files_update(self, context):
     if LabelsPanel.init:
         labels_data_fname = glob.glob(op.join(mu.get_user_fol(), 'labels', 'labels_data', '{}.*'.format(
-            bpy.context.scene.cortical_labels_data_files.replace(' ', '_'))))[0]
+            bpy.context.scene.labels_data_files.replace(' ', '_'))))[0]
         d, labels, data, atlas, cb_title, labels_max, labels_min, cmap = _load_labels_data(labels_data_fname)
         _addon().init_labels_colorbar(data, cb_title, labels_max, labels_min, cmap)
 
@@ -550,7 +550,7 @@ class ChooseLabelFile(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         return {'FINISHED'}
 
 
-bpy.types.Scene.cortical_labels_data_files = bpy.props.EnumProperty(
+bpy.types.Scene.labels_data_files = bpy.props.EnumProperty(
     items=[], update=labels_data_files_update, description='Selects labels file from the subject’s labels folder:'
     '\n../mmvt_root/mmvt_blend/colin27/labels/labels_data\n\nCurrent file')
 bpy.types.Scene.new_label_name = bpy.props.StringProperty(description='Creates the labels name')
@@ -622,7 +622,7 @@ def init_labels_data_files():
                 items=labels_items, update=labels_data_files_update,
                 description='Selects labels file from the subject’s labels folder:'
                 '\n../mmvt_root/mmvt_blend/colin27/labels/labels_data\n\nCurrent file')
-            bpy.context.scene.cortical_labels_data_files = files_names[0]
+            bpy.context.scene.labels_data_files = files_names[0]
     except:
         print('init_labels_data_files: Error!')
 
