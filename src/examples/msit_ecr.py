@@ -199,11 +199,17 @@ def meg_preproc(args):
                 n_jobs=args.n_jobs
             ))
             ret = meg.call_main(meg_args)
+            output_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+            join_res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr', subject))
+            for res_fname in glob.glob(op.join(output_fol, '{}_labels_{}_{}_*_power.npz'.format(
+                    task.lower(), inv_method, em))):
+                shutil.copyfile(res_fname, op.join(join_res_fol, utils.namebase_with_ext(res_fname)))
             if not ret:
                 if args.throw:
                     raise Exception("errors!")
                 else:
                     subjects_with_error.append(subject)
+
 
     good_subjects = [s for s in good_subjects if
            op.isfile(op.join(MMVT_DIR, subject, 'meg',
