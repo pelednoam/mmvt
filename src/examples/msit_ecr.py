@@ -361,6 +361,8 @@ def calc_meg_connectivity(args):
 def post_analysis(args):
     import matplotlib.pyplot as plt
     from collections import defaultdict
+
+    inv_method, em = 'dSPM', 'mean_flip'
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     data_dic = np.load(op.join(res_fol, 'data_dictionary.npz'))
@@ -388,9 +390,10 @@ def post_analysis(args):
                 for band in bands.keys():
                     if power[group_id][task][band] is None:
                         power[group_id][task][band] = defaultdict(list)
-                    mean_power_fname = op.join(res_fol, subject, '{}_power_{}.npz'.format(task.lower(), band))
-                    if op.isfile(mean_power_fname):
-                        d = utils.Bag(np.load(mean_power_fname))
+                    power_fname = op.join(
+                        res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
+                    if op.isfile(power_fname):
+                        d = utils.Bag(np.load(power_fname))
                         mean_power[group_id][task][band].append(d.data.mean())
                         for label_id, label in enumerate(d.names):
                             power[group_id][task][band][label].append(d.data[label_id])
