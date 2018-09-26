@@ -396,33 +396,33 @@ def post_analysis(args):
                         d = utils.Bag(np.load(power_fname))
                         mean_power[group_id][task][band].append(d.data.mean())
                         for label_id, label in enumerate(d.names):
-                            power[group_id][task][band][label].append(d.data[label_id])
+                            power[group_id][task][band][label].append(d.data[label_id].mean())
 
-    for group_id in range(2):
-        x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
+    # for group_id in range(2):
+    #     x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
         # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
-        ttest(x[0], x[1])
+        # ttest(x[0], x[1])
 
     for band in bands.keys():
         # fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
         for group_id in range(2): #, ax in zip(range(2), [ax1, ax2]):
-            subjects_with_data[group_id] = np.array(subjects_with_data[group_id])
-            print()
+            # subjects_with_data[group_id] = np.array(subjects_with_data[group_id])
+            # print()
             x = [np.array(mean_power[group_id][task][band]) for task in args.tasks]
             x = [_x[_x < np.percentile(_x, 90)] for _x in x]
-            # ttest(x[0], x[1], title='group {} band {}'.format(group_id, band))
+            ttest(x[0], x[1], title='group {} band {}'.format(group_id, band))
 
             for label_id, label in enumerate(d.names):
                 x = [np.array(power[group_id][task][band][label]) for task in args.tasks]
-                x = [_x[_x < np.percentile(_x, 95)] for _x in x]
+                x = [_x[_x < np.percentile(_x, 90)] for _x in x]
                 ttest(x[0], x[1], alpha=0.01, title='group {} band {} label {}'.format(group_id, band, label))
-        # f, (ax1, ax2) = plt.subplots(2, 1)
-            # ax1.hist(x[0])
-            # ax2.hist(x[1])
-            # plt.show()
-            # ax.set_title('group {}'.format(group_id))
-            # ax.bar(np.arange(2), [np.mean(mean_power[group_id][task][band]) for task in args.tasks])
-            # ax.set_xticklabels(args.tasks, rotation=30)
+        f, (ax1, ax2) = plt.subplots(2, 1)
+        ax1.hist(x[0])
+        ax2.hist(x[1])
+        plt.show()
+        # ax.set_title('group {}'.format(group_id))
+        # ax.bar(np.arange(2), [np.mean(mean_power[group_id][task][band]) for task in args.tasks])
+        # ax.set_xticklabels(args.tasks, rotation=30)
         # fig.suptitle('{} mean_power'.format(band))
         # plt.show()
 
