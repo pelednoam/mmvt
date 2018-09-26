@@ -72,6 +72,12 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
 def _mri_cvs_register_parallel(p):
     subjects, subject_to, subjects_dir, overwrite, print_only = p
     for subject_from in subjects:
+        # output_fname = op.join(SUBJECTS_DIR, subject_from, 'mri_cvs_register_to_colin27', 'combined_tocolin27_elreg_afteraseg-norm.tm3d')
+        # if op.isfile(output_fname) and not overwrite:
+        #     print('Already done for {}'.format(subject_from))
+        #     continue
+        # else:
+        #     print('Running mri_cvs_register for {}'.format(subject_from))
         if overwrite and not print_only:
             utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
         rs = utils.partial_run_script(locals(), print_only=print_only)
@@ -534,11 +540,11 @@ def main(subjects, template_system, remote_subject_templates=(), bipolar=False, 
     good_subjects = prepare_files_for_subjects(subjects, remote_subject_templates, overwrite=False)
     electrodes = read_all_electrodes(good_subjects, bipolar)
     cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
-                             overwrite=True)
+                             overwrite=False)
     create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
                      print_only=print_only)
-    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
     save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
     export_into_csv(template_system, MMVT_DIR, prefix)
     create_mmvt_coloring_file(template_system, electrodes)
@@ -547,7 +553,7 @@ def main(subjects, template_system, remote_subject_templates=(), bipolar=False, 
 if __name__ == '__main__':
     template_system = 'mni'# ''ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    bipolar, save_as_bipolar = True, True
+    bipolar, save_as_bipolar = False, False
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
