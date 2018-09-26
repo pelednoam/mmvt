@@ -174,7 +174,7 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task],
-                function='calc_labels_power_spectrum',
+                function='calc_labels_power_bands', # 'calc_labels_power_spectrum',
                 # function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
                          # 'calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),

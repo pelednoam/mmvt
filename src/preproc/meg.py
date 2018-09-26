@@ -4231,6 +4231,11 @@ def main(tup, remote_subject_dir, org_args, flags=None):
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.surf_name,
             args.precentiles, overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
 
+    if 'calc_labels_power_bands' in args.function:
+        flags['calc_labels_power_bands'] = calc_labels_power_bands(
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.precentiles,
+            overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
+
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
             subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file,
