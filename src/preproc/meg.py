@@ -613,10 +613,9 @@ def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', e
             band_power = np.empty((len(labels), psd.shape[0]))
             for label_ind, label_name in enumerate(labels):
                 band_power[label_ind] = psd[:, label_ind, band_mask, cond_ind].mean(axis=2).squeeze()
-            band_power_mean = band_power.mean(axis=1).squeeze()
-            data_max = utils.calc_max(band_power_mean, norm_percs=precentiles)
+            data_max = utils.calc_max(data_max, norm_percs=precentiles)
             print('calc_labels_power_bands: Saving results in {}'.format(output_fname))
-            np.savez(output_fname, names=np.array(labels), atlas=atlas, data=band_power_mean,
+            np.savez(output_fname, names=np.array(labels), atlas=atlas, data=data_max,
                      title='labels {} power ({})'.format(band, cond_name), data_min=0, data_max=data_max, cmap='RdOrYl')
             ret = ret and op.isfile(output_fname)
 
