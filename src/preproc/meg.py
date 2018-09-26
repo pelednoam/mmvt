@@ -607,8 +607,8 @@ def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', e
         freqs = d.frequencies
         for band, (lf, hf) in bands.items():
             output_fname = op.join(fol, '{}_labels_{}_{}_{}_power.npz'.format(cond_name, inverse_method, em, band))
-            if op.isfile(output_fname) and not overwrite:
-                return True
+            # if op.isfile(output_fname) and not overwrite:
+            #     return True
             band_mask = np.where((freqs >= lf) & (freqs <= hf))
             band_power = np.empty((len(labels), psd.shape[0]))
             for label_ind, label_name in enumerate(labels):
