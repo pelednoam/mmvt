@@ -331,7 +331,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                         baseline=baseline, preload=True, reject=reject_dict)
     min_bad_num = len(events) * 0.5
     bad_channels_max_num = 20
-    min_good_epochs_num = 40
+    min_good_epochs_num = len(events) * 0.5
     bad_channels = Counter(utils.flat_list_of_lists(epochs.drop_log))
     bad_channels = {ch_name: num for ch_name, num in bad_channels.items() if ch_name in raw.info['ch_names']}
     if len(epochs) < min_bad_num and max(bad_channels.values()) > bad_channels_max_num:
@@ -2585,6 +2585,10 @@ def calc_labels_avg_per_condition(
         labels_data = {}
         labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
                                 labels_fol=labels_fol, read_only_from_annot=read_only_from_annot, n_jobs=n_jobs)
+        if len(labels) == 0:
+            print('No labels were found for {} atlas!'.format(atlas))
+            return False
+
         for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
             if do_plot:
                 plt.figure()
@@ -2596,9 +2600,6 @@ def calc_labels_avg_per_condition(
                         return False
                     inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
                     src = inverse_operator['src']
-            if len(labels) == 0:
-                print('No labels were found for {} atlas!'.format(atlas))
-                return False
 
             if isinstance(stc_cond, types.GeneratorType):
                 stc_cond_num = stcs_num[cond_name]

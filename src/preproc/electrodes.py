@@ -1622,7 +1622,7 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
 def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='electrodes_labels',
         label_r=5, snap=False, sigma=1, overwrite=False, n_jobs=4):
     names, pos = read_electrodes_file(subject, bipolar, snap=snap)
-    labels_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', labels_fol_name))
+    labels_fol = utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label', labels_fol_name))
     verts = {}
     for hemi in utils.HEMIS:
         verts[hemi], _ = utils.read_pial(subject, MMVT_DIR, hemi)

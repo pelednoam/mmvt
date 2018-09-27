@@ -38,11 +38,11 @@ def meg_remove_artifcats(subject, raw_fname):
 
 def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
                 meg_remote_dir='', empty_fname='', cor_fname='', use_demi_events=True, n_jobs=-1):
-    functions = 'make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition'
+    functions = 'calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition'
     meg_args = meg.read_cmd_args(dict(
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
-        apply_on_raw=True,
+        # apply_on_raw=True,
         remote_subject_meg_dir=meg_remote_dir,
         remote_subject_dir=remote_subject_dir,
         empty_fname=empty_fname,
@@ -260,11 +260,16 @@ def main(args):
     label_r = 5
     snap = True
     sigma = 3
-    use_demi_events = False
+    use_demi_events = True
     calc_labels_avg = True
 
     edf_name = 'SDohaseIIday2'
     low_freq, high_freq = 1, 100
+
+    mmvt_electrodes_labels = op.join(MMVT_DIR, args.subject, 'labels', labels_fol_name)
+    subjects_electrodes_labels = op.join(SUBJECTS_DIR, args.subject, 'label', labels_fol_name)
+    if op.isdir(mmvt_electrodes_labels) and not op.isdir(subjects_electrodes_labels):
+        utils.create_folder_link(mmvt_electrodes_labels, subjects_electrodes_labels)
 
     if args.function == 'create_electrodes_labels':
         create_electrodes_labels(
