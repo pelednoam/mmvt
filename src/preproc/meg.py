@@ -24,6 +24,7 @@ except:
 
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
+from mne.minimum_norm.inverse import _prepare_forward
 from mne.preprocessing import ICA
 from mne.preprocessing import create_ecg_epochs, create_eog_epochs
 
@@ -925,7 +926,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
         if not recreate_the_source_space:
             ans = input("Can't find the source file, recreate it (y/n)? (spacing={}, surface={}) ".format(
                 recreate_src_spacing, recreate_src_surface))
-        if recreate_the_source_space or ans == 'y':
+        if recreate_the_source_space or ans == 'y' :
             # oct_name, oct_num = recreate_src_spacing[:3], recreate_src_spacing[-1]
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
@@ -939,7 +940,8 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
     return src
 
 
-def check_bem(mri_subject, remote_subject_dir, args={}):
+def check_bem(mri_subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution=False, args={}):
+    bem = None
     if len(args) == 0:
         args = utils.Bag(
             sftp=False, sftp_username='', sftp_domain='', sftp_password='',
@@ -950,12 +952,24 @@ def check_bem(mri_subject, remote_subject_dir, args={}):
             mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
             {'bem': ['*-bem-sol.fif']}, args, use_subject_anat_folder=True)
         bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.fif')
-    if not op.isfile(bem_fname):
+    if not op.isfile(bem_fname) or recreate_bem_solution:
+        # todo: check if the bem and src has same ico
         prepare_bem_surfaces(mri_subject, remote_subject_dir, args)
-        model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
+        model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR, ico=int(recreate_src_spacing[3:]))
         bem = mne.make_bem_solution(model)
-        mne.write_bem_solution(BEM, bem)
-    return op.isfile(bem_fname), bem_fname
+        try:
+            mne.write_bem_solution(bem_fname, bem)
+        except:
+            print(traceback.format_exc())
+            # Try to save bem not as fif file
+            try:
+                utils.save(bem, bem_fname)
+            except:
+                print(traceback.format_exc())
+                print('Can\'t write the BEM solution!')
+    if bem is None and op.isfile(bem_fname):
+        bem = mne.read_bem_solution(bem_fname)
+    return op.isfile(bem_fname), bem
 
 
 def prepare_bem_surfaces(mri_subject, remote_subject_dir, args):
@@ -983,6 +997,8 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir, args):
         err_msg = '''BEM files don't exist, you should create it first using mne_watershed_bem.
             For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
             mne_watershed_bem.
+            cshrc: setenv SUBJECT subject_name
+            basrc: export SUBJECT=subject_name
             You can take a look here:
             http://perso.telecom-paristech.fr/~gramfort/mne/MRC/mne_anatomical_workflow.pdf '''
         raise Exception(err_msg)
@@ -996,8 +1012,9 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir, args):
 
 def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', fwd_fname='', cor_fname='',
                           sub_corticals_codes_file='', usingMEG=True, usingEEG=True, calc_corticals=True,
-                          calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
-                          recreate_src_surface='white', overwrite_fwd=False, remote_subject_dir='', n_jobs=4, args={}):
+                          calc_subcorticals=True, recreate_the_source_space=False, recreate_bem_solution=False,
+                          recreate_src_spacing='oct6', recreate_src_surface='white', overwrite_fwd=False,
+                          remote_subject_dir='', n_jobs=4, args={}):
     fwd, fwd_with_subcortical = None, None
     raw_fname = get_raw_fname(raw_fname)
     evo_fname = get_evo_fname(evo_fname)
@@ -1008,13 +1025,14 @@ def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', 
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing, recreate_src_surface,
                         remote_subject_dir, n_jobs)
         check_src_ply_vertices_num(src)
-        bem_exist, bem_fname = check_bem(mri_subject, remote_subject_dir, args)
+        bem_exist, bem = check_bem(
+            mri_subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution, args)
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in evo_fname:
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
                     fwd = _make_forward_solution(
-                        src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem_fname=bem_fname)
+                        src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem=bem)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
@@ -1089,15 +1107,18 @@ def make_forward_solution_to_specific_points(events, pts, region_name, epo_fname
     return fwd
 
 
-def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6, bem_fname=''):
-    if bem_fname == '':
-        bem_fname = BEM
-    if not op.isfile(bem_fname):
-        bem_fname = utils.select_one_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
-        if op.isfile(bem_fname):
-            shutil.copy(bem_fname, BEM)
-        else:
-            raise Exception("Can't find the BEM file!")
+def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6, bem=None,
+                           bem_fname=''):
+    if bem is None:
+        if bem_fname == '':
+            bem_fname = BEM
+        if not op.isfile(bem_fname):
+            bem_fname = utils.select_one_file(op.join(
+                SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
+            if op.isfile(bem_fname):
+                shutil.copy(bem_fname, BEM)
+            else:
+                raise Exception("Can't find the BEM file!")
 
     # if op.isfile(evo_fname):
     #     info_fname = evo_fname
@@ -1108,9 +1129,10 @@ def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, 
     else:
         raise Exception("Can't find info object for make_forward_solution!")
 
+    bem = bem_fname if bem is None else bem
     try:
         fwd = mne.make_forward_solution(
-            info=info_fname, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=usingEEG, mindist=5.0,
+            info=info_fname, trans=cor_fname, src=src, bem=bem, meg=usingMEG, eeg=usingEEG, mindist=5.0,
             n_jobs=n_jobs, overwrite=True)
     except:
         utils.print_last_error_line()
@@ -1351,6 +1373,7 @@ def calc_inverse_operator(
                     noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, noise_cov_fname, args)
             else:
                 noise_cov = mne.read_cov(noise_cov_fname)
+
             # todo: should use noise_cov = calc_cov(...
             if calc_for_cortical_fwd and (not op.isfile(get_cond_fname(inv_fname, cond))
                                           or overwrite_inverse_operator):
@@ -1358,7 +1381,7 @@ def calc_inverse_operator(
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
                 _calc_inverse_operator(
                     cortical_fwd, get_cond_fname(inv_fname, cond), raw_fname, get_cond_fname(evo_fname, cond),
-                    noise_cov, inv_loose, inv_depth)
+                    noise_cov, inv_loose, inv_depth, noise_cov_fname)
             if calc_for_sub_cortical_fwd and (not op.isfile(get_cond_fname(INV_SUB, cond))
                                               or overwrite_inverse_operator):
                 if subcortical_fwd is None:
@@ -1379,8 +1402,10 @@ def calc_inverse_operator(
     return flag
 
 
-def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_cov, inv_loose=0.2, inv_depth=0.8):
+def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_cov, inv_loose=0.2, inv_depth=0.8,
+                           noise_cov_fname=''):
     fwd = mne.read_forward_solution(fwd_name)
+    # info = fwd['info']
     if op.isfile(evoked_fname):
         evoked = mne.read_evokeds(evoked_fname)[0]
         info = evoked.info
@@ -1391,9 +1416,57 @@ def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_co
             info = raw.info
         else:
             raise Exception("Can't find info for calculating the inverse operator!")
+
+    noise_cov = check_noise_cov_channels(noise_cov, info, fwd, noise_cov_fname)
     inverse_operator = make_inverse_operator(info, fwd, noise_cov,
         loose=inv_loose, depth=inv_depth)
     write_inverse_operator(inv_name, inverse_operator)
+
+
+def check_noise_cov_channels(noise_cov, info, fwd, noise_cov_fname=''):
+    if set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
+        return noise_cov
+
+    cov_dict = utils.Bag(dict(noise_cov))
+    fwd_sol_ch_names = fwd['sol']['row_names']
+    ch0 = info['chs'][0]['ch_name']
+    group, num = utils.get_group_and_number(ch0)
+    sep = ch0[len(group) - 1:-len(num)]
+    num_len = {}
+    for group_type in ['MEG', 'EEG']:
+        for c in info['chs']:
+            if c['ch_name'].startswith(group_type):
+                group, num = utils.get_group_and_number(c['ch_name'])
+                num_len[group_type] = len(num)
+                break
+    cov_dict.names, cov_dict.bads = [], []
+    for c in noise_cov.ch_names:
+        group, num = utils.get_group_and_number(c)
+        cov_dict.names.append('{}{}{}'.format(group, sep, num.zfill(num_len[group])))
+    for c in noise_cov['bads']:
+        group, num = utils.get_group_and_number(c)
+        cov_dict.bads.append('{}{}{}'.format(group, sep, num.zfill(num_len[group])))
+    noise_cov = get_cov_from_dict(cov_dict)
+
+    if not set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
+        for k in range(len(info['chs'])):
+            if not fwd_sol_ch_names[k] == noise_cov.ch_names[k] == info['chs'][k]['ch_name']:
+                print(fwd_sol_ch_names[k], noise_cov.ch_names[k], info['chs'][k]['ch_name'])
+        ret = input('Inconsistency in channels names! Do you want to continue? ')
+        if not au.is_true(ret):
+            raise Exception('Inconsistency in channels names')
+
+    if noise_cov_fname == '':
+        noise_cov_fname = NOISE_COV
+    noise_cov.save(noise_cov_fname)
+    return noise_cov
+
+
+def get_cov_from_dict(cov_dict):
+    # (data=data, dim=len(data), names=names, bads=bads, nfree=nfree, eig=eig, eigvec=eigvec, diag=diag,
+    #     projs=projs, kind=FIFF.FIFFV_MNE_NOISE_COV)
+    return mne.Covariance(
+        cov_dict.data, cov_dict.names, cov_dict.bads, cov_dict.projs, cov_dict.nfree, cov_dict.eig, cov_dict.eigvec)
 
 
 # def calc_stc(inverse_method='dSPM'):
@@ -1503,20 +1576,24 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                             stcs[cond_name] = apply_inverse(
                                 evk, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                     else:
-                        stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-            if np.max(stcs[cond_name].data) < 1e-4:
+                        stcs[cond_name] = apply_inverse(
+                            evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
+            # Can work only for non generator stcs
+            if not isinstance(stcs[cond_name], types.GeneratorType) and np.max(stcs[cond_name].data) < 1e-4:
                 factor = 6 if modality == 'eeg' else 12  # todo: depends on the inverse method, should check
                 stcs[cond_name] = mne.SourceEstimate(
                     stcs[cond_name].data * np.power(10, factor), vertices=stcs[cond_name].vertices,
                     tmin=stcs[cond_name].tmin, tstep=stcs[cond_name].tstep, subject=stcs[cond_name].subject,
                     verbose=stcs[cond_name].verbose)
-            if save_stc and (not op.isfile(stc_fname) or overwrite_stc):
+            if save_stc and (not op.isfile(stc_fname) or overwrite_stc) and \
+                    not isinstance(stcs[cond_name], types.GeneratorType):
                 mmvt_fol = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, modality))
                 print('Saving the source estimate to {}.stc and\n {}.stc'.format(
                     stc_fname, op.join(mmvt_fol, utils.namebase(stc_fname))))
                 print('max: {}, min: {}'.format(np.max(stcs[cond_name].data), np.min(stcs[cond_name].data)))
                 stcs[cond_name].save(stc_fname)
-                stcs[cond_name].save(op.join(mmvt_fol, utils.namebase(stc_fname)))
+                utils.make_link(stc_fname, op.join(mmvt_fol, utils.namebase_with_ext(stc_fname)))
+                # stcs[cond_name].save(op.join(mmvt_fol, utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())
@@ -3039,7 +3116,8 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
     inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     fwd_fname = get_fwd_fname(args.fwd_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     get_meg_files(subject, [inv_fname], args, conditions)
-    if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
+    if args.overwrite_inv or args.overwrite_fwd or not op.isfile(inv_fname) or \
+            (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution') and (not op.isfile(fwd_fname) or args.overwrite_fwd):
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
@@ -3059,7 +3137,8 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
                     if trans_file != COR:
                         shutil.copy(trans_file, local_cor_fname)
                 args.cor_fname = local_cor_fname
-            src_dic = dict(bem=['*-oct-6*-src.fif'])
+            src_dic = dict(bem=['*-{}-{}*-src.fif'.format(
+                args.recreate_src_spacing[:3], args.recreate_src_spacing[-1])])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])
             for nec_file in [src_dic, create_src_dic]:
@@ -3073,10 +3152,10 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
             sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
             raw_fname = get_raw_fname(args.raw_fname)
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
-                mri_subject, conditions, raw_fname, evo_fname, fwd_fname, args.cor_fname, sub_corticals_codes_file, args.fwd_usingMEG,
-                args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
-                args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.remote_subject_dir,
-                args.n_jobs, args)
+                mri_subject, conditions, raw_fname, evo_fname, fwd_fname, args.cor_fname, sub_corticals_codes_file,
+                args.fwd_usingMEG, args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals,
+                args.fwd_recreate_source_space, args.recreate_bem_solution, args.recreate_src_spacing,
+                args.recreate_src_surface, args.overwrite_fwd, args.remote_subject_dir, args.n_jobs, args)
 
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
             epo_fname = get_epo_fname(args.epo_fname)
@@ -4323,7 +4402,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--reject_eog', help='', required=False, default=150e-6, type=float)
     parser.add_argument('--apply_SSP_projection_vectors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--add_eeg_ref', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--pick_ori', help='', required=False, default=None)
+    parser.add_argument('--pick_ori', help='', required=False, default='normal')
     parser.add_argument('--t_min', help='', required=False, default=-0.2, type=float) # MNE python defaults
     parser.add_argument('--t_max', help='', required=False, default=0.5, type=float) # MNE python defaults
     parser.add_argument('--noise_t_min', help='', required=False, default=None, type=au.float_or_none)
@@ -4345,6 +4424,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_recreate_source_space', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--recreate_bem_solution', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--recreate_src_spacing', help='', required=False, default='oct6')
     parser.add_argument('--recreate_src_surface', help='', required=False, default='white')
     parser.add_argument('--surf_name', help='', required=False, default='pial')

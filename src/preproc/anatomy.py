@@ -1140,14 +1140,13 @@ def create_new_subject_blend_file(subject, atlas, overwrite_blend=False, ask_if_
     #     shutil.copy(empty_subject_fname, new_fname)
 
 
-
-def check_bem(subject, remote_subject_dir, args):
+def check_bem(subject, remote_subject_dir, recreate_src_spacing, recreate_bem_solution=False, args={}):
     from src.preproc import meg
     meg_args = meg.read_cmd_args(dict(subject=subject))
     meg_args.update(args)
     meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
     # args.remote_subject_dir = remote_subject_dir
-    bem_exist, _ = meg.check_bem(subject, remote_subject_dir, meg_args)
+    bem_exist, _ = meg.check_bem(subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution, meg_args)
     return bem_exist
 
 
@@ -1545,7 +1544,8 @@ def main(subject, remote_subject_dir, org_args, flags):
             subject, args.atlas)
 
     if 'check_bem' in args.function:
-        flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
+        flags['check_bem'] = check_bem(
+            subject, remote_subject_dir, args.recreate_src_spacing, args.recreate_bem_solution, args)
 
     if 'create_flat_brain' in args.function:
         flags['create_flat_brain'] = create_flat_brain(subject, args.print_only, args.overwrite_flat_surf, args.n_jobs)
@@ -1621,6 +1621,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--slice_xyz', help='', required=False, default='166,118,113', type=au.int_arr_type)
     parser.add_argument('--slices_modality', help='', required=False, default='mri')
     parser.add_argument('--skull_surfaces_fol_name', help='', required=False, default='bem')
+    parser.add_argument('--recreate_bem_solution', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--recreate_src_spacing', help='', required=False, default='oct6')
+
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

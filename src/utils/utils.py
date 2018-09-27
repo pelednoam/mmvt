@@ -45,6 +45,7 @@ hemi_files_exists = mu.hemi_files_exists
 natural_keys = mu.natural_keys
 elec_group_number = mu.elec_group_number
 elec_group = mu.elec_group
+get_group_and_number = mu.get_group_and_number
 run_command_in_new_thread = mu.run_command_in_new_thread
 is_linux = mu.is_linux
 is_windows = mu.is_windows

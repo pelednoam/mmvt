@@ -729,7 +729,7 @@ def split_bipolar_name(elec_name):
     return elec_name1, elec_name2
 
 
-def elec_group_number(elec_name, bipolar=False):
+def elec_group_number(elec_name, bipolar=False, num_to_int=True):
     if isinstance(elec_name, bytes):
         elec_name = elec_name.decode('utf-8')
     if bipolar and '-' in elec_name:
@@ -742,7 +742,14 @@ def elec_group_number(elec_name, bipolar=False):
         elec_name = elec_name.strip()
         num = re.sub('\D', ',', elec_name).split(',')[-1]
         group = elec_name[:elec_name.rfind(num)]
-        return group, int(num) if num != '' else ''
+        if num_to_int:
+            num = int(num)
+        return group, num if num != '' else ''
+
+
+def get_group_and_number(ch_name):
+    return elec_group_number(ch_name, False, False)
+
 
 
 def elec_group(elec_name, bipolar=False):
