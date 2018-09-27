@@ -1448,7 +1448,7 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                     print('No inverse operator was found!')
                     return False, stcs, stcs_num
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
-            if single_trial_stc or calc_source_band_induced_power or events_keys == ['rest']:
+            if (single_trial_stc or calc_source_band_induced_power or events_keys == ['rest']) and not apply_on_raw:
                 if epochs is None:
                     epo_fname = epo_fname.format(cond=cond_name)
                     if not op.isfile(epo_fname):

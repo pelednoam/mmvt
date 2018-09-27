@@ -36,6 +36,31 @@ def meg_remove_artifcats(subject, raw_fname):
     return meg.call_main(meg_args)
 
 
+def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
+                meg_remote_dir='', empty_fname='', cor_fname='', use_demi_events=True, n_jobs=-1):
+    functions = 'make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition'
+    meg_args = meg.read_cmd_args(dict(
+        subject=subject, mri_subject=subject,
+        task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
+        apply_on_raw=True,
+        remote_subject_meg_dir=meg_remote_dir,
+        remote_subject_dir=remote_subject_dir,
+        empty_fname=empty_fname,
+        cor_fname=cor_fname,
+        function=functions,
+        use_demi_events=use_demi_events,
+        windows_length=10000,
+        windows_shift=5000,
+        # power_line_notch_widths=5,
+        using_auto_reject=False,
+        # reject=False,
+        use_empty_room_for_noise_cov=True,
+        read_only_from_annot=False,
+        n_jobs=n_jobs
+    ))
+    return meg.call_main(meg_args)
+
+
 def meg_preproc(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
                 meg_remote_dir='', empty_fname='', cor_fname='', use_demi_events=True, calc_labels_avg=False,
                 overwrite=False, n_jobs=-1):
@@ -252,6 +277,10 @@ def main(args):
         meg_preproc(
             args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir, empty_fname,
             cor_fname, use_demi_events, calc_labels_avg, overwrite_meg, args.n_jobs)
+    elif args.function == 'meg_calc_labels_ts':
+        meg_calc_labels_ts(
+            args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir, empty_fname,
+            cor_fname, use_demi_events, args.n_jobs)
     elif args.function == 'calc_meg_power_spectrum':
         calc_meg_power_spectrum(
             args.subject, atlas, inv_method, em, overwrite_labels_power_spectrum, args.n_jobs)
