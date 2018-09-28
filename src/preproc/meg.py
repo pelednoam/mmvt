@@ -941,35 +941,49 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
 
 
 def check_bem(mri_subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution=False, args={}):
-    bem = None
+    bem_sol = None
     if len(args) == 0:
         args = utils.Bag(
             sftp=False, sftp_username='', sftp_domain='', sftp_password='',
             overwrite_fs_files=False, print_traceback=False, sftp_port=22)
-    bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.fif')
+    bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.*')
     if not bem_exist:
         prepare_subject_folder(
             mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
-            {'bem': ['*-bem-sol.fif']}, args, use_subject_anat_folder=True)
-        bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.fif')
+            {'bem': ['*-bem-sol.*']}, args, use_subject_anat_folder=True)
+        bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.*')
     if not op.isfile(bem_fname) or recreate_bem_solution:
         # todo: check if the bem and src has same ico
         prepare_bem_surfaces(mri_subject, remote_subject_dir, args)
         model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR, ico=int(recreate_src_spacing[3:]))
-        bem = mne.make_bem_solution(model)
+        bem_sol = mne.make_bem_solution(model)
+        save_bem_solution(bem_sol, bem_fname)
+    if bem_sol is None and op.isfile(bem_fname):
+        bem_sol = read_bem_solution(bem_fname)
+    return op.isfile(bem_fname), bem_sol
+
+
+def save_bem_solution(bem_sol, bem_fname):
+    try:
+        mne.write_bem_solution(bem_fname, bem_sol)
+    except:
         try:
-            mne.write_bem_solution(bem_fname, bem)
+            mne.externals.h5io.write_hdf5(bem_fname, bem_sol)
         except:
             print(traceback.format_exc())
-            # Try to save bem not as fif file
-            try:
-                utils.save(bem, bem_fname)
-            except:
-                print(traceback.format_exc())
-                print('Can\'t write the BEM solution!')
-    if bem is None and op.isfile(bem_fname):
-        bem = mne.read_bem_solution(bem_fname)
-    return op.isfile(bem_fname), bem
+            print('Can\'t write the BEM solution!')
+
+
+def read_bem_solution(bem_fname):
+    bem_sol = None
+    if utils.file_type(bem_fname) == 'fif':
+        bem_sol = mne.read_bem_solution(bem_fname)
+    elif utils.file_type(bem_fname) == 'h5':
+        bem_sol = mne.externals.h5io.read_hdf5(bem_fname)
+        bem_sol = mne.bem.ConductorModel(bem_sol)
+    if bem_sol is None:
+        raise Exception('Can\'t read the BEM solution! {}'.format(bem_fname))
+    return bem_sol
 
 
 def prepare_bem_surfaces(mri_subject, remote_subject_dir, args):
@@ -1424,11 +1438,11 @@ def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_co
 
 
 def check_noise_cov_channels(noise_cov, info, fwd, noise_cov_fname=''):
+    fwd_sol_ch_names = fwd['sol']['row_names']
     if set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
         return noise_cov
 
     cov_dict = utils.Bag(dict(noise_cov))
-    fwd_sol_ch_names = fwd['sol']['row_names']
     ch0 = info['chs'][0]['ch_name']
     group, num = utils.get_group_and_number(ch0)
     sep = ch0[len(group) - 1:-len(num)]
@@ -2639,6 +2653,12 @@ def calc_labels_avg_per_condition(
     if _check_all_files_exist() and not overwrite:
         return True
     try:
+        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
+                                labels_fol=labels_fol, read_only_from_annot=read_only_from_annot, n_jobs=n_jobs)
+        if len(labels) == 0:
+            print('No labels were found for {} atlas!'.format(atlas))
+            return False
+
         inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
         global_inverse_operator = False
         if events is None:
@@ -2660,10 +2680,8 @@ def calc_labels_avg_per_condition(
         conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
         conditions = []
         labels_data = {}
-        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
-                                labels_fol=labels_fol, read_only_from_annot=read_only_from_annot, n_jobs=n_jobs)
-        if len(labels) == 0:
-            print('No labels were found for {} atlas!'.format(atlas))
+
+        if not check_source_and_labels_interestion(src, labels):
             return False
 
         for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
@@ -2714,6 +2732,42 @@ def calc_labels_avg_per_condition(
     return flag
 
 
+def check_source_and_labels_interestion(src, labels):
+    vertno = [s['vertno'] for s in src]
+    nvert = [len(vn) for vn in vertno]
+    labels_with_no_vertices = 0
+    for label in labels:
+        if label.hemi == 'both':
+            # handle BiHemiLabel
+            sub_labels = [label.lh, label.rh]
+        else:
+            sub_labels = [label]
+        this_vertidx = list()
+        for slabel in sub_labels:
+            if slabel.hemi == 'lh':
+                this_vertno = np.intersect1d(vertno[0], slabel.vertices)
+                vertidx = np.searchsorted(vertno[0], this_vertno)
+            elif slabel.hemi == 'rh':
+                this_vertno = np.intersect1d(vertno[1], slabel.vertices)
+                vertidx = nvert[0] + np.searchsorted(vertno[1], this_vertno)
+            else:
+                raise ValueError('label %s has invalid hemi' % label.name)
+            this_vertidx.append(vertidx)
+
+        this_vertidx = np.concatenate(this_vertidx)
+        if len(this_vertidx) == 0:
+            print('source space does not contain any vertices for label {}!'.format(label.name))
+            labels_with_no_vertices += 1
+        else:
+            print('label {} contain {} source space vertices'.format(label.name, len(this_vertidx)))
+    if labels_with_no_vertices > 0:
+        print('source space does not contain any vertices for {} labels!'.format(labels_with_no_vertices))
+        ret = input('Do you wish to continue? ')
+        if not au.is_true(ret):
+            return False
+    return True
+
+
 def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract_modes, inverse_method,
                      labels_data_template, task='', factor=1, positive=False, moving_average_win_size=0):
     if not isinstance(labels_names[0], str):
@@ -2731,7 +2785,6 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         utils.make_dir(utils.get_parent_fol(labels_output_fname))
         # If labels_data is per ephoch: labels_num x time x conds_num x epoches_num
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-        # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
 def calc_power_spectrum(subject, events, args, do_plot=False):

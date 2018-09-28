@@ -43,9 +43,9 @@ def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electro
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         single_trial_stc=True,
-        recreate_src_spacing='ico5',
+        # recreate_src_spacing='ico5',
         # fwd_recreate_source_space=True,
-        recreate_bem_solution=True,
+        # recreate_bem_solution=True,
         remote_subject_meg_dir=meg_remote_dir,
         remote_subject_dir=remote_subject_dir,
         empty_fname=empty_fname,
@@ -55,7 +55,7 @@ def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electro
         windows_length=10000,
         windows_shift=5000,
         # power_line_notch_widths=5
-        overwrite_fwd=True,
+        # overwrite_fwd=True,
         # overwrite_inv=True,
         overwrite_labels_data=True,
         using_auto_reject=False,
@@ -259,7 +259,7 @@ def main(args):
     empty_fname = op.join(meg_remote_dir, 'empty_room_raw.fif')
     inv_method = 'dSPM' # 'MNE'
     em = 'mean_flip'
-    overwrite_meg, overwrite_electrodes_labels = True, False
+    overwrite_meg, overwrite_electrodes_labels = True, True
     overwrite_labels_power_spectrum, overwrite_power_spectrum = True, True
     bipolar = False
     labels_fol_name = atlas = 'electrodes_labels'
