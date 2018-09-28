@@ -402,24 +402,30 @@ def post_analysis(args):
     #     x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
         # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
         # ttest(x[0], x[1])
-
+    do_plot = False
     for band in bands.keys():
         # fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
         for group_id in range(2): #, ax in zip(range(2), [ax1, ax2]):
             # subjects_with_data[group_id] = np.array(subjects_with_data[group_id])
             # print()
             x = [np.array(mean_power[group_id][task][band]) for task in args.tasks]
-            x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+            # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+            x[0] = x[0][x[0] < np.percentile(x[0], 90)]
+            x[1] = x[1][x[1] < np.percentile(x[1], 90)]
             ttest(x[0], x[1], title='group {} band {}'.format(group_id, band))
 
             for label_id, label in enumerate(d.names):
                 x = [np.array(power[group_id][task][band][label]) for task in args.tasks]
-                x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+                # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+                x[0] = x[0][x[0] < np.percentile(x[0], 90)]
+                x[1] = x[1][x[1] < np.percentile(x[1], 90)]
                 ttest(x[0], x[1], alpha=0.01, title='group {} band {} label {}'.format(group_id, band, label))
-        f, (ax1, ax2) = plt.subplots(2, 1)
-        ax1.hist(x[0])
-        ax2.hist(x[1])
-        plt.show()
+            if do_plot:
+                f, (ax1, ax2) = plt.subplots(2, 1)
+                ax1.hist(x[0], bins=80)
+                ax2.hist(x[1], bins=80)
+                plt.title('{} mean_power'.format(band))
+                plt.show()
         # ax.set_title('group {}'.format(group_id))
         # ax.bar(np.arange(2), [np.mean(mean_power[group_id][task][band]) for task in args.tasks])
         # ax.set_xticklabels(args.tasks, rotation=30)
@@ -427,7 +433,7 @@ def post_analysis(args):
         # plt.show()
 
 
-def ttest(x1, x2, two_tailed_test=True, alpha=0.05, is_greater=True, title=''):
+def ttest(x1, x2, two_tailed_test=True, alpha=0.1, is_greater=True, title=''):
     import scipy.stats
     t, pval = scipy.stats.ttest_ind(x1, x2, equal_var=True)
     sig = is_significant(pval, t, two_tailed_test, alpha, is_greater)
@@ -571,8 +577,8 @@ if __name__ == '__main__':
     elif '*' in args.subject[0]:
         args.subject = utils.shuffle(
             [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, args.subject[0])) if op.isdir(d) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
+             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'ECR'))) and
+             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'MSIT')))])
         print('{} subjects were found with both tasks:'.format(len(args.subject)))
         print(sorted(args.subject))
     with warnings.catch_warnings():

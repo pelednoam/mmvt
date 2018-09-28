@@ -54,10 +54,9 @@ def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electro
         use_demi_events=use_demi_events,
         windows_length=10000,
         windows_shift=5000,
-        # power_line_notch_widths=5
         # overwrite_fwd=True,
         # overwrite_inv=True,
-        overwrite_labels_data=True,
+        # overwrite_labels_data=True,
         using_auto_reject=False,
         use_empty_room_for_noise_cov=True,
         read_only_from_annot=False,
