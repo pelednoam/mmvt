@@ -43,7 +43,7 @@ def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electro
         subject=subject, mri_subject=subject,
         task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
         single_trial_stc=True,
-        # recreate_src_spacing='ico5',
+        recreate_src_spacing='ico5',
         # fwd_recreate_source_space=True,
         # recreate_bem_solution=True,
         remote_subject_meg_dir=meg_remote_dir,
@@ -59,7 +59,6 @@ def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electro
         # overwrite_inv=True,
         overwrite_labels_data=True,
         using_auto_reject=False,
-        # reject=False,
         use_empty_room_for_noise_cov=True,
         read_only_from_annot=False,
         n_jobs=n_jobs
