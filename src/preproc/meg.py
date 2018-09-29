@@ -511,7 +511,7 @@ def calc_labels_power_spectrum(
         fmin=0, fmax=200, bandwidth=2., bands=None, max_epochs_num=0,
         mri_subject='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
         add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial', precentiles=(1, 99),
-        epochs=None, src=None, overwrite=False, n_jobs=6):
+        epochs=None, src=None, overwrite=False, do_plot=True, n_jobs=6):
     if mri_subject == '':
         mri_subject = subject
     if inv_fname == '':
@@ -581,6 +581,17 @@ def calc_labels_power_spectrum(
             if power_spectrum is None:
                 power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
             power_spectrum[epoch_ind, :, :, cond_ind] = psds
+
+        if do_plot:
+            for label_ind, label in enumerate(labels):
+                psd = power_spectrum[:, label_ind, :, cond_ind]
+                psd_mean = psd.mean(0)
+                psd_std = psd.std(0)
+                plt.plot(freqs, psd_mean, color='k')
+                plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
+                plt.title('{} {} Multitaper PSD'.format(label.name, cond_name), xlabel='Frequency',
+                          ylabel='Power Spectral Density (dB)')
+                plt.savefig(op.join(MMVT_DIR, subject, 'meg', 'plots', 'psd_{}_{}.jpg'.format(label.name, cond_name)))
 
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     calc_labels_power_bands(
