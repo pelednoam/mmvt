@@ -583,6 +583,7 @@ def calc_labels_power_spectrum(
             power_spectrum[epoch_ind, :, :, cond_ind] = psds
 
         if do_plot:
+            plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
             for label_ind, label in enumerate(labels):
                 psd = power_spectrum[:, label_ind, :, cond_ind]
                 psd_mean = psd.mean(0)
@@ -591,7 +592,7 @@ def calc_labels_power_spectrum(
                 plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
                 plt.title('{} {} Multitaper PSD'.format(label.name, cond_name), xlabel='Frequency',
                           ylabel='Power Spectral Density (dB)')
-                plt.savefig(op.join(MMVT_DIR, subject, 'meg', 'plots', 'psd_{}_{}.jpg'.format(label.name, cond_name)))
+                plt.savefig(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
 
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     calc_labels_power_bands(
