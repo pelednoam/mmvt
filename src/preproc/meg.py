@@ -604,8 +604,9 @@ def plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name):
         psd_std = psd.std(0)
         plt.plot(freqs, psd_mean, color='k')
         plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
-        plt.title('{} {} Multitaper PSD'.format(label.name, cond_name), xlabel='Frequency',
-                  ylabel='Power Spectral Density (dB)')
+        plt.title('{} {} Multitaper PSD'.format(label.name, cond_name))
+        plt.xlabel('Frequency')
+        plt.ylabel('Power Spectral Density (dB)')
         plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
         plt.close()
 
