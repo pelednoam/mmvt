@@ -522,6 +522,7 @@ def calc_labels_power_spectrum(
     events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
     lambda2 = 1.0 / snr ** 2
     fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
+    plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
     power_spectrum = None
     first_time = True
     labels = None
@@ -532,7 +533,7 @@ def calc_labels_power_spectrum(
             if do_plot:
                 d = np.load(output_fname)
                 labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, surf_name=surf_name, n_jobs=n_jobs)
-                plot_psds(subject, d['power_spectrum'], d['frequencies'], labels, cond_ind, cond_name)
+                plot_psds(subject, d['power_spectrum'], d['frequencies'], labels, cond_ind, cond_name, plots_fol)
             continue
 
         if first_time:
@@ -572,7 +573,8 @@ def calc_labels_power_spectrum(
                     # print('Freqs: {}'.format(freqs))
                     power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
                 power_spectrum[epoch_ind, label_ind, :, cond_ind] = np.mean(stc.data, axis=0)
-
+            if do_plot:
+                plot_label_psd(power_spectrum[:, label_ind, :, cond_ind], freqs, label, cond_name, plots_fol)
         # stcs = mne.minimum_norm.apply_inverse_epochs(
         #     epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         # labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
@@ -586,30 +588,33 @@ def calc_labels_power_spectrum(
         #         power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
         #     power_spectrum[epoch_ind, :, :, cond_ind] = psds
 
-        np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
+        # if do_plot:
+        #     plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name, plots_fol)
 
-        if do_plot:
-            plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name)
+        np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
 
     calc_labels_power_bands(
         mri_subject, atlas, events, inverse_method, extract_modes, precentiles, bands, labels, overwrite, n_jobs=n_jobs)
     return True
 
 
-def plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name):
-    plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
+def plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name, plots_fol):
     print('Saving plots in {}'.format(plots_fol))
     for label_ind, label in enumerate(labels):
         psd = power_spectrum[:, label_ind, :, cond_ind]
-        psd_mean = psd.mean(0)
-        psd_std = psd.std(0)
-        plt.plot(freqs, psd_mean, color='k')
-        plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
-        plt.title('{} {} Multitaper PSD'.format(label.name, cond_name))
-        plt.xlabel('Frequency')
-        plt.ylabel('Power Spectral Density (dB)')
-        plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
-        plt.close()
+        plot_label_psd(psd, freqs, label, cond_name, plots_fol)
+
+
+def plot_label_psd(psd, freqs, label, cond_name, plots_fol):
+    psd_mean = psd.mean(0)
+    psd_std = psd.std(0)
+    plt.plot(freqs, psd_mean, color='k')
+    plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
+    plt.title('{} {} Multitaper PSD'.format(label.name, cond_name))
+    plt.xlabel('Frequency')
+    plt.ylabel('Power Spectral Density (dB)')
+    plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
+    plt.close()
 
 
 def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
