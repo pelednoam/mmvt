@@ -182,7 +182,7 @@ def meg_preproc(args):
                 average_per_event=False,
                 data_per_task=True,
                 pick_ori='normal', # very important for calculation of the power spectrum
-                fmin=0, fmax=150, bandwidth=2.0,
+                fmin=4, fmax=120, bandwidth=2.0,
                 ica_overwrite_raw=False,
                 normalize_data=False,
                 t_min=times[0], t_max=times[1],
