@@ -593,6 +593,7 @@ def calc_labels_power_spectrum(
                 plt.title('{} {} Multitaper PSD'.format(label.name, cond_name), xlabel='Frequency',
                           ylabel='Power Spectral Density (dB)')
                 plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
+                plt.close()
 
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
     calc_labels_power_bands(
