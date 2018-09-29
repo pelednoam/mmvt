@@ -529,9 +529,9 @@ def calc_labels_power_spectrum(
         output_fname = op.join(fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
         if op.isfile(output_fname) and not overwrite:
             print('{} already exist'.format(output_fname))
-            power_spectrum = np.load(output_fname)
+            d = np.load(output_fname)
             labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, surf_name=surf_name, n_jobs=n_jobs)
-            plot_psds(subject, power_spectrum, labels, cond_ind, cond_name)
+            plot_psds(subject, d['power_spectrum'], d['frequencies'], labels, cond_ind, cond_name)
             continue
 
         if first_time:
@@ -588,14 +588,14 @@ def calc_labels_power_spectrum(
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
 
         if do_plot:
-            plot_psds(subject, power_spectrum, labels, cond_ind, cond_name)
+            plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name)
 
     calc_labels_power_bands(
         mri_subject, atlas, events, inverse_method, extract_modes, precentiles, bands, labels, overwrite, n_jobs=n_jobs)
     return True
 
 
-def plot_psds(subject, power_spectrum, labels, cond_ind, cond_name):
+def plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name):
     plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
     print('Saving plots in {}'.format(plots_fol))
     for label_ind, label in enumerate(labels):
