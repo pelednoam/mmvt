@@ -564,10 +564,10 @@ def calc_labels_power_spectrum(
             stcs = mne.minimum_norm.compute_source_psd_epochs(
                 epochs, inverse_operator, lambda2=lambda2, method=inverse_method, fmin=fmin, fmax=fmax,
                 bandwidth=bandwidth, label=label, return_generator=True)
-            freqs = stcs.times
             for epoch_ind, stc in enumerate(stcs):
                 if epoch_ind >= epochs_num:
                     break
+                freqs = stc.times
                 if power_spectrum is None:
                     # print('Freqs: {}'.format(freqs))
                     power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
