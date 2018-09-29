@@ -530,6 +530,7 @@ def calc_labels_power_spectrum(
         if op.isfile(output_fname) and not overwrite:
             print('{} already exist'.format(output_fname))
             power_spectrum = np.load(output_fname)
+            labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, surf_name=surf_name, n_jobs=n_jobs)
             plot_psds(subject, power_spectrum, labels, cond_ind, cond_name)
             continue
 
