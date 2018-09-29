@@ -584,6 +584,7 @@ def calc_labels_power_spectrum(
 
         if do_plot:
             plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
+            print('Saving plots in {}'.format(plots_fol))
             for label_ind, label in enumerate(labels):
                 psd = power_spectrum[:, label_ind, :, cond_ind]
                 psd_mean = psd.mean(0)
