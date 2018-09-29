@@ -183,6 +183,7 @@ def meg_preproc(args):
                 data_per_task=True,
                 pick_ori='normal', # very important for calculation of the power spectrum
                 fmin=4, fmax=120, bandwidth=2.0,
+                max_epochs_num=args.max_epochs_num,
                 ica_overwrite_raw=False,
                 normalize_data=False,
                 t_min=times[0], t_max=times[1],
@@ -542,6 +543,7 @@ if __name__ == '__main__':
     parser.add_argument('--anatomy_preproc', required=False, default=True, type=au.is_true)
     parser.add_argument('--check_files', required=False, default=True, type=au.is_true)
     parser.add_argument('--check_file_modification_time', required=False, default=False, type=au.is_true)
+    parser.add_argument('--max_epochs_num', required=False, default=0, type=int)
 
     parser.add_argument('--remote_root_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/')
