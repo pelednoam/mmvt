@@ -174,11 +174,11 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task],
-                cor_fname=cors[task].format(subject=subject),
-                function='calc_labels_power_spectrum', # 'calc_labels_power_bands'
+                function='calc_labels_power_spectrum',#''calc_labels_power_bands', # '',
                 # function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
                          # 'calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),
+                cor_fname=cors[task].format(subject=subject),
                 average_per_event=False,
                 data_per_task=True,
                 pick_ori='normal', # very important for calculation of the power spectrum
@@ -503,13 +503,13 @@ def get_good_subjects(args, check_dict=False):
             if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format('{hemi}', args.atlas))):
                 print('*** Can\'t find the atlas {}!'.format(args.atlas))
                 continue
-            # empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
-            # if empty_fnames == '' or cors == '' or days == '':
-            #     print('{}: Error with get_empty_fnames!'.format(subject))
-            # if any([task not in cors for task in args.tasks]):
-            #     print('*** {}: one of the tasks does not have a cor transformation matrix!'.format(subject))
-            #     print(cors)
-            #     continue
+            empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+            if empty_fnames == '' or cors == '' or days == '':
+                print('{}: Error with get_empty_fnames!'.format(subject))
+            if any([task not in cors for task in args.tasks]):
+                print('*** {}: one of the tasks does not have a cor transformation matrix!'.format(subject))
+                print(cors)
+                continue
             data_fol = op.join(args.meg_dir, subject)
             files_exist = op.isfile(op.join(data_fol, '{}_{}_meg_Onset-epo.fif'.format(subject, 'ECR'))) and \
                 op.isfile(op.join(data_fol, '{}_{}_meg_Onset-epo.fif'.format(subject, 'MSIT')))
