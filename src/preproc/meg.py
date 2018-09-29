@@ -529,6 +529,8 @@ def calc_labels_power_spectrum(
         output_fname = op.join(fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
         if op.isfile(output_fname) and not overwrite:
             print('{} already exist'.format(output_fname))
+            power_spectrum = np.load(output_fname)
+            plot_psds(subject, power_spectrum, labels, cond_ind, cond_name)
             continue
 
         if first_time:
@@ -582,24 +584,29 @@ def calc_labels_power_spectrum(
                 power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
             power_spectrum[epoch_ind, :, :, cond_ind] = psds
 
-        if do_plot:
-            plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
-            print('Saving plots in {}'.format(plots_fol))
-            for label_ind, label in enumerate(labels):
-                psd = power_spectrum[:, label_ind, :, cond_ind]
-                psd_mean = psd.mean(0)
-                psd_std = psd.std(0)
-                plt.plot(freqs, psd_mean, color='k')
-                plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
-                plt.title('{} {} Multitaper PSD'.format(label.name, cond_name), xlabel='Frequency',
-                          ylabel='Power Spectral Density (dB)')
-                plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
-                plt.close()
-
         np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
+
+        if do_plot:
+            plot_psds(subject, power_spectrum, labels, cond_ind, cond_name)
+
     calc_labels_power_bands(
         mri_subject, atlas, events, inverse_method, extract_modes, precentiles, bands, labels, overwrite, n_jobs=n_jobs)
     return True
+
+
+def plot_psds(subject, power_spectrum, labels, cond_ind, cond_name):
+    plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
+    print('Saving plots in {}'.format(plots_fol))
+    for label_ind, label in enumerate(labels):
+        psd = power_spectrum[:, label_ind, :, cond_ind]
+        psd_mean = psd.mean(0)
+        psd_std = psd.std(0)
+        plt.plot(freqs, psd_mean, color='k')
+        plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
+        plt.title('{} {} Multitaper PSD'.format(label.name, cond_name), xlabel='Frequency',
+                  ylabel='Power Spectral Density (dB)')
+        plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
+        plt.close()
 
 
 def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
