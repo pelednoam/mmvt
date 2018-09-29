@@ -511,7 +511,7 @@ def calc_labels_power_spectrum(
         fmin=0, fmax=200, bandwidth=2., bands=None, max_epochs_num=0,
         mri_subject='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
         add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial', precentiles=(1, 99),
-        epochs=None, src=None, overwrite=False, do_plot=True, n_jobs=6):
+        epochs=None, src=None, overwrite=False, do_plot=True, save_tmp_files=True, n_jobs=6):
     if mri_subject == '':
         mri_subject = subject
     if inv_fname == '':
@@ -573,8 +573,14 @@ def calc_labels_power_spectrum(
                     # print('Freqs: {}'.format(freqs))
                     power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
                 power_spectrum[epoch_ind, label_ind, :, cond_ind] = np.mean(stc.data, axis=0)
+            if save_tmp_files:
+                output_fname = op.join(fol, '{}_{}_{}_{}_power_spectrum.npz'.format(
+                    cond_name, inverse_method, em, label.name))
+                np.savez(output_fname, power_spectrum=power_spectrum[:, label_ind, :, cond_ind], frequencies=freqs,
+                         label=label.name, cond=cond_name)
             if do_plot:
                 plot_label_psd(power_spectrum[:, label_ind, :, cond_ind], freqs, label, cond_name, plots_fol)
+
         # stcs = mne.minimum_norm.apply_inverse_epochs(
         #     epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
         # labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
