@@ -523,6 +523,8 @@ def calc_labels_power_spectrum(
     lambda2 = 1.0 / snr ** 2
     fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
     plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
+    if save_tmp_files:
+        tmp_fol = utils.make_dir(op.join(fol, 'labels_power'))
     power_spectrum = None
     first_time = True
     labels = None
@@ -574,7 +576,7 @@ def calc_labels_power_spectrum(
                     power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
                 power_spectrum[epoch_ind, label_ind, :, cond_ind] = np.mean(stc.data, axis=0)
             if save_tmp_files:
-                output_fname = op.join(fol, '{}_{}_{}_{}_power_spectrum.npz'.format(
+                output_fname = op.join(tmp_fol, '{}_{}_{}_{}_power_spectrum.npz'.format(
                     cond_name, inverse_method, em, label.name))
                 np.savez(output_fname, power_spectrum=power_spectrum[:, label_ind, :, cond_ind], frequencies=freqs,
                          label=label.name, cond=cond_name)
