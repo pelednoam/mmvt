@@ -187,6 +187,9 @@ def refresh_pos_and_names(overwrite=False):
                  bpy.context.scene.dell_ct_threshold), output_fname)
 
 
+def rename_group():
+    pass
+
 def export_electrodes(group_hemi_default='G'):
     from collections import Counter
     output_fol = op.join(mu.get_user_fol(), 'electrodes')
@@ -296,6 +299,26 @@ def mark_selected_noise_as_electrodes():
         elc_ind = DellPanel.names.index(elc_name)
         DellPanel.noise.discard(elc_ind)
         _addon().object_coloring(bpy.data.objects[elc_name], (0.8, 0.8, 0.8))
+
+
+def add_selected_electrodes_to_group():
+    names = [o.name for o in bpy.context.selected_objects]
+    group_ind = None
+    electrodes_to_add = []
+    for elc_name in names:
+        if elc_name not in DellPanel.names:
+            continue
+        elc_ind = DellPanel.names.index(elc_name)
+        group_inds = [k for k, g in enumerate(DellPanel.groups) if elc_ind in g]
+        if len(group_inds) == 1:
+            group_ind = group_inds[0]
+            color = bpy.data.objects[elc_name].active_material.diffuse_color
+        else:
+            electrodes_to_add.append(elc_ind)
+    if group_ind is not None:
+        for new_elc_ind in electrodes_to_add:
+            DellPanel.groups[group_ind].append(new_elc_ind)
+            _addon().object_coloring(bpy.data.objects[DellPanel.names[new_elc_ind]], tuple(color))
 
 
 def mark_non_group_electrodes_as_noise():
@@ -893,6 +916,8 @@ def dell_draw(self, context):
             layout.operator(MarkSelectedNoiseAsElectrodes.bl_idname, text="Mark selected noise as electrodes", icon='EYEDROPPER')
             layout.operator(CreateNewGroupFromSelectedElectrodes.bl_idname, text="Create New group from selection",
                             icon='EDIT')
+            layout.operator(AddSelectedElectrodesToGroup.bl_idname, text="Add selected electrodes to group",
+                            icon='GROUP_VCOL')
 
         # if len(bpy.context.selected_objects) == 4 and all(
         #         bpy.context.selected_objects[k].name in DellPanel.names for k in range(4)):
@@ -917,6 +942,12 @@ def dell_draw(self, context):
         if bpy.context.scene.dell_delete_electrodes:
             layout.operator(DeleteElectrodes.bl_idname, text="Delete electrodes", icon='CANCEL')
         layout.operator(ExportDellElectrodes.bl_idname, text="Rename & Export", icon='EXPORT')
+        if select_elc_group >= 0:
+            row = layout.row(align=True)
+            row.operator(RenameGroup.bl_idname, text="Rename Group", icon='META_DATA')
+            g = DellPanel.groups[select_elc_group]
+            group_name = '{}-{}'.format(DellPanel.names[g[0]], DellPanel.names[g[-1]])
+            row.label(text=group_name)
         row = layout.row(align=True)
         row.prop(context.scene, 'dell_move_x')
         row.prop(context.scene, 'dell_move_y')
@@ -1236,6 +1267,16 @@ class SaveCTElectrodesFigures(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class RenameGroup(bpy.types.Operator):
+    bl_idname = "mmvt.rename_group"
+    bl_label = "rename_group"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        rename_group()
+        return {'PASS_THROUGH'}
+
+
 class ExportDellElectrodes(bpy.types.Operator):
     bl_idname = "mmvt.export_dell_electrodes"
     bl_label = "export_dell_electrodes"
@@ -1253,6 +1294,16 @@ class MarkNonGroupElectrodesAsNoise(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         mark_non_group_electrodes_as_noise()
+        return {'PASS_THROUGH'}
+
+
+class AddSelectedElectrodesToGroup(bpy.types.Operator):
+    bl_idname = "mmvt.add_selected_electrodes_to_group"
+    bl_label = "add_selected_electrodes_to_group"
+    bl_options = {"UNDO"}
+
+    def invoke(self, context, event=None):
+        add_selected_electrodes_to_group()
         return {'PASS_THROUGH'}
 
 
@@ -1547,10 +1598,12 @@ def register():
         bpy.utils.register_class(CreateNewGroupFromSelectedElectrodes)
         bpy.utils.register_class(MarkSelectedElectrodesAsNoise)
         bpy.utils.register_class(MarkSelectedNoiseAsElectrodes)
+        bpy.utils.register_class(AddSelectedElectrodesToGroup)
         bpy.utils.register_class(MarkNonGroupElectrodesAsNoise)
         bpy.utils.register_class(MarkElectrodeLeadAsNoise)
         bpy.utils.register_class(DeleteElectrodesFromGroup)
         bpy.utils.register_class(ExportDellElectrodes)
+        bpy.utils.register_class(RenameGroup)
         bpy.utils.register_class(CreateNewElectrodeBetween)
         bpy.utils.register_class(InitNoise)
         bpy.utils.register_class(CreateNewElectrode)
@@ -1587,8 +1640,10 @@ def unregister():
         bpy.utils.unregister_class(MarkNonGroupElectrodesAsNoise)
         bpy.utils.unregister_class(MarkElectrodeLeadAsNoise)
         bpy.utils.unregister_class(MarkSelectedNoiseAsElectrodes)
+        bpy.utils.unregister_class(AddSelectedElectrodesToGroup)
         bpy.utils.unregister_class(DeleteElectrodesFromGroup)
         bpy.utils.unregister_class(ExportDellElectrodes)
+        bpy.utils.unregister_class(RenameGroup)
         bpy.utils.unregister_class(CreateNewElectrodeBetween)
         bpy.utils.unregister_class(CreateNewElectrode)
         bpy.utils.unregister_class(InitNoise)

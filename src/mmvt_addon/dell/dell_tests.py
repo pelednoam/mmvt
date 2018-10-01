@@ -302,7 +302,7 @@ if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
     import matplotlib.pyplot as plt
-    subject = 'nmr00479' # 'nmr01209' #'mg105' # 'nmr01183'
+    subject = 'mg120' # 'nmr01209' #'mg105' # 'nmr01183'
     threshold_percentile = 99.9
     min_distance = 2.5
     error_r = 2
@@ -357,4 +357,4 @@ if __name__ == '__main__':
     #     find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
     # for pt1, pt2 in zip(['G38', 'G25', 'G61', 'G36', 'G4', 'G39', 'G23', 'G26'], ['G22', 'G58', 'G35', 'G1', 'G63', 'G30', 'G13', 'G48']):
     #     find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
-    print(fect.get_t1_voxels_inside_dural(np.array([[-52., -104.,   90]]), brain.header, subject_fol, use_brain_surf=False, sigma=1))
+    print(fect.get_t1_voxels_inside_dural(np.array([[-37.0,39.0,60.0]]), brain.header, subject_fol, use_brain_surf=False, sigma=1))
