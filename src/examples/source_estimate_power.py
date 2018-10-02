@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import warnings
+warnings.simplefilter("ignore", DeprecationWarning)
+
 import mne
 from mne import io
 from mne.datasets import sample
@@ -13,7 +16,6 @@ def timeit(func):
         retval = func(*args, **kwargs)
         print('{} took {:.5f}s'.format(func.__name__, time.time() - now))
         return retval
-
     return wrapper
 
 
@@ -95,20 +97,35 @@ def plot_source_band_induced_power(stcs):
     plt.title('Mean source induced power')
 
 
+@timeit
+def calc_source_psd_epochs(epochs, inverse_operator, inverse_method, label, bands, lambda2, bandwidth):
+    powers = np.empty((len(bands.keys()), len(epochs)))
+    for band_ind, (fmin, fmax) in enumerate(bands.values()):
+        # with warnings.catch_warnings():
+        stcs = mne.minimum_norm.compute_source_psd_epochs(
+            epochs, inverse_operator, lambda2=lambda2, method=inverse_method, fmin=fmin, fmax=fmax,
+            bandwidth=bandwidth, label=label, return_generator=True)
+        for stc_ind, stc in enumerate(stcs):
+            powers[band_ind, stc_ind] = stc.data.mean()
+    return powers
+
+
 if __name__ == '__main__':
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
     inverse_method = 'dSPM'
     pick_ori = 'normal'
     n_cycles = 2
+    bandwidth = 1.
     bands = dict(alpha=[9, 11], beta=[18, 22])
 
     epochs, inverse_operator, label = init_data()
     powers, times = calc_morlet_cwt(epochs, inverse_operator, label, bands, inverse_method, lambda2, pick_ori, n_cycles)
-    plot_morlet_cwt_results(times, powers, bands.keys())
-
+    # plot_morlet_cwt_results(times, powers, bands.keys())
+    #
     stcs = calc_source_band_induced_power(epochs, inverse_operator, label, bands, n_cycles)
-    plot_source_band_induced_power(stcs)
+    # plot_source_band_induced_power(stcs)
 
+    psd_powers = calc_source_psd_epochs(epochs, inverse_operator, inverse_method, label, bands, lambda2, bandwidth)
     plt.show()
 
