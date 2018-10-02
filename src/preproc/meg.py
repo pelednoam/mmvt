@@ -4220,8 +4220,6 @@ def sensors_time_average(subject, dt=10, overwrite=False):
     return op.isfile(sensors_evoked_new_fname) and op.isfile(meta_new_fname) and op.isfile(evoked_minmax_new_fname)
 
 
-
-
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
                                    overwrite_nii_file=False, overwrite_surface=False, overwrite_stc=False):
     volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
