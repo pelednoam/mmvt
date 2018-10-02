@@ -89,7 +89,7 @@ def _clusters_update():
     _addon().create_slices(pos=tkreg_ras)
     find_electrodes_in_cluster()
     if bpy.context.scene.fmri_rotate_view_to_vertice:
-        mu.fmri_rotate_view_to_vertice()
+        mu.rotate_view_to_vertice()
 
 
 def fmri_blobs_percentile_min_update(self, context):
@@ -143,7 +143,7 @@ def calc_clusters():
     surf_template_fname = 'fmri_{}.?h.npy'.format(_addon().coloring.get_select_fMRI_contrast())
     print(mu.get_user(), surf_template_fname, bpy.context.scene.fmri_clustering_threshold, bpy.context.scene.atlas)
     fMRI.find_clusters(mu.get_user(), surf_template_fname, bpy.context.scene.fmri_clustering_threshold,
-                       bpy.context.scene.atlas)
+                       bpy.context.scene.subject_annot_files)
     # init(_addon())
 
 
@@ -613,6 +613,12 @@ def find_fmri_files_min_max():
     mu.save((data_min, data_max, cm_name), output_fname)
 
 
+def export_clusters():
+    with open(op.join(mu.get_user_fol(), 'fmri', 'clusters_list.txt'), 'w') as text_file:
+        for cluster_name in fMRIPanel.clusters:
+            print(cluster_name, file=text_file)
+
+
 def filter_clusters(constrast_name, val_threshold=None, size_threshold=None, clusters_name=None):
     if val_threshold is None:
         val_threshold = bpy.context.scene.fmri_cluster_val_threshold
@@ -661,9 +667,11 @@ def fMRI_draw(self, context):
     user_fol = mu.get_user_fol()
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
-    layout.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
+    col = layout.box().column()
+    col.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
+    col.prop(context.scene, 'subject_annot_files', text='')
+    col.operator(CalcClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
     if not fMRIPanel.fMRI_clusters_files_exist and _addon().coloring.fMRI_constrasts_exist() > 0:
-        layout.operator(CalcClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
         return
     layout.prop(context.scene, 'fmri_clusters_labels_files', text='')
     if len(fMRIPanel.clusters_labels_files) > 1:
@@ -740,6 +748,7 @@ def fMRI_draw(self, context):
     if mu.is_freesurfer_exist and bpy.context.scene.fmri_more_settings:
         layout.operator(LoadVolumefMRIFile.bl_idname, text="Load volume fMRI file", icon='LOAD_FACTORY').filepath = \
             op.join(mu.get_user_fol(), 'fmri', '*.*')
+    layout.operator(fmriExportClusters.bl_idname, text="Export clusters", icon='ASSET_MANAGER')
     layout.operator(fmriClearColors.bl_idname, text="Clear", icon='PANEL_CLOSE')
     layout.prop(context.scene, 'fmri_more_settings', text='More settings')
 
@@ -771,6 +780,18 @@ class FindfMRIFilesMinMax(bpy.types.Operator):
     @staticmethod
     def invoke(self, context, event=None):
         find_fmri_files_min_max()
+        return {"FINISHED"}
+
+
+class fmriExportClusters(bpy.types.Operator):
+    bl_idname = "mmvt.fmri_export_clusters"
+    bl_label = "mmvt fmri_export_clusters"
+    bl_description = 'Export clusters\n\nScript: mmvt.fMRI.export_clusters()'
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        export_clusters()
         return {"FINISHED"}
 
 
@@ -1026,6 +1047,7 @@ def register():
         bpy.utils.register_class(RefinefMRIClusters)
         bpy.utils.register_class(LoadMEGData)
         bpy.utils.register_class(FindfMRIFilesMinMax)
+        bpy.utils.register_class(fmriExportClusters)
         bpy.utils.register_class(fmriClearColors)
         bpy.utils.register_class(LoadVolumefMRIFile)
         # print('fMRI Panel was registered!')
@@ -1045,6 +1067,7 @@ def unregister():
         bpy.utils.unregister_class(RefinefMRIClusters)
         bpy.utils.unregister_class(LoadMEGData)
         bpy.utils.unregister_class(FindfMRIFilesMinMax)
+        bpy.utils.unregister_class(fmriExportClusters)
         bpy.utils.unregister_class(fmriClearColors)
         bpy.utils.unregister_class(LoadVolumefMRIFile)
     except:

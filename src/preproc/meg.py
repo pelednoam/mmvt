@@ -661,28 +661,44 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
         if ws is None:
             ws = [(mne.time_frequency.morlet(
                 epochs.info['sfreq'], freqs, n_cycles=n_cycles, zero_mean=False)) for freqs in bands.values()]
+        label_now = time.time()
         for label_ind, label in enumerate(labels):
             output_fname = op.join(fol, '{}_{}_{}_{}_induced_power.npz'.format(cond_name, label.name, inverse_method, em))
             if op.isfile(output_fname) and not overwrite:
                 continue
+            utils.time_to_go(label_now, label_ind, len(labels), runs_num_to_print=1)
             powers, times = None, None
             stcs = mne.minimum_norm.apply_inverse_epochs(
                 epochs, inverse_operator, lambda2, inverse_method, label, pick_ori=pick_ori, return_generator=True)
+            stc_now = time.time()
             for stc_ind, stc in enumerate(stcs):
+                utils.time_to_go(stc_now, stc_ind, len(epochs), runs_num_to_print=1)
                 if stc_ind >= epochs_num:
                     break
                 if powers is None:
                     powers = np.empty((len(bands), epochs_num, stc.shape[1]))
                     times = stc.times
-                for band_ind in range(len(bands.keys())):
-                    tfr = mne.time_frequency.tfr.cwt(
-                        stc.data, ws[band_ind], use_fft=False)
-                    powers[band_ind, stc_ind] = (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
+
+                params = [(stc.data, ws[band_ind], band_ind) for band_ind in range(len(bands.keys()))]
+                powers_bands = utils.run_parallel(_calc_tfr_cwt_parallel, params, len(bands.keys()))
+                for power_band in powers_bands:
+                    powers[band_ind, stc_ind] = power_band
+                # for band_ind in range(len(bands.keys())):
+                #     tfr = mne.time_frequency.tfr.cwt(
+                #         stc.data, ws[band_ind], use_fft=False)
+                #     powers[band_ind, stc_ind] = (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
             print('calc_labels_induced_power: Saving results in {}'.format(output_fname))
             np.savez(output_fname, label_name=label.name, atlas=atlas, data=powers, times=times)
             ret = ret and op.isfile(output_fname)
 
     return ret
+
+
+def _calc_tfr_cwt_parallel(p):
+    stc_data, ws_band = p
+    tfr = mne.time_frequency.tfr.cwt(
+        stc_data, ws_band, use_fft=False)
+    return (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
 
 
 def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],

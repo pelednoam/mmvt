@@ -233,8 +233,10 @@ def find_clusters(subject, surf_template_fname, t_val, atlas, min_cluster_max=0,
     # input_fname = op.join(input_fol, 'fmri_{}_{}_{}.npy'.format(task, contrast_name, '{hemi}'))
 
     surf_template_fname = utils.namebase_with_ext(surf_template_fname)
-    if lu.get_hemi_from_name(surf_template_fname) == '':
-        surf_template_fname = 'fmri_{}_{}.npy'.format(utils.namebase(surf_template_fname), '{hemi}')
+    if lu.get_hemi_from_name(surf_template_fname) == '' and '?h' not in surf_template_fname:
+        surf_template_fname = '{}{}_{}.npy'.format(
+            '' if utils.namebase(surf_template_fname).startswith('fmri_') else 'fmri_',
+            utils.namebase(surf_template_fname), '{hemi}')
     surf_full_input_fname = op.join(MMVT_DIR, subject, 'fmri', surf_template_fname)
     surf_full_input_fnames = find_hemi_files_from_template(surf_full_input_fname)
     if len(surf_full_input_fnames) == 0:
