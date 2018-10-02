@@ -11,6 +11,7 @@ from src.preproc import anatomy as anat
 from src.preproc import meg as meg
 from src.preproc import connectivity
 import warnings
+import matplotlib.pyplot as plt
 
 LINKS_DIR = utils.get_links_dir()
 SUBJECTS_DIR = utils.get_link_dir(LINKS_DIR, 'subjects', 'SUBJECTS_DIR')
@@ -150,17 +151,20 @@ def meg_preproc(args):
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
         for task in args.tasks:
 
-            output_fname = op.join(
-                MMVT_DIR, subject, 'meg', '{}_{}_{}_power_spectrum.npz'.format(task.lower(), inv_method, em))
-            if op.isfile(output_fname) and args.check_file_modification_time:
-                file_mod_time = utils.file_modification_time_struct(output_fname)
-                if file_mod_time.tm_year >= 2018 and (file_mod_time.tm_mon == 9 and file_mod_time.tm_mday >= 21) or \
-                        (file_mod_time.tm_mon > 9):
-                    print('{} already exist!'.format(output_fname))
-                    continue
+            # output_fname = op.join(
+            #     MMVT_DIR, subject, 'meg', '{}_{}_{}_power_spectrum.npz'.format(task.lower(), inv_method, em))
+            # if op.isfile(output_fname) and args.check_file_modification_time:
+            #     file_mod_time = utils.file_modification_time_struct(output_fname)
+            #     if file_mod_time.tm_year >= 2018 and (file_mod_time.tm_mon == 9 and file_mod_time.tm_mday >= 21) or \
+            #             (file_mod_time.tm_mon > 9):
+            #         print('{} already exist!'.format(output_fname))
+            #         continue
 
-            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
-            local_epo_fname = op.join(MEG_DIR, task, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
+            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, task))
+            local_epo_fname = op.join(MEG_DIR, task, subject, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, task))
+            if not op.isfile(local_epo_fname) and not op.isfile(remote_epo_fname):
+                print('Can\'t find {}!'.format(local_epo_fname))
+                continue
             if not op.isfile(local_epo_fname):
                 utils.make_link(remote_epo_fname, local_epo_fname)
 
@@ -174,7 +178,7 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task],
-                function='calc_labels_power_spectrum',#s''calc_labels_power_bands', # '',
+                function='make_forward_solution,calc_inverse_operator,calc_labels_induced_power',#'calc_labels_power_spectrum',#s''calc_labels_power_bands', # '',
                 # function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
                          # 'calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),
@@ -182,7 +186,7 @@ def meg_preproc(args):
                 average_per_event=False,
                 data_per_task=True,
                 pick_ori='normal', # very important for calculation of the power spectrum
-                fmin=4, fmax=120, bandwidth=2.0,
+                # fmin=4, fmax=120, bandwidth=2.0,
                 max_epochs_num=args.max_epochs_num,
                 ica_overwrite_raw=False,
                 normalize_data=False,
@@ -282,27 +286,46 @@ def meg_preproc(args):
 
 
 def post_meg_preproc(args):
-    inv_method, em = 'MNE', 'mean_flip'
+    inv_method, em = 'dSPM', 'mean_flip'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
 
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     for subject in subjects:
+        input_fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
         args.subject = subject
         for task in args.tasks:
             task = task.lower()
-            if not utils.both_hemi_files_exist(
-                    op.join(MMVT_DIR, subject, 'meg', 'labels_data_{}_{}_{}_{}_lh.npz'.format(
-                        task, args.atlas, inv_method, em, '{hemi}'))):
-                print('label data can\'t be found for {} {}'.format(subject, task))
+            input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
+            if len(input_fnames) == 0:
+                print('No files for {}!'.format(subject))
                 continue
-            utils.make_dir(op.join(res_fol, subject))
-            meg.calc_labels_func(subject, task, args.atlas, inv_method, em, tmin=0, tmax=0.5, times=times, norm_data=False)
-            meg.calc_labels_power_bands(subject, task, args.atlas, inv_method, em, tmin=times[0], tmax=times[1], overwrite=True)
+            plots_fol = utils.make_dir(op.join(input_fol, 'plots'))
+            for input_fname in input_fnames:
+                d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
+                label_power = d.data
+                if 'times' not in d:
+                    times = np.arange(0, label_power.shape[2])
+                plot_label_power(label_power, times, d.label_name, bands, task, plots_fol)
+            # utils.make_dir(op.join(res_fol, subject))
+            # power_fname = op.join(
+            #     res_fol, subject, '{}_labels_{}_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em, band))
 
-        for fname in [f for f in glob.glob(op.join(MMVT_DIR, subject, 'labels', 'labels_data', '*')) if op.isfile(f)]:
-            shutil.copyfile(fname, op.join(res_fol, subject, utils.namebase_with_ext(fname)))
+
+def plot_label_power(power, times, label, bands, task, plots_fol):
+    # plt.figure()
+    f, axs = plt.subplots(5, 1, sharex=True)
+    for band_ind, (band_name, ax) in enumerate(zip(bands.keys(), axs)):
+        power_mean = power[band_ind].mean(0)
+        power_std = power[band_ind].std(0)
+        ax.plot(times, power_mean)
+        ax.fill_between(times, power_mean - power_std, power_mean + power_std, alpha=.5)
+        ax.set_title(band_name)
+    fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label, task))
+    print('Saving {}'.format(fig_fname))
+    plt.savefig(fig_fname)
+    plt.close()
 
 
 def calc_meg_connectivity(args):
@@ -512,8 +535,8 @@ def get_good_subjects(args, check_dict=False):
                 print(cors)
                 continue
             data_fol = op.join(args.meg_dir, subject)
-            files_exist = op.isfile(op.join(data_fol, '{}_{}_meg_Onset-epo.fif'.format(subject, 'ECR'))) and \
-                op.isfile(op.join(data_fol, '{}_{}_meg_Onset-epo.fif'.format(subject, 'MSIT')))
+            files_exist = op.isfile(op.join(data_fol, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, 'ECR'))) and \
+                op.isfile(op.join(data_fol, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, 'MSIT')))
             if not files_exist:
                 print('**** {} doesn\'t have both MSIT and ECR files!'.format(subject))
                 continue
@@ -562,22 +585,10 @@ if __name__ == '__main__':
     args = utils.Bag(au.parse_parser(parser))
 
     if args.subject[0] == 'all':
-        # msit_subjects = [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'MSIT', '*')) if op.isdir(d) and \
-        #                  op.isfile(op.join(d, '{}_msit_nTSSS-ica-raw-epo.fif'.format(utils.namebase(d))))]
-        # ecr_subjects = [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'ECR', '*')) if op.isdir(d) and \
-        #                 op.isfile(op.join(d, '{}_ecr_nTSSS-ica-raw-epo.fif'.format(utils.namebase(d))))]
-        # subjects =  utils.shuffle(list(set(msit_subjects) & set(ecr_subjects)))
-
-        # args.subject = utils.shuffle(
-        #     [utils.namebase(d) for d in glob.glob(op.join(MEG_DIR, 'MSIT', '**', '*_msit_nTSSS-ica-raw-epo.fif')) if op.isdir(d) and
-        #      op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-        #      op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
-
-
         args.subject = utils.shuffle(
             [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, '*')) if op.isdir(d) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset-epo.fif'.format(utils.namebase(d), 'MSIT')))])
+             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'ECR'))) and
+             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'MSIT')))])
         print('{} subjects were found with both tasks!'.format(len(args.subject)))
         print(sorted(args.subject))
     elif '*' in args.subject[0]:

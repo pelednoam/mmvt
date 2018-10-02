@@ -121,10 +121,10 @@ if __name__ == '__main__':
 
     epochs, inverse_operator, label = init_data()
     powers, times = calc_morlet_cwt(epochs, inverse_operator, label, bands, inverse_method, lambda2, pick_ori, n_cycles)
-    # plot_morlet_cwt_results(times, powers, bands.keys())
+    plot_morlet_cwt_results(times, powers, bands.keys())
     #
     stcs = calc_source_band_induced_power(epochs, inverse_operator, label, bands, n_cycles)
-    # plot_source_band_induced_power(stcs)
+    plot_source_band_induced_power(stcs)
 
     psd_powers = calc_source_psd_epochs(epochs, inverse_operator, inverse_method, label, bands, lambda2, bandwidth)
     plt.show()

@@ -625,6 +625,66 @@ def plot_label_psd(psd, freqs, label, cond_name, plots_fol):
     plt.close()
 
 
+def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
+        bands=None, max_epochs_num=0, n_cycles=7.0, mri_subject='', epo_fname='', inv_fname='',
+        snr=3.0, pick_ori='normal', apply_SSP_projection_vectors=True,
+        add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True,  epochs=None, overwrite=False, n_jobs=6):
+
+    if mri_subject == '':
+        mri_subject = subject
+    if inv_fname == '':
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    if not op.isfile(inv_fname):
+        raise Exception('Can\'t find the inverse file! {}'.format(inv_fname))
+    inverse_operator, _ = get_inv_src(inv_fname)
+    epo_fname = get_epo_fname(epo_fname)
+    if isinstance(extract_modes, str):
+        extract_modes = [extract_modes]
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
+    lambda2 = 1.0 / snr ** 2
+    if bands is None:
+        bands = dict(theta=np.arange(4, 8, 1), alpha=np.arange(8, 15, 1), beta=np.arange(15, 30, 2),
+                     gamma=np.arange(30, 55, 3), high_gamma=np.arange(65, 120, 5))
+    labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, n_jobs=n_jobs)
+    ws = None
+    ret = True
+    # fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg', 'labels'))
+    fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
+    for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        epo_cond_fname = get_cond_fname(epo_fname, cond_name)
+        if not op.isfile(epo_cond_fname):
+            print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
+            return False
+        if epochs is None:
+            epochs = mne.read_epochs(epo_cond_fname, apply_SSP_projection_vectors, add_eeg_ref)
+        epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
+        if ws is None:
+            ws = [(mne.time_frequency.morlet(
+                epochs.info['sfreq'], freqs, n_cycles=n_cycles, zero_mean=False)) for freqs in bands.values()]
+        for label_ind, label in enumerate(labels):
+            output_fname = op.join(fol, '{}_{}_{}_{}_induced_power.npz'.format(cond_name, label.name, inverse_method, em))
+            if op.isfile(output_fname) and not overwrite:
+                continue
+            powers, times = None, None
+            stcs = mne.minimum_norm.apply_inverse_epochs(
+                epochs, inverse_operator, lambda2, inverse_method, label, pick_ori=pick_ori, return_generator=True)
+            for stc_ind, stc in enumerate(stcs):
+                if stc_ind >= epochs_num:
+                    break
+                if powers is None:
+                    powers = np.empty((len(bands), epochs_num, stc.shape[1]))
+                    times = stc.times
+                for band_ind in range(len(bands.keys())):
+                    tfr = mne.time_frequency.tfr.cwt(
+                        stc.data, ws[band_ind], use_fft=False)
+                    powers[band_ind, stc_ind] = (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
+            print('calc_labels_induced_power: Saving results in {}'.format(output_fname))
+            np.savez(output_fname, label_name=label.name, atlas=atlas, data=powers, times=times)
+            ret = ret and op.isfile(output_fname)
+
+    return ret
+
+
 def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
                             precentiles=(1, 99), bands=None, labels=None, overwrite=False, n_jobs=6):
     meg_fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
@@ -4404,6 +4464,13 @@ def main(tup, remote_subject_dir, org_args, flags=None):
             subject, args.atlas, conditions, inverse_method, args.extract_mode, args.precentiles,
             overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
 
+    if 'calc_labels_induced_power' in args.function:
+        flags['calc_labels_induced_power'] = calc_labels_induced_power(
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.bands,
+            args.max_epochs_num, args.cwt_n_cycles, MRI_SUBJECT, args.epo_fname, args.inv_fname,
+            args.snr, args.pick_ori, args.apply_SSP_projection_vectors, args.add_eeg_ref,
+            args.fwd_usingMEG, args.fwd_usingEEG, overwrite=args.overwrite_labels_induced_power, n_jobs=args.n_jobs)
+
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
             subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file,
@@ -4466,6 +4533,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_data', help='overwrite_labels_data', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_power_spectrum', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_induced_power', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
     parser.add_argument('--use_demi_events', help='use_demi_events', required=False, default=0, type=au.is_true)
