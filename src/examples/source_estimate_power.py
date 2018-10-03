@@ -42,7 +42,6 @@ def init_data():
 
     # Load condition 1
     event_id = 1
-    events = events[:10]  # take 10 events to keep the computation time low
     # Use linear detrend to reduce any edge artifacts
     epochs = mne.Epochs(raw, events, event_id, tmin, tmax, picks=picks,
                         baseline=(None, 0), reject=dict(grad=4000e-13, eog=150e-6),
@@ -57,16 +56,15 @@ def calc_morlet_cwt(epochs, inverse_operator, label, bands, inverse_method, lamb
     bands_names = bands.keys()
     stcs = mne.minimum_norm.apply_inverse_epochs(
         epochs, inverse_operator, lambda2, inverse_method, label, pick_ori=pick_ori, return_generator=True)
-    ws = [(mne.time_frequency.morlet(
-        epochs.info['sfreq'], freqs, n_cycles=n_cycles, zero_mean=False)) for freqs in bands_frqs]
+    ws = [(mne.time_frequency.morlet(epochs.info['sfreq'], freqs, n_cycles=n_cycles, zero_mean=False))
+          for freqs in bands_frqs]
     for stc_ind, stc in enumerate(stcs):
         if powers is None:
             powers = np.empty((len(bands), len(epochs), stc.shape[1]))
             times = stc.times
         for band_ind in range(len(bands_names)):
-            this_tfr = mne.time_frequency.tfr.cwt(
-                stc.data, ws[band_ind], use_fft=False)
-            powers[band_ind, stc_ind] = (this_tfr * this_tfr.conj()).real.mean((0, 1)) # avg over label vertices and band's freqs
+            tfr = mne.time_frequency.tfr.cwt(stc.data, ws[band_ind], use_fft=False)
+            powers[band_ind, stc_ind] = (tfr * tfr.conj()).real.mean((0, 1)) # avg over label vertices and band's freqs
     return powers, times
 
 
