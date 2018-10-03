@@ -884,6 +884,7 @@ class ElecsPanel(bpy.types.Panel):
     bpy.context.scene.elc_size = 1
     atlases_exist = False
     labling_files = []
+    electrodes_labeling_file_exist = False
 
     def draw(self, context):
         elecs_draw(self, context)

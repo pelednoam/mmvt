@@ -37,7 +37,12 @@ def remove_large_negative_values_from_ct(ct_fname, new_ct_fname='', threshold=-2
     ct_data = h.get_data()
     ct_data[ct_data < threshold] = threshold
     ct_new = nib.Nifti1Image(ct_data, header=h.get_header(), affine=h.get_affine())
-    nib.save(ct_new, new_ct_fname)
+    try:
+        nib.save(ct_new, new_ct_fname)
+    except:
+        utils.print_last_error_line()
+        os.remove(new_ct_fname)
+        return ct_fname
     return new_ct_fname
 
 

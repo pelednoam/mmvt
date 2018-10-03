@@ -22,6 +22,8 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
     if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
         return True
+    if op.isfile(op.join(ct_fol, output_name)):
+        return True
     ct_fname = utils.select_one_file(glob.glob(op.join(ct_fol, '*.mgz')))
     if op.isfile(ct_fname):
         if utils.namebase(ct_fname) != 'ct_org':
@@ -67,7 +69,10 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         shutil.copy(op.join(SUBJECTS_DIR, subject, 'ct', ct_name), op.join(MMVT_DIR, subject, 'ct', ct_name))
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
-    if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
+    ct_mmvt_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+    t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+    if op.isfile(op.join(ct_mmvt_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
+        print('freeview -v "{}" "{}":colormap=Heat'.format(t1_fname, op.join(ct_mmvt_fol, register_ct_name)))
         return True
     if ct_name == '':
         ct_name = 'ct_org.mgz'
@@ -75,16 +80,15 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         nnv_ct_name = 'ct_no_large_negative_values.mgz'
     if register_ct_name == '':
         register_ct_name = 'ct_reg_to_mr.mgz'
-    print('Removing large negative values: {} -> {}'.format(op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name)))
+    print('Removing large negative values: {} -> {}'.format(op.join(ct_fol, ct_name), op.join(ct_mmvt_fol, nnv_ct_name)))
     if not print_only:
-        ctu.remove_large_negative_values_from_ct(
-            op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name), threshold, overwrite)
+        nnv_ct_fname = ctu.remove_large_negative_values_from_ct(
+            op.join(ct_fol, ct_name), op.join(ct_mmvt_fol, nnv_ct_name), threshold, overwrite)
     ctu.register_ct_to_mr_using_mutual_information(
-        subject, SUBJECTS_DIR, op.join(ct_fol, nnv_ct_name), op.join(ct_fol, register_ct_name), lta_name='',
+        subject, SUBJECTS_DIR, nnv_ct_fname, op.join(ct_mmvt_fol, register_ct_name), lta_name='',
         overwrite=overwrite, cost_function=cost_function, print_only=print_only)
-    t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
-    print('freeview -v {} {}'.format(t1_fname, op.join(ct_fol, register_ct_name)))
-    return True if print_only else op.isfile(op.join(ct_fol, register_ct_name))
+    print('freeview -v {} {}'.format(t1_fname, op.join(ct_mmvt_fol, register_ct_name)))
+    return True if print_only else op.isfile(op.join(ct_mmvt_fol, register_ct_name))
 
 
 def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz', overwrite=False):
