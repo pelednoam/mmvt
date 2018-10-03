@@ -16,4 +16,4 @@ zmq
 pizco
 decorator
 scikit-learn
-PyMCubes
+skimage

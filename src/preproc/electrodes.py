@@ -24,6 +24,7 @@ from src.utils import matlab_utils as mu
 from src.utils import preproc_utils as pu
 from src.utils import geometry_utils as gu
 from src.utils import labels_utils as lu
+from src.utils import args_utils as au
 
 SUBJECTS_DIR, MMVT_DIR, FREESURFER_HOME = pu.get_links()
 ELECTRODES_DIR = utils.get_link_dir(utils.get_links_dir(), 'electrodes')
@@ -38,7 +39,7 @@ def montage_to_npy(montage_file, output_file):
     np.savez(output_file, pos=np.array(sfp.pos), names=sfp.ch_names)
 
 
-def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
+def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=',', electrodes_type=None):
     data = np.genfromtxt(ras_file, dtype=str, delimiter=delimiter)
     if data.shape[1] == 5 and np.all(data[:, 4] == ''):
         data = np.delete(data, (4), axis=1)
@@ -49,7 +50,7 @@ def electrodes_csv_to_npy(ras_file, output_file, bipolar=False, delimiter=','):
     except:
         data = np.delete(data, (0), axis=0)
 
-    electrodes_types = grid_or_depth(data)
+    electrodes_types = grid_or_depth(data, electrodes_type)
     # pos = data[:, 1:].astype(float)
     if bipolar:
         # names = []
@@ -107,10 +108,17 @@ def get_names_dists_non_bipolar_electrodes(data):
     return names, pos
 
 
-def calc_electrodes_types(labels, pos):
+def calc_electrodes_types(labels, pos, electrodes_type=None):
     group_type = {}
     dists = defaultdict(list)
     electrodes_group_type = [None] * len(pos)
+
+    if electrodes_type is not None:
+        print('All the electrodes are {}'.format('grid' if electrodes_type == GRID else 'depth'))
+        for index in range(len(labels)):
+            electrodes_group_type[index] = electrodes_type
+        return np.array(electrodes_group_type)
+
     for index in range(len(labels) - 1):
         elc_group1, _ = utils.elec_group_number(labels[index])
         elc_group2, _ = utils.elec_group_number(labels[index + 1])
@@ -122,40 +130,32 @@ def calc_electrodes_types(labels, pos):
             group_type[group] = GRID
         else:
             group_type[group] = DEPTH
+        print('{} is {}'.format(group, 'depth' if group_type[group] == 0 else 'grid'))
+    if not utils.all_items_equall(list(group_type.values())):
+        ret = input('Do you want to reset the types manually (y/n)? ')
+        if au.is_true(ret):
+            for group in dists.keys():
+                man_group_type = None
+                while man_group_type not in [0, 1]:
+                    man_group_type = input('{} is depth (0) or grid/strip (1)? ')
+                    group_type[group] = man_group_type
     for index in range(len(labels)):
         elc_group, _ = utils.elec_group_number(labels[index])
         electrodes_group_type[index] = group_type.get(elc_group, DEPTH)
     return np.array(electrodes_group_type)
 
 
-def grid_or_depth(data):
+def grid_or_depth(data, electrodes_type=None):
     if data.shape[1] == 5:
         electrodes_group_type = [None] * data.shape[0]
         for ind, elc_type in enumerate(data[:, 4]):
             electrodes_group_type[ind] = GRID if elc_type in ['grid', 'strip'] else DEPTH
     else:
         pos = data[:, 1:4].astype(float)
-        return calc_electrodes_types(data[:, 0], pos)
-        # group_type = {}
-        # electrodes_group_type = [None] * pos.shape[0]
-        # for index in range(data.shape[0] - 1):
-        #     elc_group1, _ = utils.elec_group_number(data[index, 0])
-        #     elc_group2, _ = utils.elec_group_number(data[index + 1, 0])
-        #     if elc_group1 == elc_group2:
-        #         dists[elc_group1].append(np.linalg.norm(pos[index + 1] - pos[index]))
-        # for group, group_dists in dists.items():
-        #     #todo: not sure this is the best way to check it. Strip with 1xN will be mistaken as a depth
-        #     if np.max(group_dists) > 2 * np.median(group_dists):
-        #         group_type[group] = GRID
-        #     else:
-        #         group_type[group] = DEPTH
-        # for index in range(data.shape[0]):
-        #     elc_group, _ = utils.elec_group_number(data[index, 0])
-        #     electrodes_group_type[index] = group_type.get(elc_group, DEPTH)
-    # return np.array(electrodes_group_type)
+        return calc_electrodes_types(data[:, 0], pos, electrodes_type)
 
 
-def read_electrodes_file(subject, bipolar, postfix='', snap=False):
+def read_electrodes_file(subject, bipolar, postfix='', snap=False, electrodes_type=None):
     electrodes_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes{}{}_positions{}.npz'.format(
         '_bipolar' if bipolar else '', '_snap' if snap else '',
         '_{}'.format(postfix) if postfix != '' else ''))
@@ -163,7 +163,7 @@ def read_electrodes_file(subject, bipolar, postfix='', snap=False):
     if not op.isfile(electrodes_fname):
         print('{}: No npz file, trying to read xls file'.format(subject))
         try:
-            convert_electrodes_pos(subject, bipolar)
+            convert_electrodes_pos(subject, bipolar, electrodes_type=electrodes_type)
         except:
             print(traceback.format_exc())
     if not op.isfile(electrodes_fname):
@@ -178,7 +178,7 @@ def read_electrodes_file(subject, bipolar, postfix='', snap=False):
             return names, d['pos']
         except:
             os.remove(electrodes_fname)
-            return read_electrodes_file(subject, bipolar, postfix)
+            return read_electrodes_file(subject, bipolar, postfix, electrodes_type=electrodes_type)
 
 
 def save_electrodes_file(subject, bipolar, elecs_names, elecs_coordinates, fname_postfix):
@@ -249,7 +249,7 @@ def calc_dist_mat(subject, bipolar=False, snap=False):
 
 
 def convert_electrodes_pos(
-        subject, bipolar=False, ras_xls_sheet_name='', snaps=[True, False]):
+        subject, bipolar=False, ras_xls_sheet_name='', snaps=[True, False], electrodes_type=None):
     rename_and_convert_electrodes_file(subject, ras_xls_sheet_name)
     electrodes_folder = op.join(MMVT_DIR, subject, 'electrodes')
     utils.make_dir(electrodes_folder)
@@ -270,7 +270,7 @@ def convert_electrodes_pos(
         file_found = True
         output_file_name = 'electrodes{}_{}positions.npz'.format('_bipolar' if bipolar else '', 'snap_' if snap else '')
         output_file = op.join(MMVT_DIR, subject, 'electrodes', output_file_name)
-        pos, names = electrodes_csv_to_npy(csv_file, output_file, bipolar)
+        pos, names = electrodes_csv_to_npy(csv_file, output_file, bipolar, electrodes_type=electrodes_type)
         if pos is None or names is None:
             return False, None, None
         # if copy_to_blender:
@@ -554,14 +554,14 @@ def find_groups_hemi(electrodes, transformed_positions, bipolar):
 
 
 @pu.tryit_ret_bool
-def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
+def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False, electrodes_type=None):
     from collections import Counter
 
     elcs_groups = {}
     groups = defaultdict(list)
     sorted_groups = dict(rh=[], lh=[])
 
-    electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
+    electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar, electrodes_type=electrodes_type)
     if manual:
         groups = list(set([utils.elec_group(elc, bipolar) for elc in electrodes]))
         for group in groups:
@@ -597,12 +597,12 @@ def find_electrodes_hemis(subject, bipolar, sigma=0, manual=False):
     return True
 
 
-def get_electrodes_hemis(subject, bipolar=False, sigma=0, manual=False):
+def get_electrodes_hemis(subject, bipolar=False, sigma=0, manual=False, electrodes_type=None):
     fname = op.join(MMVT_DIR, subject, 'electrodes', 'sorted_groups.pkl')
     if op.isfile(fname):
         return utils.load(fname)
     else:
-        find_electrodes_hemis(subject, bipolar, sigma=sigma, manual=manual)
+        find_electrodes_hemis(subject, bipolar, sigma=sigma, manual=manual, electrodes_type=electrodes_type)
         return utils.load(fname) if op.isfile(fname) else None
 
 
@@ -634,14 +634,15 @@ def check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma):
 
 
 @utils.tryit()
-def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False):
+def check_how_many_electrodes_inside_the_dura(subject, sigma=0, bipolar=False, electrodes_type=None):
     if bipolar:
         print('This function is only for monopolar electrodes')
         return False
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'how_many_inside_dura.csv')
     if op.isfile(output_fname):
         os.remove(output_fname)
-    electrodes, electrodes_t1_tkreg = read_electrodes_file(subject, bipolar)
+    electrodes, electrodes_t1_tkreg = read_electrodes_file(
+        subject, bipolar, electrodes_type=electrodes_type)
     in_dural_hemis = check_if_electrodes_inside_the_dura(subject, electrodes_t1_tkreg, sigma)
     if in_dural_hemis is None:
         return False
@@ -775,7 +776,7 @@ def fix_channles_names(edf_raw, data_channels):
         edf_raw.ch_names[ch_ind] = edf_raw.info['chs'][ch_ind]['ch_name'] = new_name
 
 
-def create_raw_data_from_edf(subject, args, stat=STAT_DIFF, do_plot=False, overwrite=False):
+def create_raw_data_from_edf(subject, args, stat=STAT_DIFF, electrodes_type=None, do_plot=False, overwrite=False):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     meta_fname_exist = len(glob.glob(op.join(fol, 'electrodes_meta_data*.npz'))) > 0
     data_fname_exist = len(glob.glob(op.join(fol, 'electrodes_data*.npy'))) > 0
@@ -798,7 +799,7 @@ def create_raw_data_from_edf(subject, args, stat=STAT_DIFF, do_plot=False, overw
     dt = (edf_raw.times[1] - edf_raw.times[0])
     hz = int(1/ dt)
     # T = edf_raw.times[-1] # sec
-    data_channels, all_pos = read_electrodes_file(subject, bipolar=False)
+    data_channels, all_pos = read_electrodes_file(subject, bipolar=False, electrodes_type=electrodes_type)
     fix_mismatches(edf_raw, args.channels_names_mismatches)
     fix_channles_names(edf_raw, data_channels)
     # live_channels = find_live_channels(edf_raw, hz)
@@ -875,7 +876,7 @@ def create_raw_data_from_edf(subject, args, stat=STAT_DIFF, do_plot=False, overw
         stat_data_mv = utils.moving_avg(stat_data, args.moving_average_win_size)
         np.savez(output_fname, data=data, stat=stat_data_mv, names=labels, conditions=conditions, times=times) # colors=colors_mv
         if args.bipolar:
-            return data_electrodes_to_bipolar(subject)
+            return data_electrodes_to_bipolar(subject, electrodes_type)
         else:
             return op.isfile(output_fname)
     else:
@@ -887,17 +888,17 @@ def create_raw_data_from_edf(subject, args, stat=STAT_DIFF, do_plot=False, overw
         np.save(data_fname, data)
         # return op.isfile(data_fname) and op.isfile(meta_fname) and data_electrodes_to_bipolar(subject)
         if args.bipolar:
-            return data_electrodes_to_bipolar(subject)
+            return data_electrodes_to_bipolar(subject, electrodes_type)
         else:
             return op.isfile(data_fname) and op.isfile(meta_fname)
 
 
-def data_electrodes_to_bipolar(subject):
+def data_electrodes_to_bipolar(subject, electrodes_type=None):
     fol = op.join(MMVT_DIR, subject, 'electrodes')
     meta_data = np.load(op.join(fol, 'electrodes_meta_data.npz'))
     data = np.load(op.join(fol, 'electrodes_data.npy'))
     channels, conditions, times = meta_data['names'], meta_data['conditions'], meta_data['times']
-    _, _, bipolar_channels = convert_electrodes_pos(subject, bipolar=True)
+    _, _, bipolar_channels = convert_electrodes_pos(subject, bipolar=True, electrodes_type=electrodes_type)
     data_bipolar = np.zeros((len(bipolar_channels), data.shape[1], len(conditions)))
     for cond_ind in range(len(conditions)):
         for ind, bipolar_channel in enumerate(bipolar_channels):
@@ -1041,8 +1042,8 @@ def electrodes_3d_scatter_plot(pos, pos2=None):
     plt.show()
 
 
-def get_electrodes_groups(subject, bipolar):
-    electrodes, _ = read_electrodes_file(subject, bipolar)
+def get_electrodes_groups(subject, bipolar, electrodes_type=None):
+    electrodes, _ = read_electrodes_file(subject, bipolar, electrodes_type=electrodes_type)
     groups = set()
     for elc in electrodes:
         groups.add(utils.elec_group(elc, bipolar))
@@ -1050,10 +1051,10 @@ def get_electrodes_groups(subject, bipolar):
 
 
 @pu.tryit_ret_bool
-def create_electrodes_groups_coloring(subject, bipolar, coloring_fname=''):
+def create_electrodes_groups_coloring(subject, bipolar, electrodes_type=None, coloring_fname=''):
     if coloring_fname == '':
         coloring_fname = 'electrodes_{}groups_coloring.csv'.format('bipolar_' if bipolar else '')
-    electrodes, groups = get_electrodes_groups(subject, bipolar)
+    electrodes, groups = get_electrodes_groups(subject, bipolar, electrodes_type=electrodes_type)
     colors_rgb_and_names = cu.get_distinct_colors_and_names(len(groups) - 1, boynton=True)
     group_colors = dict()
     coloring_fname = op.join(MMVT_DIR, subject, 'coloring', coloring_fname)
@@ -1073,8 +1074,8 @@ def create_electrodes_groups_coloring(subject, bipolar, coloring_fname=''):
     return op.isfile(coloring_fname)
 
 
-def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4, other_fname='',
-                            overwrite_ela=False):
+def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_radius=3, elec_length=4,
+                            electrodes_type=None, other_fname='', overwrite_ela=False):
     if other_fname == '':
         # We remove the 'all_rois' and 'stretch' for the name!
         electrode_labeling_fname = op.join(blender_root, subject, 'electrodes',
@@ -1083,7 +1084,7 @@ def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_r
     else:
         electrode_labeling_fname = other_fname
     if not op.isfile(electrode_labeling_fname):
-        run_ela(subject, atlas, bipolar, overwrite_ela, error_radius, elec_length)
+        run_ela(subject, atlas, bipolar, overwrite_ela, error_radius, elec_length, electrodes_type)
     if op.isfile(electrode_labeling_fname):
         labeling = utils.load(electrode_labeling_fname)
         return labeling, electrode_labeling_fname
@@ -1094,10 +1095,11 @@ def get_electrodes_labeling(subject, blender_root, atlas, bipolar=False, error_r
 
 @pu.tryit_ret_bool
 def create_electrodes_labeling_coloring(subject, bipolar, atlas, good_channels=None, error_radius=3, elec_length=4,
-                                        overwrite_ela=False, p_threshold=0.05, legend_name='', coloring_fname=''):
+        overwrite_ela=False, p_threshold=0.05, legend_name='', coloring_fname='', electrodes_type=None):
     # elecs_names, elecs_coords = read_electrodes_file(subject, bipolar)
     elecs_probs, electrode_labeling_fname = get_electrodes_labeling(
-        subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length, overwrite_ela=overwrite_ela)
+        subject, MMVT_DIR, atlas, bipolar, error_radius, elec_length, electrodes_type=electrodes_type,
+        overwrite_ela=overwrite_ela)
     if elecs_probs is None:
         print('No electrodes labeling file!')
         return
@@ -1171,25 +1173,26 @@ def get_rois_colors(subject, atlas, rois):
     white_rois = rois - not_white_rois
     not_white_rois = sorted(list(not_white_rois))
     colors = cu.get_distinct_colors_and_names()
-    lables_colors_rgbs_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
-    lables_colors_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_colors_names.txt'.format(atlas))
-    labels_colors_exist = op.isfile(lables_colors_rgbs_fname) and op.isfile(lables_colors_names_fname)
     rois_colors_rgbs, rois_colors_names = OrderedDict(), OrderedDict()
-    if not labels_colors_exist:
-        print('No labels coloring file!')
-    else:
-        labels_colors_rgbs = np.genfromtxt(lables_colors_rgbs_fname, dtype=str, delimiter=',')
-        labels_colors_names = np.genfromtxt(lables_colors_names_fname, dtype=str, delimiter=',')
+
+    # lables_colors_rgbs_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_coloring.csv'.format(atlas))
+    # lables_colors_names_fname = op.join(MMVT_DIR, subject, 'coloring', 'labels_{}_colors_names.txt'.format(atlas))
+    # labels_colors_exist = op.isfile(lables_colors_rgbs_fname) # and op.isfile(lables_colors_names_fname)
+    # if not labels_colors_exist:
+    #     print('No labels coloring file!')
+    # else:
+    #     labels_colors_rgbs = np.genfromtxt(lables_colors_rgbs_fname, dtype=str, delimiter=',')
+    #     # labels_colors_names = np.genfromtxt(lables_colors_names_fname, dtype=str, delimiter=',')
     for roi in not_white_rois:
-        if labels_colors_exist:
-            roi_inds = np.where(labels_colors_rgbs[:, 0] == '{}-rh'.format(roi))[0]
-            if len(roi_inds) > 0:
-                color_rgb = labels_colors_rgbs[roi_inds][0, 1:].tolist()
-                color_name = labels_colors_names[roi_inds][0, 1]
-            else:
-                color_rgb, color_name = next(colors)
-        else:
-            color_rgb, color_name = next(colors)
+        # if labels_colors_exist:
+        #     roi_inds = np.where(labels_colors_rgbs[:, 0] == '{}-rh'.format(roi))[0]
+        #     if len(roi_inds) > 0:
+        #         color_rgb = labels_colors_rgbs[roi_inds][0, 1:].tolist()
+        #         # color_name = labels_colors_names[roi_inds][0, 1]
+        #     else:
+        #         color_rgb, color_name = next(colors)
+        # else:
+        color_rgb, color_name = next(colors)
         rois_colors_rgbs[roi], rois_colors_names[roi] = color_rgb, color_name
     for white_roi in white_rois:
         rois_colors_rgbs[white_roi], rois_colors_names[white_roi] = cu.name_to_rgb('white').tolist(), 'white'
@@ -1214,7 +1217,7 @@ def save_rois_colors_legend(subject, rois_colors, bipolar, legend_name=''):
 
 def transform_electrodes_to_mni(subject, args):
     from src.utils import freesurfer_utils as fu
-    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar)
+    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar, electrodes_type=args.electrodes_type)
     elecs_coords_mni = fu.transform_subject_to_mni_coordinates(subject, elecs_coords, SUBJECTS_DIR)
     if elecs_coords_mni is not None:
         save_electrodes_coords(subject, elecs_names, elecs_coords_mni, args.good_channels, args.bad_channels, '_mni')
@@ -1225,7 +1228,7 @@ def transform_electrodes_to_mni(subject, args):
 
 def transform_electrodes_to_subject(subject, args):
     from src.utils import freesurfer_utils as fu
-    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar, 'mni')
+    elecs_names, elecs_coords = read_electrodes_file(subject, args.bipolar, 'mni', electrodes_type=args.electrodes_type)
     elecs_coords_to_subject = fu.transform_subject_to_subject_coordinates(
         args.trans_from_subject, subject, elecs_coords, SUBJECTS_DIR)
     electrodes_fname = save_electrodes_coords(
@@ -1257,11 +1260,11 @@ def save_electrodes_coords(subject, elecs_names, elecs_coords, good_channels=Non
     return electrodes_fname
 
 
-def snap_electrodes_to_dural(subject, snap_all=False, overwrite_snap=False):
+def snap_electrodes_to_dural(subject, snap_all=False, overwrite_snap=False, electrodes_type=None):
     from src.utils import args_utils as au
     # todo: of over all the electrodes, check the groups, and run the snap in a loop only for the grids
     groups_pos_dict = defaultdict(list)
-    all_names, all_pos = read_electrodes_file(subject, False)
+    all_names, all_pos = read_electrodes_file(subject, False, electrodes_type=electrodes_type)
     for elc_name, elc_pos in zip(all_names, all_pos):
         group = utils.elec_group(elc_name, False)
         groups_pos_dict[group].append(elc_pos)
@@ -1276,16 +1279,16 @@ def snap_electrodes_to_dural(subject, snap_all=False, overwrite_snap=False):
             snap_ret = snap_ret and snap_electrodes_to_surface(
                 subject, pos, group, SUBJECTS_DIR, overwrite=overwrite_snap)
     if snap_ret:
-        read_snapped_electrodes(subject, overwrite_snap)
+        read_snapped_electrodes(subject, electrodes_type, overwrite_snap)
     return snap_ret
 
 
-def read_snapped_electrodes(subject, overwrite=False):
+def read_snapped_electrodes(subject, electrodes_type=None, overwrite=False):
     output_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_snap_positions.npz')
     if op.isfile(output_fname) and not overwrite:
         return True
     groups_names_dict = defaultdict(list)
-    all_names, all_pos = read_electrodes_file(subject, False)
+    all_names, all_pos = read_electrodes_file(subject, False, electrodes_type=electrodes_type)
     for elc_name in all_names:
         group = utils.elec_group(elc_name, False)
         groups_names_dict[group].append(elc_name)
@@ -1587,7 +1590,7 @@ def get_ras_file(subject, args):
     return op.isfile(local_fname)
 
 
-def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs=-1):
+def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, electrodes_type=None, n_jobs=-1):
     mmvt_code_fol = utils.get_mmvt_code_root()
     ela_code_fol = op.join(utils.get_parent_fol(mmvt_code_fol), 'electrodes_rois')
     if not op.isdir(ela_code_fol) or not op.isfile(op.join(ela_code_fol, 'find_rois', 'find_rois.py')):
@@ -1610,7 +1613,10 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
         sys.path.append(ela_code_fol)
     from find_rois import find_rois
     importlib.reload(find_rois)
-    args = find_rois.get_args(['-s', subject, '-a', atlas, '-b', str(bipolar), '--n_jobs', str(n_jobs)])
+    cmd_args = ['-s', subject, '-a', atlas, '-b', str(bipolar), '--n_jobs', str(n_jobs)]
+    if electrodes_type is not None:
+        cmd_args.extend(['--electrodes_type', electrodes_type])
+    args = find_rois.get_args(cmd_args)
     find_rois.run_for_all_subjects(args)
     if not op.isfile(output_fname):
         return False
@@ -1620,15 +1626,15 @@ def run_ela(subject, atlas, bipolar, overwrite=False, elc_r=3, elc_len=4, n_jobs
 
 
 def create_labels_around_electrodes(subject, bipolar=False, labels_fol_name='electrodes_labels',
-        label_r=5, snap=False, sigma=1, overwrite=False, n_jobs=4):
-    names, pos = read_electrodes_file(subject, bipolar, snap=snap)
+        label_r=5, snap=False, sigma=1, electrodes_type=None, overwrite=False, n_jobs=4):
+    names, pos = read_electrodes_file(subject, bipolar, snap=snap, electrodes_type=electrodes_type)
     labels_fol = utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label', labels_fol_name))
     if op.isdir(labels_fol) and overwrite:
         shutil.rmtree(labels_fol)
     verts = {}
     for hemi in utils.HEMIS:
         verts[hemi], _ = utils.read_pial(subject, MMVT_DIR, hemi)
-    electrodes_hemis = get_electrodes_hemis(subject, sigma=sigma)
+    electrodes_hemis = get_electrodes_hemis(subject, sigma=sigma, electrodes_type=electrodes_type)
     for elc_name, elc_pos in zip(names, pos):
         group = utils.elec_group(elc_name, bipolar)
         elc_hemi = get_group_hemi(group, electrodes_hemis)
@@ -1662,7 +1668,8 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'convert_electrodes_pos'):
         flags['convert_electrodes_pos'], _, _ = convert_electrodes_pos(
-            subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name)
+            subject, bipolar=args.bipolar, ras_xls_sheet_name=args.ras_xls_sheet_name,
+            electrodes_type=args.electrodes_type)
 
     if utils.should_run(args, 'calc_dist_mat'):
         flags['calc_dist_mat'] = calc_dist_mat(subject, bipolar=args.bipolar)
@@ -1673,7 +1680,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'find_electrodes_hemis'):
         flags['find_electrodes_hemis'] = find_electrodes_hemis(
-            subject, args.bipolar, args.sigma, args.find_hemis_manual)
+            subject, args.bipolar, args.sigma, args.find_hemis_manual, args.electrodes_type)
 
     if utils.should_run(args, 'create_electrode_data_file') and not args.task is None:
         flags['create_electrode_data_file'] = create_electrode_data_file(
@@ -1683,14 +1690,16 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'create_electrodes_labeling_coloring'):
         flags['create_electrodes_labeling_coloring'] = create_electrodes_labeling_coloring(
-            subject, args.bipolar, args.atlas, overwrite_ela=args.overwrite_ela)
+            subject, args.bipolar, args.atlas, overwrite_ela=args.overwrite_ela,
+            electrodes_type=args.electrodes_type)
 
     if utils.should_run(args, 'create_electrodes_groups_coloring'):
         flags['create_electrodes_groups_coloring'] = create_electrodes_groups_coloring(
-            subject, args.bipolar, args.electrodes_groups_coloring_fname)
+            subject, args.bipolar, args.electrodes_type, args.electrodes_groups_coloring_fname)
 
-    if utils.should_run(args, 'transform_electrodes_to_mni'):
-        flags['transform_electrodes_to_mni'] = transform_electrodes_to_mni(subject, args)
+    # if utils.should_run(args, 'transform_electrodes_to_mni'):
+    #     flags['transform_electrodes_to_mni'] = transform_electrodes_to_mni(
+    #         subject, args)
 
     if 'transform_electrodes_to_subject' in args.function:
         flags['transform_electrodes_to_subject'] = transform_electrodes_to_subject(subject, args)
@@ -1701,20 +1710,21 @@ def main(subject, remote_subject_dir, args, flags):
 
     if 'create_raw_data_from_edf' in args.function:# and not args.task is None:
         flags['create_raw_data_from_edf'] = create_raw_data_from_edf(
-            subject, args, overwrite=args.overwrite_raw_data)
+            subject, args, overwrite=args.overwrite_raw_data, electrodes_type=args.electrodes_type)
 
     if 'electrodes_inside_the_dura' in args.function:
         flags['electrodes_inside_the_dura'] = check_how_many_electrodes_inside_the_dura(
-            subject, args.sigma, args.bipolar)
+            subject, args.sigma, args.bipolar, args.electrodes_type)
 
     if 'run_ela' in args.function:
         flags['run_ela'] = run_ela(
-            subject, args.atlas, args.bipolar, args.overwrite_ela, args.error_radius, args.elc_length, args.n_jobs)
+            subject, args.atlas, args.bipolar, args.overwrite_ela, args.error_radius, args.elc_length,
+            args.electrodes_type, args.n_jobs)
 
     if 'create_labels_around_electrodes' in args.function:
         flags['create_labels_around_electrodes'] = create_labels_around_electrodes(
             subject, args.bipolar, args.electrodes_labels_fol_name, args.electrodes_label_r, args.snap,
-            args.overwrite_electrodes_labels, args.n_jobs)
+            args.electrodes_types, args.overwrite_electrodes_labels, args.n_jobs)
 
     if 'calc_epochs_power_spectrum' in args.function:
         flags['calc_epochs_power_spectrum'] = calc_epochs_power_spectrum(
@@ -1722,10 +1732,12 @@ def main(subject, remote_subject_dir, args, flags):
             args.n_jobs)
 
     if 'snap_electrodes_to_dural' in args.function:
-        flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(subject, args.snap_all, args.overwrite_snap)
+        flags['snap_electrodes_to_dural'] = snap_electrodes_to_dural(
+            subject, args.snap_all, args.overwrite_snap, args.electrodes_type)
 
     if 'read_snapped_electrodes' in args.function:
-        flags['read_snapped_electrodes'] = read_snapped_electrodes(subject, args.overwrite_snap)
+        flags['read_snapped_electrodes'] = read_snapped_electrodes(
+            subject, args.electrodes_type, args.overwrite_snap)
 
     return flags
 
@@ -1801,6 +1813,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--windows_shift', help='windows shift', required=False, default=500, type=int)
     parser.add_argument('--epochs_num', help='epoches nun', required=False, default=-1, type=int)
     parser.add_argument('--overwrite_power_spectrum', help='', required=False, default=False, type=au.is_true)
+    parser.add_argument('--electrodes_type', help='', required=False, default=None)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
@@ -1815,6 +1828,8 @@ def read_cmd_args(argv=None):
         args.upper_freq_filter = None
     if args.bipolar:
         args.ref_elec = ''
+    if args.overwrite_ela and 'run_ela' not in args.function:
+        args.function.append('run_ela')
     # print(args)
     return args
 

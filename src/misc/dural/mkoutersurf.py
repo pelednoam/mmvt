@@ -6,7 +6,9 @@ from scipy.signal import convolve
 from scipy.ndimage.morphology import grey_closing
 from scipy.ndimage.morphology import generate_binary_structure
 from mne import write_surface
-from mcubes import marching_cubes
+# from mcubes import marching_cubes
+from skimage import measure
+
 
 def mkoutersurf(image, radius, outfile):
     #radius information is currently ignored
@@ -35,7 +37,7 @@ def mkoutersurf(image, radius, outfile):
     BW2[np.where(BW2 <= thresh)] = 0
     BW2[np.where(BW2 > thresh)] = 255
 
-    v, f = marching_cubes(BW2, 100)
+    v, f, _, _ = measure.marching_cubes(BW2, 100)
 
     v2 = np.transpose(
              np.vstack( ( 128 - v[:,0],
