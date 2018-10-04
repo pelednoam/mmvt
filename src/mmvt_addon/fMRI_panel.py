@@ -664,11 +664,12 @@ def load_fmri_volume(nii_fname):
 
 def fMRI_draw(self, context):
     layout = self.layout
-    user_fol = mu.get_user_fol()
+    # user_fol = mu.get_user_fol()
     # clusters_labels_files = glob.glob(op.join(user_fol, 'fmri', 'clusters_labels_*.npy'))
     # if len(clusters_labels_files) > 1:
     col = layout.box().column()
     col.prop(context.scene, 'fmri_clustering_threshold', text='Threshold')
+    col.prop(context.scene, 'fmri_files', text='')
     col.prop(context.scene, 'subject_annot_files', text='')
     col.operator(CalcClusters.bl_idname, text="Find clusters", icon='GROUP_VERTEX')
     if not fMRIPanel.fMRI_clusters_files_exist and _addon().coloring.fMRI_constrasts_exist() > 0:
