@@ -651,6 +651,15 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
     # fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg', 'labels'))
     fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
     for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        all_done = True
+        for label_ind, label in enumerate(labels):
+            output_fname = op.join(fol, '{}_{}_{}_{}_induced_power.npz'.format(cond_name, label.name, inverse_method, em))
+            if not op.isfile(output_fname) or overwrite:
+                all_done = False
+                break
+        if all_done:
+            continue
+
         epo_cond_fname = get_cond_fname(epo_fname, cond_name)
         if not op.isfile(epo_cond_fname):
             print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
