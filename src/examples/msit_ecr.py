@@ -160,8 +160,8 @@ def meg_preproc(args):
             #         print('{} already exist!'.format(output_fname))
             #         continue
 
-            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, task))
-            local_epo_fname = op.join(MEG_DIR, task, subject, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, task))
+            remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
+            local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))
             if not op.isfile(local_epo_fname) and not op.isfile(remote_epo_fname):
                 print('Can\'t find {}!'.format(local_epo_fname))
                 continue
@@ -177,12 +177,10 @@ def meg_preproc(args):
                 fname_format='{}_{}_Onset'.format('{subject}', task),
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=local_epo_fname,
-                empty_fname=empty_fnames[task],
-                function='make_forward_solution,calc_inverse_operator,calc_labels_induced_power',#'calc_labels_power_spectrum',#s''calc_labels_power_bands', # '',
-                # function='calc_evokes,make_forward_solution,calc_inverse_operator,calc_labels_power_spectrum',
-                         # 'calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
+                empty_fname=empty_fnames[task] if empty_fnames != '' else '',
+                function='calc_labels_induced_power',#'make_forward_solution,calc_inverse_operator,
                 conditions=task.lower(),
-                cor_fname=cors[task].format(subject=subject),
+                cor_fname=cors[task].format(subject=subject) if cors != '' else '',
                 average_per_event=False,
                 data_per_task=True,
                 pick_ori='normal', # very important for calculation of the power spectrum
@@ -530,14 +528,14 @@ def get_good_subjects(args, check_dict=False):
             empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
             if empty_fnames == '' or cors == '' or days == '':
                 print('{}: Error with get_empty_fnames!'.format(subject))
-            if any([task not in cors for task in args.tasks]):
+            if any([task not in cors for task in args.tasks]) and  args.check_cor:
                 print('*** {}: one of the tasks does not have a cor transformation matrix!'.format(subject))
                 print(cors)
                 continue
             data_fol = op.join(args.meg_dir, subject)
             files_exist = op.isfile(op.join(data_fol, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, 'ECR'))) and \
                 op.isfile(op.join(data_fol, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, 'MSIT')))
-            if not files_exist:
+            if not files_exist and args.check_for_both_files:
                 print('**** {} doesn\'t have both MSIT and ECR files!'.format(subject))
                 continue
             # for task in args.tasks:
@@ -566,6 +564,9 @@ if __name__ == '__main__':
     parser.add_argument('--anatomy_preproc', required=False, default=True, type=au.is_true)
     parser.add_argument('--check_files', required=False, default=True, type=au.is_true)
     parser.add_argument('--check_file_modification_time', required=False, default=False, type=au.is_true)
+    parser.add_argument('--check_cor', required=False, default=True, type=au.is_true)
+    parser.add_argument('--check_for_both_files', required=False, default=True, type=au.is_true)
+
     parser.add_argument('--max_epochs_num', required=False, default=0, type=int)
 
     parser.add_argument('--remote_root_dir', required=False,
@@ -581,21 +582,23 @@ if __name__ == '__main__':
     parser.add_argument('--remote_subject_dir', required=False, default=remote_subject_dir)
     parser.add_argument('--remote_meg_dir', required=False,
                         default='/autofs/space/lilli_003/users/DARPA-TRANSFER/meg')
+    parser.add_argument('--epo_template', required=False,
+                        default='{subject}_{task}_meg_Onset_ar-epo.fif')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
 
     if args.subject[0] == 'all':
         args.subject = utils.shuffle(
             [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, '*')) if op.isdir(d) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'MSIT')))])
+             op.isfile(op.join(d, args.epo_template.format(subject=utils.namebase(d), task='ECR'))) and
+             op.isfile(op.join(d, args.epo_template.format(subject=utils.namebase(d), task='MSIT')))])
         print('{} subjects were found with both tasks!'.format(len(args.subject)))
         print(sorted(args.subject))
     elif '*' in args.subject[0]:
         args.subject = utils.shuffle(
             [utils.namebase(d) for d in glob.glob(op.join(args.meg_dir, args.subject[0])) if op.isdir(d) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'ECR'))) and
-             op.isfile(op.join(d, '{}_{}_meg_Onset_ar-epo.fif'.format(utils.namebase(d), 'MSIT')))])
+             op.isfile(op.join(d, args.epo_template.format(subject=utils.namebase(d), task='ECR'))) and
+             op.isfile(op.join(d, args.epo_template.format(subject=utils.namebase(d), task='MSIT')))])
         print('{} subjects were found with both tasks:'.format(len(args.subject)))
         print(sorted(args.subject))
     with warnings.catch_warnings():

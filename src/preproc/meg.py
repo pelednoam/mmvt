@@ -681,7 +681,7 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
 
                 params = [(stc.data, ws[band_ind], band_ind) for band_ind in range(len(bands.keys()))]
                 powers_bands = utils.run_parallel(_calc_tfr_cwt_parallel, params, len(bands.keys()))
-                for power_band in powers_bands:
+                for power_band, band_ind in powers_bands:
                     powers[band_ind, stc_ind] = power_band
                 # for band_ind in range(len(bands.keys())):
                 #     tfr = mne.time_frequency.tfr.cwt(
@@ -695,10 +695,10 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
 
 
 def _calc_tfr_cwt_parallel(p):
-    stc_data, ws_band = p
-    tfr = mne.time_frequency.tfr.cwt(
-        stc_data, ws_band, use_fft=False)
-    return (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
+    stc_data, ws_band, band_ind = p
+    tfr = mne.time_frequency.tfr.cwt(stc_data, ws_band, use_fft=False)
+    power = (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
+    return power, band_ind
 
 
 def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
