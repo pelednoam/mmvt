@@ -296,15 +296,14 @@ def post_meg_preproc(args):
         for task in args.tasks:
             task = task.lower()
             input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
-            if len(input_fnames) == 0:
-                print('No files for {}!'.format(subject))
+            if len(input_fnames) < 28:
+                print('No enough files for {}!'.format(subject))
                 continue
             plots_fol = utils.make_dir(op.join(input_fol, 'plots'))
             for input_fname in input_fnames:
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
                 label_power = d.data
-                if 'times' not in d:
-                    times = np.arange(0, label_power.shape[2])
+                times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
                 plot_label_power(label_power, times, d.label_name, bands, task, plots_fol)
             # utils.make_dir(op.join(res_fol, subject))
             # power_fname = op.join(
