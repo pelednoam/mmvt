@@ -62,7 +62,7 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
                                'combined_to{}_elreg_afteraseg-norm.tm3d'.format(subject_to))
     for subject in subjects:
         if op.isfile(output_fname.format(subject=subject)):
-            print('{} was already morphed to {}'.format(subject, subject_tob))
+            print('{} was already morphed to {}'.format(subject, subject_to))
     subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(output_fname.format(subject=s)))]
     if len(subjects) == 0:
         return
@@ -541,16 +541,16 @@ def get_all_subjects(remote_subject_template):
 
 def main(subjects, template_system, remote_subject_templates=(), bipolar=False, save_as_bipolar=False, prefix='', print_only=False, n_jobs=4):
     good_subjects = prepare_files_for_subjects(subjects, remote_subject_templates, overwrite=False)
-    electrodes = read_all_electrodes(good_subjects, bipolar)
+    # electrodes = read_all_electrodes(good_subjects, bipolar)
     cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
                              overwrite=False)
-    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-    morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
-                     print_only=print_only)
-    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
-    save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-    export_into_csv(template_system, MMVT_DIR, prefix)
-    create_mmvt_coloring_file(template_system, electrodes)
+    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+    # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
+    #                  print_only=print_only)
+    # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
+    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+    # export_into_csv(template_system, MMVT_DIR, prefix)
+    # create_mmvt_coloring_file(template_system, electrodes)
 
 
 if __name__ == '__main__':
