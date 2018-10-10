@@ -69,7 +69,6 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
             print('{} has to be morphed to {}'.format(subject, subject_to))
             no_morph_subjects.append(subject)
     print('Need to morph {}/{} subjecs'.format(len(no_morph_subjects), len(subjects)))
-    return
     subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(output_fname.format(subject=s)))]
 
     if len(subjects) == 0:
