@@ -564,7 +564,8 @@ if __name__ == '__main__':
     n_jobs=4
     # subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
-    subjects = get_all_subjects(remote_subject_template)
+    # subjects = get_all_subjects(remote_subject_template)
+    subjects = ['MG72','MG73','MG76','MG84','MG84','MG84','MG85','MG86','MG87','MG87','MG90','MG91','MG91','MG92','MG93','MG94','MG95','MG96','MG96','MG100','MG103','MG104','MG105','MG105','MG107','MG108','MG108','MG109','MG109','MG111','MG112','MG112','MG114','MG114','MG115','MG51b','MG110','MG116','MG118','MG106']
 
     remote_subject_template1 = '/mnt/cashlab/projects/DARPA/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput_REDONE'
     remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
