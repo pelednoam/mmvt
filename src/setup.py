@@ -211,7 +211,7 @@ def install_reqs(do_upgrade=False, only_verbose=False):
                 if do_upgrade:
                     pipcode = pipmain(['install', '--upgrade', line.strip()])
                 else:
-                    pipcode = pipmain(['install', line.strip()])
+                    pipcode = pipmain(['install', '--user', line.strip()])
                 retcode = retcode or pipcode
     return retcode
 
