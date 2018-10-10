@@ -60,6 +60,9 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
     else:
         output_fname = op.join(subjects_dir, '{subject}', 'mri_cvs_register_to_{}'.format(subject_to),
                                'combined_to{}_elreg_afteraseg-norm.tm3d'.format(subject_to))
+    for subject in subjects:
+        if op.isfile(output_fname.format(subject=subject)):
+            print('{} was already morphed to {}'.format(subject, subject_tob))
     subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(output_fname.format(subject=s)))]
     if len(subjects) == 0:
         return

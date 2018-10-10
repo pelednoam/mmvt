@@ -1507,7 +1507,7 @@ def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
             wr.writerow(line)
 
 
-def xlsx_reader(xlsx_fname, sheet_name=''):
+def xlsx_reader(xlsx_fname, sheet_name='', skip_rows=0):
     import xlrd
     wb = xlrd.open_workbook(xlsx_fname)
     sheet_num = 0
@@ -1525,7 +1525,8 @@ def xlsx_reader(xlsx_fname, sheet_name=''):
     else:
         sh = wb.sheets()[sheet_num]
     for rownum in range(sh.nrows):
-        yield sh.row_values(rownum)
+        if rownum >= skip_rows:
+            yield sh.row_values(rownum)
 
 
 def get_all_subjects(subjects_dir, prefix, exclude_substr):
