@@ -178,7 +178,7 @@ def meg_preproc(args):
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task] if empty_fnames != '' else '',
-                function='calc_labels_induced_power',#'make_forward_solution,calc_inverse_operator,
+                function='make_forward_solution,calc_inverse_operator,calc_labels_induced_power',#,
                 conditions=task.lower(),
                 cor_fname=cors[task].format(subject=subject) if cors != '' else '',
                 average_per_event=False,
