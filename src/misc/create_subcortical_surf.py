@@ -33,4 +33,4 @@ if __name__ == '__main__':
     now, N = time.time(), len(subs)
     for ind, (k, name) in enumerate(subs.items()):
         utils.time_to_go(now, ind, N, runs_num_to_print=1)
-        create_surf('fsaverage', k, name)
+        create_surf('fsaverage5', k, name)
