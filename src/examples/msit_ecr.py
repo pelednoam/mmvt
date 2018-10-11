@@ -4,12 +4,14 @@ from itertools import product
 import shutil
 import os
 import os
+import time
 import glob
 from src.utils import utils
 from src.utils import labels_utils as lu
 from src.preproc import anatomy as anat
 from src.preproc import meg as meg
 from src.preproc import connectivity
+from collections import defaultdict
 import warnings
 import matplotlib.pyplot as plt
 
@@ -137,7 +139,7 @@ def get_empty_fnames(subject, tasks, args, overwrite=False):
 #         meg.call_main(args)
 
 
-def meg_preproc(args):
+def meg_preproc_evoked(args):
     inv_method, em, atlas= 'dSPM', 'mean_flip', 'darpa_atlas'
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
@@ -149,6 +151,7 @@ def meg_preproc(args):
     for subject in good_subjects:
         args.subject = subject
         empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+        input_fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
         for task in args.tasks:
 
             # output_fname = op.join(
@@ -159,6 +162,108 @@ def meg_preproc(args):
             #             (file_mod_time.tm_mon > 9):
             #         print('{} already exist!'.format(output_fname))
             #         continue
+
+            input_fnames = glob.glob(
+                op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em)))
+            if len(input_fnames) == 28:
+                print('{} has already all the results for {}'.format(subject, task))
+                continue
+
+            remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
+            local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))
+            if not op.isfile(local_epo_fname) and not op.isfile(remote_epo_fname):
+                print('Can\'t find {}!'.format(local_epo_fname))
+                continue
+            if not op.isfile(local_epo_fname):
+                utils.make_link(remote_epo_fname, local_epo_fname)
+
+            meg_args = meg.read_cmd_args(dict(
+                subject=args.subject, mri_subject=args.subject,
+                task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
+                # meg_dir=args.meg_dir,
+                remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
+                get_task_defaults=False,
+                fname_format='{}_{}_Onset'.format('{subject}', task),
+                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+                epo_fname=local_epo_fname,
+                empty_fname=empty_fnames[task] if empty_fnames != '' else '',
+                function='make_forward_solution,calc_inverse_operator,calc_labels_induced_power',#,
+                conditions=task.lower(),
+                cor_fname=cors[task].format(subject=subject) if cors != '' else '',
+                average_per_event=False,
+                data_per_task=True,
+                pick_ori='normal', # very important for calculation of the power spectrum
+                # fmin=4, fmax=120, bandwidth=2.0,
+                max_epochs_num=args.max_epochs_num,
+                ica_overwrite_raw=False,
+                normalize_data=False,
+                t_min=times[0], t_max=times[1],
+                read_events_from_file=False, stim_channels='STI001',
+                use_empty_room_for_noise_cov=True,
+                read_only_from_annot=False,
+                # pick_ori='normal',
+                overwrite_labels_power_spectrum = args.overwrite_labels_power_spectrum,
+                overwrite_evoked=args.overwrite,
+                overwrite_fwd=args.overwrite,
+                overwrite_inv=args.overwrite,
+                overwrite_stc=args.overwrite,
+                overwrite_labels_data=args.overwrite,
+                n_jobs=args.n_jobs
+            ))
+            ret = meg.call_main(meg_args)
+            output_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+            join_res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr', subject))
+            for res_fname in glob.glob(op.join(output_fol, '{}_labels_{}_{}_*_power.npz'.format(
+                    task.lower(), inv_method, em))):
+                shutil.copyfile(res_fname, op.join(join_res_fol, utils.namebase_with_ext(res_fname)))
+            if not ret:
+                if args.throw:
+                    raise Exception("errors!")
+                else:
+                    subjects_with_error.append(subject)
+
+
+    good_subjects = [s for s in good_subjects if
+           op.isfile(op.join(MMVT_DIR, subject, 'meg',
+                             'labels_data_msit_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em))) and
+           op.isfile(op.join(MMVT_DIR, subject, 'meg',
+                             'labels_data_ecr_{}_{}_{}_minmax.npz'.format(atlas, inv_method, em)))]
+    print('Good subjects:')
+    print(good_subjects)
+    print('subjects_with_error:')
+    print(subjects_with_error)
+
+
+
+def meg_preproc_power(args):
+    inv_method, em, atlas= 'dSPM', 'mean_flip', 'darpa_atlas'
+    # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    times = (-2, 4)
+    subjects_with_error = []
+    good_subjects = get_good_subjects(args)
+    args.subject = good_subjects
+    prepare_files(args)
+
+    for subject in good_subjects:
+        args.subject = subject
+        empty_fnames, cors, days = get_empty_fnames(subject, args.tasks, args)
+        input_fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
+        for task in args.tasks:
+
+            # output_fname = op.join(
+            #     MMVT_DIR, subject, 'meg', '{}_{}_{}_power_spectrum.npz'.format(task.lower(), inv_method, em))
+            # if op.isfile(output_fname) and args.check_file_modification_time:
+            #     file_mod_time = utils.file_modification_time_struct(output_fname)
+            #     if file_mod_time.tm_year >= 2018 and (file_mod_time.tm_mon == 9 and file_mod_time.tm_mday >= 21) or \
+            #             (file_mod_time.tm_mon > 9):
+            #         print('{} already exist!'.format(output_fname))
+            #         continue
+
+            input_fnames = glob.glob(
+                op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em)))
+            if len(input_fnames) == 28:
+                print('{} has already all the results for {}'.format(subject, task))
+                continue
 
             remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
             local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))
@@ -284,33 +389,61 @@ def meg_preproc(args):
 
 
 def post_meg_preproc(args):
-    inv_method, em = 'dSPM', 'mean_flip'
+    inv_method, em, atlas = 'dSPM', 'mean_flip', 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
+    do_plot = False
 
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
-    for subject in subjects:
+    subjects_with_results = {}
+    labels_names = lu.read_labels(subjects[0], SUBJECTS_DIR, atlas, only_names=True)
+    labels_num = len(labels_names)
+    epochs_max_num = 50
+
+    now = time.time()
+    for subject_ind, subject in enumerate(subjects):
+        utils.time_to_go(now, subject_ind, len(subjects), runs_num_to_print=1)
+        subjects_with_results[subject] = {}
         input_fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
+        plots_fol = utils.make_dir(op.join(input_fol, 'plots'))
         args.subject = subject
         for task in args.tasks:
             task = task.lower()
             input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
-            if len(input_fnames) < 28:
-                print('No enough files for {}!'.format(subject))
+            if len(input_fnames) < labels_num:
+                print('No enough files for {} {}!'.format(subject, task))
+                subjects_with_results[subject][task] = False
                 continue
-            plots_fol = utils.make_dir(op.join(input_fol, 'plots'))
+            # input_dname = ecr_caudalanteriorcingulate-lh_dSPM_mean_flip_induced_power
+            subjects_with_results[subject][task] = True
+            # if not do_plot:
+            #     continue
+            bands_power = np.empty((len(bands), labels_num, epochs_max_num))
             for input_fname in input_fnames:
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
-                label_power = d.data
-                times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
-                plot_label_power(label_power, times, d.label_name, bands, task, plots_fol)
+                label_power, label_name = d.data, d.label_name
+                label_ind = labels_names.index(label_name)
+                for band_ind, band in enumerate(bands.keys()):
+                    bands_power[band_ind, label_ind] = label_power[band_ind].mean(axis=1)[:epochs_max_num]
+                fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label_name, task))
+                if not op.isfile(fig_fname) and do_plot:
+                    times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
+                    plot_label_power(label_power, times, label_name, bands, task, fig_fname)
+            for band_ind, band in enumerate(bands.keys()):
+                power_fname = op.join(
+                    res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
+                np.savez(power_fname, data=np.array(bands_power[band_ind]), names=labels_names)
+
             # utils.make_dir(op.join(res_fol, subject))
             # power_fname = op.join(
             #     res_fol, subject, '{}_labels_{}_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em, band))
+    have_all = len([subject for subject, results in subjects_with_results.items() if all(results.values())])
+    print('{}/{} with all files'.format(have_all, len(subjects)))
+    print(subjects_with_results)
 
 
-def plot_label_power(power, times, label, bands, task, plots_fol):
+def plot_label_power(power, times, label, bands, task, fig_fname):
     # plt.figure()
     f, axs = plt.subplots(5, 1, sharex=True)
     for band_ind, (band_name, ax) in enumerate(zip(bands.keys(), axs)):
@@ -319,7 +452,6 @@ def plot_label_power(power, times, label, bands, task, plots_fol):
         ax.plot(times, power_mean)
         ax.fill_between(times, power_mean - power_std, power_mean + power_std, alpha=.5)
         ax.set_title(band_name)
-    fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label, task))
     print('Saving {}'.format(fig_fname))
     plt.savefig(fig_fname)
     plt.close()
@@ -385,6 +517,7 @@ def post_analysis(args):
 
     inv_method, em = 'dSPM', 'mean_flip'
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
+    plot_fol = utils.make_dir(op.join(res_fol, 'plots'))
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     data_dic = np.load(op.join(res_fol, 'data_dictionary.npz'))
     meta_data = data_dic['noam_dict'].tolist()
@@ -418,12 +551,16 @@ def post_analysis(args):
                         mean_power[group_id][task][band].append(d.data.mean())
                         for label_id, label in enumerate(d.names):
                             power[group_id][task][band][label].append(d.data[label_id].mean())
+                    # else:
+                    #     print('No power file for {} ({})'.format(subject, power_fname))
 
     # for group_id in range(2):
     #     x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
         # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
         # ttest(x[0], x[1])
     do_plot = False
+    percentile = 85
+    alpha = 0.05
     for band in bands.keys():
         # fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
         for group_id in range(2): #, ax in zip(range(2), [ax1, ax2]):
@@ -431,22 +568,30 @@ def post_analysis(args):
             # print()
             x = [np.array(mean_power[group_id][task][band]) for task in args.tasks]
             # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
-            x[0] = x[0][x[0] < np.percentile(x[0], 90)]
-            x[1] = x[1][x[1] < np.percentile(x[1], 90)]
-            ttest(x[0], x[1], title='group {} band {}'.format(group_id, band))
-
-            for label_id, label in enumerate(d.names):
-                x = [np.array(power[group_id][task][band][label]) for task in args.tasks]
-                # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
-                x[0] = x[0][x[0] < np.percentile(x[0], 90)]
-                x[1] = x[1][x[1] < np.percentile(x[1], 90)]
-                ttest(x[0], x[1], alpha=0.01, title='group {} band {} label {}'.format(group_id, band, label))
+            x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
+            x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
+            print('band {}, group {}, {} for {}, {} for {}'.format(
+                band, group_id, len(x[0]), args.tasks[0], len(x[1]), args.tasks[1]))
+            ttest(x[0], x[1], title='group {} band {}'.format(group_id, band), alpha=alpha)
             if do_plot:
                 f, (ax1, ax2) = plt.subplots(2, 1)
                 ax1.hist(x[0], bins=80)
                 ax2.hist(x[1], bins=80)
-                plt.title('{} mean_power'.format(band))
-                plt.show()
+                plt.title('{} mean power'.format(band))
+                plt.savefig(op.join(plot_fol, '{}_group_{}.jpg'.format(band, group_id)))
+
+            for label_id, label in enumerate(d.names):
+                x = [np.array(power[group_id][task][band][label]) for task in args.tasks]
+                # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
+                x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
+                x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
+                ttest(x[0], x[1], alpha=alpha, title='group {} band {} label {}'.format(group_id, band, label))
+                if do_plot:
+                    f, (ax1, ax2) = plt.subplots(2, 1)
+                    ax1.hist(x[0], bins=80)
+                    ax2.hist(x[1], bins=80)
+                    plt.title('{} {} power'.format(band, label))
+                    plt.savefig(op.join(plot_fol, '{}_group_{}_label_{}.jpg'.format(band, group_id, label)))
         # ax.set_title('group {}'.format(group_id))
         # ax.bar(np.arange(2), [np.mean(mean_power[group_id][task][band]) for task in args.tasks])
         # ax.set_xticklabels(args.tasks, rotation=30)
