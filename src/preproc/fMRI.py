@@ -628,6 +628,9 @@ def load_surf_files(subject, surf_template_fname, task='', overwrite_surf_data=F
         return True, npy_output_fname_template
     for hemi in utils.HEMIS:
         fmri_fname = surf_full_output_fname.format(hemi=hemi)
+        if not op.isfile(fmri_fname):
+            print('load_surf_files: {} doesn not exist!')
+            return False
         x = np.squeeze(nib.load(fmri_fname).get_data())
         if x.ndim == 2:
             print('The nii file has another dimension ({})! Taking the first.'.format(x.shape[1]))

@@ -648,12 +648,6 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             bl_idname = ShowHideLH.bl_idname if hemi == 'Left' else ShowHideRH.bl_idname
             row.operator(bl_idname, text=show_text, icon=show_icon)
 
-        if bpy.data.objects.get('seghead', None) is not None and bpy.context.scene.show_hide_settings:
-            action = 'show' if bpy.context.scene.objects_show_hide_head else 'hide'
-            show_text = '{} outer skin'.format('Hide' if bpy.context.scene.objects_show_hide_head else 'Show')
-            show_icon = show_hide_icon[action]
-            layout.operator(ShowHideHead.bl_idname, text=show_text, icon=show_icon)
-
         subs_exist = bpy.data.objects.get('Subcortical_structures', None) is not None and \
                      len(bpy.data.objects['Subcortical_structures'].children) > 0
         if _addon().is_pial() and subs_exist:
@@ -675,6 +669,13 @@ class ShowHideObjectsPanel(bpy.types.Panel):
                     'Hide' if sub_vis else 'Show'))
         if context.scene.show_hide_settings:
             layout.prop(context.scene, 'show_hide_cerebellum', text='Show Cerebellum')
+
+        if bpy.data.objects.get('seghead', None) is not None and bpy.context.scene.show_hide_settings:
+            action = 'show' if bpy.context.scene.objects_show_hide_head else 'hide'
+            show_text = '{} outer skin'.format('Hide' if bpy.context.scene.objects_show_hide_head else 'Show')
+            show_icon = show_hide_icon[action]
+            layout.operator(ShowHideHead.bl_idname, text=show_text, icon=show_icon)
+
 
         # if bpy.data.objects.get('Cerebellum'):
         #     sub_vis = not bpy.context.scene.objects_show_hide_cerebellum

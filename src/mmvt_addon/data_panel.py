@@ -199,6 +199,7 @@ def import_subcorticals(base_path, parent_name='Subcortical'):
                 else:
                     mu.log_err('import_subcorticals: Wrong path_type! Nothing to do...', logging)
                 cur_obj.hide_select = True
+                mu.fix_normals('{}_meg_activity_map'.format(parent_name))
             except:
                 mu.log_err('Error in importing {}!'.format(ply_fname), logging)
     bpy.ops.object.select_all(action='DESELECT')
@@ -308,14 +309,17 @@ def create_empty_if_doesnt_exists(name, brain_layer=None, layers_array=None, par
 
 
 @mu.tryit()
-def import_rois(base_path):
-    anatomy_inputs = {
-        'Cortex-rh': op.join(base_path, 'labels', '{}.pial.rh'.format(bpy.context.scene.atlas)),
-        'Cortex-lh': op.join(base_path, 'labels','{}.pial.lh'.format(bpy.context.scene.atlas)),
-        'Cortex-inflated-rh': op.join(base_path, 'labels', '{}.inflated.rh'.format(bpy.context.scene.atlas)),
-        'Cortex-inflated-lh': op.join(base_path, 'labels', '{}.inflated.lh'.format(bpy.context.scene.atlas)),
-        'Subcortical_structures': op.join(base_path, 'subcortical'),
-        'Cerebellum': op.join(base_path, 'cerebellum')}
+def import_rois(base_path, selected_inputs=None):
+    if selected_inputs is None:
+        anatomy_inputs = {
+            'Cortex-rh': op.join(base_path, 'labels', '{}.pial.rh'.format(bpy.context.scene.atlas)),
+            'Cortex-lh': op.join(base_path, 'labels','{}.pial.lh'.format(bpy.context.scene.atlas)),
+            'Cortex-inflated-rh': op.join(base_path, 'labels', '{}.inflated.rh'.format(bpy.context.scene.atlas)),
+            'Cortex-inflated-lh': op.join(base_path, 'labels', '{}.inflated.lh'.format(bpy.context.scene.atlas)),
+            'Subcortical_structures': op.join(base_path, 'subcortical'),
+            'Cerebellum': op.join(base_path, 'cerebellum')}
+    else:
+        anatomy_inputs = selected_inputs
     brain_layer = _addon().BRAIN_EMPTY_LAYER
 
     bpy.context.scene.layers = [ind == brain_layer for ind in range(len(bpy.context.scene.layers))]
@@ -361,6 +365,7 @@ def import_rois(base_path):
                 cur_obj.active_material = current_mat
                 cur_obj.hide = False
                 cur_obj.name = new_obj_name
+                mu.fix_normals(anatomy_name)
             except:
                 mu.log_err('import_rois: Error in importing {}'.format(ply_fname), logging)
             # cur_obj.location[0] += 5.5 if 'rh' in anatomy_name else -5.5

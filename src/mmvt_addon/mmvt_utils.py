@@ -1922,6 +1922,10 @@ def view_selected():
             bpy.ops.view3d.view_selected(override)
 
 
+def deselect_all_objects():
+    bpy.ops.object.select_all(action='DESELECT')
+
+
 def select_all_brain(val):
     bpy.data.objects['inflated_lh'].hide_select = not val
     bpy.data.objects['inflated_lh'].select = val
