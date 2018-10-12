@@ -163,12 +163,6 @@ def meg_preproc_evoked(args):
             #         print('{} already exist!'.format(output_fname))
             #         continue
 
-            input_fnames = glob.glob(
-                op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em)))
-            if len(input_fnames) == 28:
-                print('{} has already all the results for {}'.format(subject, task))
-                continue
-
             remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
             local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))
             if not op.isfile(local_epo_fname) and not op.isfile(remote_epo_fname):
@@ -204,7 +198,7 @@ def meg_preproc_evoked(args):
                 overwrite_fwd=args.overwrite,
                 overwrite_inv=args.overwrite,
                 overwrite_stc=args.overwrite,
-                overwrite_labels_data=args.overwrite,
+                overwrite_labels_data=True,#args.overwrite,
                 n_jobs=args.n_jobs
             ))
             ret = meg.call_main(meg_args)
