@@ -194,10 +194,10 @@ def meg_preproc_evoked(args):
                 read_only_from_annot=False,
                 # pick_ori='normal',
                 overwrite_labels_power_spectrum = args.overwrite_labels_power_spectrum,
-                overwrite_evoked=args.overwrite,
+                overwrite_evoked=True,#args.overwrite,
                 overwrite_fwd=args.overwrite,
                 overwrite_inv=args.overwrite,
-                overwrite_stc=args.overwrite,
+                overwrite_stc=True,#args.overwrite,
                 overwrite_labels_data=True,#args.overwrite,
                 n_jobs=args.n_jobs
             ))
