@@ -180,21 +180,18 @@ def meg_preproc_evoked(args):
             meg_args = meg.read_cmd_args(dict(
                 subject=args.subject, mri_subject=args.subject,
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
-                # meg_dir=args.meg_dir,
                 remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
                 get_task_defaults=False,
                 fname_format='{}_{}_Onset'.format('{subject}', task),
                 raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task] if empty_fnames != '' else '',
-                function='make_forward_solution,calc_inverse_operator,calc_labels_induced_power',#,
+                function='make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
                 conditions=task.lower(),
                 cor_fname=cors[task].format(subject=subject) if cors != '' else '',
                 average_per_event=False,
                 data_per_task=True,
                 pick_ori='normal', # very important for calculation of the power spectrum
-                # fmin=4, fmax=120, bandwidth=2.0,
-                max_epochs_num=args.max_epochs_num,
                 ica_overwrite_raw=False,
                 normalize_data=False,
                 t_min=times[0], t_max=times[1],
@@ -211,11 +208,11 @@ def meg_preproc_evoked(args):
                 n_jobs=args.n_jobs
             ))
             ret = meg.call_main(meg_args)
-            output_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
-            join_res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr', subject))
-            for res_fname in glob.glob(op.join(output_fol, '{}_labels_{}_{}_*_power.npz'.format(
-                    task.lower(), inv_method, em))):
-                shutil.copyfile(res_fname, op.join(join_res_fol, utils.namebase_with_ext(res_fname)))
+            # output_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'labels', 'labels_data'))
+            # join_res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr', subject))
+            # for res_fname in glob.glob(op.join(output_fol, '{}_labels_{}_{}_*_power.npz'.format(
+            #         task.lower(), inv_method, em))):
+            #     shutil.copyfile(res_fname, op.join(join_res_fol, utils.namebase_with_ext(res_fname)))
             if not ret:
                 if args.throw:
                     raise Exception("errors!")
