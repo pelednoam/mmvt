@@ -420,7 +420,7 @@ def post_meg_preproc(args):
                 for band_ind, band in enumerate(bands.keys()):
                     bands_power[band_ind, label_ind] = label_power[band_ind].mean(axis=1)[:epochs_max_num]
                 fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label_name, task))
-                if not op.isfile(fig_fname) and do_plot:
+                if do_plot: # not op.isfile(fig_fname) and
                     times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
                     plot_label_power(label_power, times, label_name, bands, task, fig_fname)
             for band_ind, band in enumerate(bands.keys()):
