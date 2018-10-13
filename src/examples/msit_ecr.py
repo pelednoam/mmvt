@@ -401,7 +401,7 @@ def post_meg_preproc(args):
         for task in args.tasks:
             task = task.lower()
             input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
-            if len(input_fnames) < labels_num:
+            if len(input_fnames) < 1:#labels_num:
                 print('No enough files for {} {}!'.format(subject, task))
                 subjects_with_results[subject][task] = False
                 continue
@@ -415,7 +415,7 @@ def post_meg_preproc(args):
                 # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
                 for band_ind in range(len(bands)):
-                    label_power[band_ind] /= label_power.mean(axis=(1, 2))[band_ind]
+                    label_power[band_ind] /= label_power[band_ind].mean()
                 label_ind = labels_names.index(label_name)
                 for band_ind, band in enumerate(bands.keys()):
                     bands_power[band_ind, label_ind] = label_power[band_ind].mean(axis=1)[:epochs_max_num]
@@ -551,7 +551,7 @@ def post_analysis(args):
     #     x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
         # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
         # ttest(x[0], x[1])
-    do_plot = False
+    do_plot = True
     percentile = 85
     alpha = 0.05
     for band in bands.keys():
