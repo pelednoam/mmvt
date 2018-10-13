@@ -225,7 +225,6 @@ def meg_preproc_evoked(args):
     print(subjects_with_error)
 
 
-
 def meg_preproc_power(args):
     inv_method, em, atlas= 'dSPM', 'mean_flip', 'darpa_atlas'
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
@@ -413,7 +412,10 @@ def post_meg_preproc(args):
             bands_power = np.empty((len(bands), labels_num, epochs_max_num))
             for input_fname in input_fnames:
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
+                # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
+                for band_ind in range(len(bands)):
+                    label_power[band_ind] /= label_power.mean(axis=(1, 2))[band_ind]
                 label_ind = labels_names.index(label_name)
                 for band_ind, band in enumerate(bands.keys()):
                     bands_power[band_ind, label_ind] = label_power[band_ind].mean(axis=1)[:epochs_max_num]
