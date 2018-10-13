@@ -382,7 +382,7 @@ def post_meg_preproc(args):
     inv_method, em, atlas = 'dSPM', 'mean_flip', 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
-    do_plot = False
+    do_plot = True
 
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
