@@ -401,7 +401,7 @@ def post_meg_preproc(args):
         for task in args.tasks:
             task = task.lower()
             input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
-            if len(input_fnames) < 1:#labels_num:
+            if len(input_fnames) < labels_num:
                 print('No enough files for {} {}!'.format(subject, task))
                 subjects_with_results[subject][task] = False
                 continue
