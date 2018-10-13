@@ -414,8 +414,8 @@ def post_meg_preproc(args):
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
                 # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
-                for band_ind in range(len(bands)):
-                    label_power[band_ind] /= label_power[band_ind].mean()
+                # for band_ind in range(len(bands)):
+                #     label_power[band_ind] /= label_power[band_ind].mean()
                 label_ind = labels_names.index(label_name)
                 for band_ind, band in enumerate(bands.keys()):
                     bands_power[band_ind, label_ind] = label_power[band_ind].mean(axis=1)[:epochs_max_num]
