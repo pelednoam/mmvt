@@ -459,17 +459,17 @@ def calc_meg_connectivity(args):
     for subject in good_subjects:
         args.subject = subject
         for task in args.tasks:
-            output_fname = op.join(
-                MMVT_DIR, subject, 'connectivity', '{}_{}_coh_cwt_morlet.npz'.format(task.lower(), em))
-            if op.isfile(output_fname):
-                file_mod_time = utils.file_modification_time_struct(output_fname)
-                if file_mod_time.tm_year >= 2018 and (file_mod_time.tm_mon == 9 and file_mod_time.tm_mday >= 21) or \
-                        (file_mod_time.tm_mon > 9):
-                    print('{} already exist!'.format(output_fname))
-                    continue
+            # output_fname = op.join(
+            #     MMVT_DIR, subject, 'connectivity', '{}_{}_coh_cwt_morlet.npz'.format(task.lower(), em))
+            # if op.isfile(output_fname):
+            #     file_mod_time = utils.file_modification_time_struct(output_fname)
+            #     if file_mod_time.tm_year >= 2018 and (file_mod_time.tm_mon == 9 and file_mod_time.tm_mday >= 21) or \
+            #             (file_mod_time.tm_mon > 9):
+            #         print('{} already exist!'.format(output_fname))
+            #         continue
 
-            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
-            local_epo_fname = op.join(MEG_DIR, task, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
+            remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
+            local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))
             if not op.isfile(local_epo_fname):
                 utils.make_link(remote_epo_fname, local_epo_fname)
 
@@ -486,7 +486,7 @@ def calc_meg_connectivity(args):
                 # empty_fname=empty_fnames[task],
                 function='calc_labels_connectivity',
                 conditions=task.lower(),
-                overwrite_connectivity=args.overwrite_connectivity,
+                overwrite_connectivity=True,#args.overwrite_connectivity,
                 # cor_fname=cors[task].format(subject=subject),
                 # ica_overwrite_raw=False,
                 # normalize_data=False,
