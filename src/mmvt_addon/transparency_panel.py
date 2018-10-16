@@ -19,8 +19,11 @@ def appearance_update(self=None, context=None):
     _addon().make_brain_solid_or_transparent()
     _addon().set_layers_depth_trans()
     if bpy.data.objects.get('seghead', None) is not None:
-        bpy.data.materials['seghead_mat'].node_tree.nodes["Mix Shader.002"].inputs[0].default_value = \
-            1 - bpy.context.scene.appearance_seghead_trans
+        try:
+            bpy.data.materials['seghead_mat'].node_tree.nodes["Mix Shader.002"].inputs[0].default_value = \
+                1 - bpy.context.scene.appearance_seghead_trans
+        except:
+            print('No seghead_mat mix shader')
 
 
 def set_brain_transparency(val):
