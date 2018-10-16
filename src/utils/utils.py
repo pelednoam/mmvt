@@ -915,8 +915,9 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
     else:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
-            if not op.isdir(op.join(local_subject_dir, fol)):
-                os.makedirs(op.join(local_subject_dir, fol))
+            # if not op.isdir(op.join(local_subject_dir, fol)):
+            #     os.makedirs(op.join(local_subject_dir, fol))
+            make_dir(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
                     file_name = file_name.replace('{subject}', subject)
@@ -926,7 +927,7 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                     if len(local_files) == 0 or overwrite_files:
                         remote_files = glob.glob(remote_fname)
                         if len(remote_files) > 0:
-                            remote_fname = remote_files[0]
+                            remote_fname = select_one_file(remote_files, files_desc=file_name)
                             remote_lower = namebase_with_ext(remote_fname).lower()
                             if subject.lower() in remote_lower and subject not in namebase(remote_fname):
                                 ind = remote_lower.index(subject)
@@ -934,7 +935,10 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                 local_fname = op.join(local_subject_dir, fol, new_file_name)
                             else:
                                 local_fname = op.join(local_subject_dir, fol, namebase_with_ext(remote_fname))
+                            make_dir(op.join(local_subject_dir, fol))
                             if remote_fname != local_fname:
+                                if not op.isfile(remote_fname) and not op.isfile(local_fname):
+                                    print('Can\'t find {} nor {}!'.format(remote_fname, local_fname))
                                 if overwrite_files and op.isfile(local_fname):
                                     os.remove(local_fname)
                                 elif op.isfile(local_fname) and op.getsize(remote_fname) != op.getsize(remote_fname):

@@ -193,6 +193,7 @@ def meg_preproc_evoked(args):
                 use_empty_room_for_noise_cov=True,
                 read_only_from_annot=False,
                 # pick_ori='normal',
+                check_for_channels_inconsistency = args.check_for_channels_inconsistency,
                 overwrite_labels_power_spectrum = args.overwrite_labels_power_spectrum,
                 overwrite_evoked=True,#args.overwrite,
                 overwrite_fwd=args.overwrite,
@@ -283,6 +284,7 @@ def meg_preproc_power(args):
                 max_epochs_num=args.max_epochs_num,
                 ica_overwrite_raw=False,
                 normalize_data=False,
+                fwd_recreate_source_space=True,
                 t_min=times[0], t_max=times[1],
                 read_events_from_file=False, stim_channels='STI001',
                 use_empty_room_for_noise_cov=True,
@@ -692,7 +694,7 @@ if __name__ == '__main__':
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc')
+    parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc_power')
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='darpa_atlas')
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
@@ -704,7 +706,7 @@ if __name__ == '__main__':
     parser.add_argument('--check_file_modification_time', required=False, default=False, type=au.is_true)
     parser.add_argument('--check_cor', required=False, default=True, type=au.is_true)
     parser.add_argument('--check_for_both_files', required=False, default=True, type=au.is_true)
-
+    parser.add_argument('--check_for_channels_inconsistency', required=False, default=1, type=au.is_true)
     parser.add_argument('--max_epochs_num', required=False, default=0, type=int)
 
     parser.add_argument('--remote_root_dir', required=False,

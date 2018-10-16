@@ -950,8 +950,11 @@ def run_command(cmd, shell=True, pipe=False, cwd=None):
 
 
 def make_dir(fol):
-    if not os.path.isdir(fol):
-        os.makedirs(fol)
+    try:
+        if not op.isdir(fol) and not op.islink(fol):
+            os.makedirs(fol)
+    except:
+        pass
     return fol
 
 

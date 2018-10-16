@@ -1567,36 +1567,52 @@ def check_noise_cov_channels(noise_cov, info, fwd, noise_cov_fname=''):
     cov_dict = utils.Bag(dict(noise_cov))
     ch0 = info['chs'][0]['ch_name']
     group, num = utils.get_group_and_number(ch0)
-    sep = ch0[len(group) - 1:-len(num)]
-    num_len = {}
-    for group_type in ['MEG', 'EEG']:
+    if '{}{}'.format(group, num) == ch0:
+        sep = ''
+    else:
+        sep = ch0[len(group) - 1:-len(num)]
+    num_len_dict = {'MEG': 0, 'EEG': 0}
+    for group_type in num_len_dict.keys():
         for c in info['chs']:
             if c['ch_name'].startswith(group_type):
                 group, num = utils.get_group_and_number(c['ch_name'])
-                num_len[group_type] = len(num)
+                num_len_dict[group_type] = len(num)
                 break
     cov_dict.names, cov_dict.bads = [], []
     for c in noise_cov.ch_names:
-        group, num = utils.get_group_and_number(c)
-        cov_dict.names.append('{}{}{}'.format(group, sep, num.zfill(num_len[group])))
+        group, num = get_sensor_group_num(c)
+        cov_dict.names.append('{}{}{}'.format(group, sep, num.zfill(num_len_dict[group])))
     for c in noise_cov['bads']:
-        group, num = utils.get_group_and_number(c)
-        cov_dict.bads.append('{}{}{}'.format(group, sep, num.zfill(num_len[group])))
+        group, num = get_sensor_group_num(c)
+        cov_dict.bads.append('{}{}{}'.format(group, sep, num.zfill(num_len_dict[group])))
     noise_cov = get_cov_from_dict(cov_dict)
 
-    if not set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
-        for k in range(len(info['chs'])):
-            if not fwd_sol_ch_names[k] == noise_cov.ch_names[k] == info['chs'][k]['ch_name']:
-                print(fwd_sol_ch_names[k], noise_cov.ch_names[k], info['chs'][k]['ch_name'])
-        ret = input('Inconsistency in channels names! Do you want to continue? ')
-        if not au.is_true(ret):
-            raise Exception('Inconsistency in channels names')
+    if args.check_for_channels_inconsistency:
+        C = [c['ch_name'] for c in info['chs'] if c['ch_name'][:3] in ['MEG', 'EEG']]
+        N = [c for c in noise_cov.ch_names if c[:3] in ['MEG', 'EEG']]
+        F = [c for c in fwd_sol_ch_names if c[:3] in ['MEG', 'EEG']]
+        if not len(C) == len(N) == len(F):
+            print('Inconsistency in channels num: info:{}, noise:{}, fwd:{}'.format(len(C), len(N), len(F)))
+            ret = input('Do you want to continue? ')
+            if not au.is_true(ret):
+                raise Exception('Inconsistency in channels names')
+        elif not set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
+            for k in range(len(info['chs'])):
+                if not fwd_sol_ch_names[k] == noise_cov.ch_names[k] == info['chs'][k]['ch_name']:
+                    print(fwd_sol_ch_names[k], noise_cov.ch_names[k], info['chs'][k]['ch_name'])
+            ret = input('Inconsistency in channels names! Do you want to continue? ')
+            if not au.is_true(ret):
+                raise Exception('Inconsistency in channels names')
 
     if noise_cov_fname == '':
         noise_cov_fname = NOISE_COV
     noise_cov.save(noise_cov_fname)
     return noise_cov
 
+
+def get_sensor_group_num(sensor_name):
+    group, num = utils.get_group_and_number(sensor_name)
+    return group, num
 
 def get_cov_from_dict(cov_dict):
     # (data=data, dim=len(data), names=names, bads=bads, nfree=nfree, eig=eig, eigvec=eigvec, diag=diag,
@@ -4647,6 +4663,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fmax', required=False, default=200, type=int)
     parser.add_argument('--bandwidth', required=False, default=2., type=float)
     parser.add_argument('--precentiles', required=False, default='1,99', type=au.str_arr_type)
+    parser.add_argument('--check_for_channels_inconsistency', required=False, default=1, type=au.is_true)
 
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
