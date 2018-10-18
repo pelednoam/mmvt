@@ -383,8 +383,8 @@ def meg_preproc_power(args):
 def post_meg_preproc(args):
     inv_method, em, atlas = 'dSPM', 'mean_flip', 'darpa_atlas'
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
-    times = (-2, 4)
-    do_plot = True
+    norm_times = (500, 2500)
+    do_plot = False
 
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
@@ -416,11 +416,11 @@ def post_meg_preproc(args):
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
                 # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
-                # for band_ind in range(len(bands)):
-                #     label_power[band_ind] /= label_power[band_ind].mean()
+                for band_ind in range(len(bands)):
+                    label_power[band_ind] /= label_power[band_ind].mean()
                 label_ind = labels_names.index(label_name)
                 for band_ind, band in enumerate(bands.keys()):
-                    bands_power[band_ind, label_ind] = label_power[band_ind].mean(axis=1)[:epochs_max_num]
+                    bands_power[band_ind, label_ind] = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
                 fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label_name, task))
                 if do_plot: # not op.isfile(fig_fname) and
                     times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
@@ -554,8 +554,8 @@ def post_analysis(args):
     #     x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
         # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
         # ttest(x[0], x[1])
-    do_plot = True
-    percentile = 85
+    do_plot = False
+    percentile = 90
     alpha = 0.05
     for band in bands.keys():
         # fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
