@@ -582,7 +582,7 @@ def post_analysis(args):
         x = [np.array(mean_power_power_task[task][band]) for task in args.tasks]
         x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
         x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
-        ttest(x[0], x[1], title='MSIT vs ECR band {}'.format(band), alpha=alpha, always_print=True)
+        ttest(x[0], x[1], title='MSIT vs ECR band {}'.format(band), alpha=alpha, always_print=False)
         if do_plot:
             f, (ax1, ax2) = plt.subplots(2, 1)
             ax1.hist(x[0], bins=80)
