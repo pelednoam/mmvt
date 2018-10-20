@@ -37,7 +37,7 @@ def mkoutersurf(image, radius, outfile):
     BW2[np.where(BW2 <= thresh)] = 0
     BW2[np.where(BW2 > thresh)] = 255
 
-    v, f, _, _ = measure.marching_cubes(BW2, 100)
+    v, f, _, _ = measure.marching_cubes_lewiner(BW2, 100)
 
     v2 = np.transpose(
              np.vstack( ( 128 - v[:,0],
