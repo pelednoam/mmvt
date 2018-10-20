@@ -403,7 +403,7 @@ def post_meg_preproc(args):
         for task in args.tasks:
             task = task.lower()
             input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
-            if len(input_fnames) < labels_num:
+            if len(input_fnames) < 1:# labels_num:
                 print('No enough files for {} {}!'.format(subject, task))
                 subjects_with_results[subject][task] = False
                 continue
@@ -574,7 +574,7 @@ def post_analysis(args):
     #                     for label_id, label in enumerate(d.names):
     #                         power_emotion_reactivit[group_id][task][band][label].append(d.data[label_id].mean())
 
-    do_plot = True
+    do_plot = False
     percentile = 90
     alpha = 0.05
     for band in bands.keys():
@@ -593,8 +593,6 @@ def post_analysis(args):
             plt.show()
             # plt.savefig(op.join(plot_fol, '{}_group_{}.jpg'.format(band, group_id)))
 
-        continue
-
         for label_id, label in enumerate(d.names):
             x = [np.array(power_task[task][band][label]) for task in args.tasks]
             x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
@@ -609,7 +607,7 @@ def post_analysis(args):
                 # plt.savefig(op.join(plot_fol, '{}_group_{}.jpg'.format(band, group_id)))
 
 
-
+        continue
         for group_id in range(2): #, ax in zip(range(2), [ax1, ax2]):
             # subjects_with_data[group_id] = np.array(subjects_with_data[group_id])
             # print()
