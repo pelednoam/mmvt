@@ -582,8 +582,8 @@ def post_analysis(args):
         x = [np.array(mean_power_power_task[task][band]) for task in args.tasks]
         x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
         x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
-        ttest(x[0], x[1], title='MSIT vs ECR band {}'.format(band), alpha=alpha, always_print=False)
-        if do_plot:
+        sig = ttest(x[0], x[1], title='MSIT vs ECR band {}'.format(band), alpha=alpha, always_print=False)
+        if do_plot or sig:
             f, (ax1, ax2) = plt.subplots(2, 1)
             ax1.hist(x[0], bins=80)
             ax1.set_title('{} {}'.format(band, args.tasks[0]))
@@ -597,8 +597,8 @@ def post_analysis(args):
             x = [np.array(power_task[task][band][label]) for task in args.tasks]
             x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
             x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
-            ttest(x[0], x[1], alpha=alpha, title='band {} label {}'.format(band, label))
-            if do_plot:
+            sig = ttest(x[0], x[1], alpha=alpha, title='band {} label {}'.format(band, label))
+            if do_plot or sig:
                 f, (ax1, ax2) = plt.subplots(2, 1)
                 ax1.hist(x[0], bins=80)
                 ax2.hist(x[1], bins=80)
@@ -653,6 +653,7 @@ def ttest(x1, x2, two_tailed_test=True, alpha=0.1, is_greater=True, title='', al
     if sig or welch_sig or always_print:
         print('{}: {:.2f}+-{:.2f}, {:.2f}+-{:.2f}'.format(title, np.mean(x1), np.std(x1), np.mean(x2), np.std(x2)))
         print('test: pval: {:.4f} sig: {}. welch: pval: {:.4f} sig: {}'.format(pval, sig, welch_pval, welch_sig))
+    return sig or welch_sig
 
 
 def is_significant(pval, t, two_tailed_test, alpha=0.05, is_greater=True):
