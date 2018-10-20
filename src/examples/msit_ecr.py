@@ -416,8 +416,8 @@ def post_meg_preproc(args):
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
                 # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
-                for band_ind in range(len(bands)):
-                    label_power[band_ind] /= label_power[band_ind].mean()
+                # for band_ind in range(len(bands)):
+                #     label_power[band_ind] /= label_power[band_ind][:, norm_times[0]:norm_times[1]].mean()
                 label_ind = labels_names.index(label_name)
                 for band_ind, band in enumerate(bands.keys()):
                     bands_power[band_ind, label_ind] = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
@@ -522,47 +522,98 @@ def post_analysis(args):
     ecr_subjects = set(meta_data[1]['ECR'].keys())
     subjects_with_data = defaultdict(list)
     mean_evo = {group_id:defaultdict(list) for group_id in range(2)}
-    mean_power = {group_id: {} for group_id in range(2)}
-    power = {group_id: {} for group_id in range(2)}
-    for group_id in range(2):
+    mean_power_power_emotion_reactivit = {group_id: {} for group_id in range(2)}
+    power_emotion_reactivit = {group_id: {} for group_id in range(2)}
+
+    mean_power_power_task = {}
+    power_task = {}
+    for task in args.tasks:
+        mean_power_power_task[task] = defaultdict(list)
+        power_task[task] = {band: None for band in bands.keys()}
+    for subject in args.subject:
+        if not op.isdir(op.join(res_fol, subject)):
+            print('No folder data for {}'.format(subject))
+            continue
         for task in args.tasks:
-            mean_power[group_id][task] = defaultdict(list)
-            power[group_id][task] = {band: None for band in bands.keys()}
-        for subject in meta_data[group_id]['ECR'].keys():
-            if not op.isdir(op.join(res_fol, subject)):
-                print('No folder data for {}'.format(subject))
-                continue
-            for task in args.tasks:
-                mean_fname = op.join(res_fol, subject, '{}_{}_mean.npz'.format(task.lower(), args.atlas))
-                if op.isfile(mean_fname):
-                    d = utils.Bag(np.load(mean_fname))
-                    mean_evo[group_id][task].append(d.data.mean())
-                for band in bands.keys():
-                    if power[group_id][task][band] is None:
-                        power[group_id][task][band] = defaultdict(list)
-                    power_fname = op.join(
-                        res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
-                    if op.isfile(power_fname):
-                        d = utils.Bag(np.load(power_fname))
-                        mean_power[group_id][task][band].append(d.data.mean())
-                        for label_id, label in enumerate(d.names):
-                            power[group_id][task][band][label].append(d.data[label_id].mean())
-                    # else:
-                    #     print('No power file for {} ({})'.format(subject, power_fname))
+            # mean_fname = op.join(res_fol, subject, '{}_{}_mean.npz'.format(task.lower(), args.atlas))
+            # if op.isfile(mean_fname):
+            #     d = utils.Bag(np.load(mean_fname))
+            #     mean_evo[group_id][task].append(d.data.mean())
+            for band in bands.keys():
+                if power_task[task][band] is None:
+                    power_task[task][band] = defaultdict(list)
+                power_fname = op.join(
+                    res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
+                if op.isfile(power_fname):
+                    d = utils.Bag(np.load(power_fname))
+                    mean_power_power_task[task][band].append(d.data.mean())
+                    for label_id, label in enumerate(d.names):
+                        power_task[task][band][label].append(d.data[label_id].mean())
 
     # for group_id in range(2):
-    #     x = [np.array(mean_evo[group_id][task]) for task in args.tasks]
-        # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
-        # ttest(x[0], x[1])
-    do_plot = False
+    #     for task in args.tasks:
+    #         mean_power_power_emotion_reactivit[group_id][task] = defaultdict(list)
+    #         power_emotion_reactivit[group_id][task] = {band: None for band in bands.keys()}
+    #     for subject in meta_data[group_id]['ECR'].keys():
+    #         if not op.isdir(op.join(res_fol, subject)):
+    #             print('No folder data for {}'.format(subject))
+    #             continue
+    #         for task in args.tasks:
+    #             mean_fname = op.join(res_fol, subject, '{}_{}_mean.npz'.format(task.lower(), args.atlas))
+    #             if op.isfile(mean_fname):
+    #                 d = utils.Bag(np.load(mean_fname))
+    #                 mean_evo[group_id][task].append(d.data.mean())
+    #             for band in bands.keys():
+    #                 if power_emotion_reactivit[group_id][task][band] is None:
+    #                     power_emotion_reactivit[group_id][task][band] = defaultdict(list)
+    #                 power_fname = op.join(
+    #                     res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
+    #                 if op.isfile(power_fname):
+    #                     d = utils.Bag(np.load(power_fname))
+    #                     mean_power_power_emotion_reactivit[group_id][task][band].append(d.data.mean())
+    #                     for label_id, label in enumerate(d.names):
+    #                         power_emotion_reactivit[group_id][task][band][label].append(d.data[label_id].mean())
+
+    do_plot = True
     percentile = 90
     alpha = 0.05
     for band in bands.keys():
-        # fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+
+        x = [np.array(mean_power_power_task[task][band]) for task in args.tasks]
+        x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
+        x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
+        ttest(x[0], x[1], title='MSIT vs ECR band {}'.format(band), alpha=alpha, always_print=True)
+        if do_plot:
+            f, (ax1, ax2) = plt.subplots(2, 1)
+            ax1.hist(x[0], bins=80)
+            ax1.set_title('{} {}'.format(band, args.tasks[0]))
+            ax2.hist(x[1], bins=80)
+            ax2.set_title('{} {}'.format(band, args.tasks[1]))
+            # plt.title('{} mean power'.format(band))
+            plt.show()
+            # plt.savefig(op.join(plot_fol, '{}_group_{}.jpg'.format(band, group_id)))
+
+        continue
+
+        for label_id, label in enumerate(d.names):
+            x = [np.array(power_task[task][band][label]) for task in args.tasks]
+            x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
+            x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
+            ttest(x[0], x[1], alpha=alpha, title='band {} label {}'.format(band, label))
+            if do_plot:
+                f, (ax1, ax2) = plt.subplots(2, 1)
+                ax1.hist(x[0], bins=80)
+                ax2.hist(x[1], bins=80)
+                plt.title('{} mean power'.format(band))
+                plt.show()
+                # plt.savefig(op.join(plot_fol, '{}_group_{}.jpg'.format(band, group_id)))
+
+
+
         for group_id in range(2): #, ax in zip(range(2), [ax1, ax2]):
             # subjects_with_data[group_id] = np.array(subjects_with_data[group_id])
             # print()
-            x = [np.array(mean_power[group_id][task][band]) for task in args.tasks]
+            x = [np.array(mean_power_power_emotion_reactivit[group_id][task][band]) for task in args.tasks]
             # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
             x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
             x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
@@ -577,7 +628,7 @@ def post_analysis(args):
                 plt.savefig(op.join(plot_fol, '{}_group_{}.jpg'.format(band, group_id)))
 
             for label_id, label in enumerate(d.names):
-                x = [np.array(power[group_id][task][band][label]) for task in args.tasks]
+                x = [np.array(power_emotion_reactivit[group_id][task][band][label]) for task in args.tasks]
                 # x = [_x[_x < np.percentile(_x, 90)] for _x in x]
                 x[0] = x[0][x[0] < np.percentile(x[0], percentile)]
                 x[1] = x[1][x[1] < np.percentile(x[1], percentile)]
@@ -595,13 +646,13 @@ def post_analysis(args):
         # plt.show()
 
 
-def ttest(x1, x2, two_tailed_test=True, alpha=0.1, is_greater=True, title=''):
+def ttest(x1, x2, two_tailed_test=True, alpha=0.1, is_greater=True, title='', always_print=False):
     import scipy.stats
     t, pval = scipy.stats.ttest_ind(x1, x2, equal_var=True)
     sig = is_significant(pval, t, two_tailed_test, alpha, is_greater)
     welch_t, welch_pval = scipy.stats.ttest_ind(x1, x2, equal_var=False)
     welch_sig = is_significant(pval, t, two_tailed_test, alpha, is_greater)
-    if sig or welch_sig:
+    if sig or welch_sig or always_print:
         print('{}: {:.2f}+-{:.2f}, {:.2f}+-{:.2f}'.format(title, np.mean(x1), np.std(x1), np.mean(x2), np.std(x2)))
         print('test: pval: {:.4f} sig: {}. welch: pval: {:.4f} sig: {}'.format(pval, sig, welch_pval, welch_sig))
 
