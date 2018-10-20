@@ -107,7 +107,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
     chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, mmvt_dir, output_fname, overwrite, print_only)
               for chunk_indices in indices]
     utils.run_parallel(_morph_electrodes_parallel, chunks, n_jobs)
-    bad_subjects = []
+    bad_subjects, good_subjects = [], []
     for subject_from in subjects:
         ret = op.isfile(output_fname.format(subject=subject_from))
         if not ret:
@@ -469,7 +469,11 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         csv_fname = op.join(fol, electrodes_to_morph_file_name)
         # if op.isfile(csv_fname) and not overwrite:
         #     continue
-        t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
+        t1_fname = op.join(subjects_dir, subject, 'mri', 'T1.mgz')
+        if not op.isfile(t1_fname):
+            print('Can\'t find T1.mgz for {}!'.format(subject))
+            continue
+        t1_header = nib.load(t1_fname).header
         brain_mask_fname = op.join(subjects_dir, subject, 'mri', 'brainmask.mgz')
         if op.isfile(brain_mask_fname):
             brain_mask = nib.load(brain_mask_fname).get_data()
@@ -548,14 +552,14 @@ def get_all_subjects(remote_subject_template):
 
 def main(subjects, template_system, remote_subject_templates=(), bipolar=False, save_as_bipolar=False, prefix='', print_only=False, n_jobs=4):
     good_subjects = prepare_files_for_subjects(subjects, remote_subject_templates, overwrite=False)
-    # electrodes = read_all_electrodes(good_subjects, bipolar)
-    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
-                             overwrite=False)
+    electrodes = read_all_electrodes(good_subjects, bipolar)
+    # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
+    #                        overwrite=False)
     # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
     # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
-    #                  print_only=print_only)
-    # read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False)
-    # save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
+    #               print_only=print_only)
+    read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
+    save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
     # export_into_csv(template_system, MMVT_DIR, prefix)
     # create_mmvt_coloring_file(template_system, electrodes)
 
