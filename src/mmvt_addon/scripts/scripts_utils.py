@@ -503,7 +503,7 @@ def select_one_file(files, template='', files_desc='', print_title=True, is_dir=
         print('{}) {}'.format(ind + 1, fname))
         if file_func is not None:
             file_func(fname)
-    input_str = 'Which one do you want to pick (1, 2, ...)? Press 0 to cancel'
+    input_str = 'Which one do you want to pick (1, 2, ...)? Press 0 to cancel: '
     file_num = input(input_str)
     while not is_int(file_num):
         print('Please enter a valid integer')

@@ -639,6 +639,7 @@ def init(addon_prefs):
     settings = mmvt_utils.read_config_ini()
     os.chdir(code_fol)
     bpy.context.scene.mmvt_initialized = True
+    init_freesurfer_env()
 
 
 def run_faulthandler():
@@ -740,6 +741,11 @@ def load_all_panels(addon_prefs=None, first_time=False):
     set_colorbar_defaults()
     mmvt_utils.center_view()
     mmvt_utils.select_time_range(0, bpy.context.scene.maximal_time_steps)
+
+
+def init_freesurfer_env():
+    if os.environ.get('FREESURFER_HOME', '') != '':
+        os.environ['SUBJECTS_DIR'] = mmvt_utils.get_subjects_dir()
 
 
 # @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))

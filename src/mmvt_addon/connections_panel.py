@@ -221,6 +221,8 @@ def set_connections_width(val):
 
 def connections_width_update(self, context):
     connection_parent = get_connection_parent()
+    if connection_parent is None:
+        return
     for c in connection_parent.children:
         if c.data is None:
             continue

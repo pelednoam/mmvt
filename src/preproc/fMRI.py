@@ -628,6 +628,9 @@ def load_surf_files(subject, surf_template_fname, task='', overwrite_surf_data=F
         return True, npy_output_fname_template
     for hemi in utils.HEMIS:
         fmri_fname = surf_full_output_fname.format(hemi=hemi)
+        if not op.isfile(fmri_fname):
+            print('load_surf_files: {} doesn not exist!')
+            return False
         x = np.squeeze(nib.load(fmri_fname).get_data())
         if x.ndim == 2:
             print('The nii file has another dimension ({})! Taking the first.'.format(x.shape[1]))
@@ -1194,10 +1197,11 @@ def save_dynamic_activity_map(subject, fmri_file_template='', template_brains='f
                    for hemi in utils.HEMIS])
 
 
-def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy')):
+def find_template_files(template_fname, file_types=('mgz', 'mgh', 'nii.gz', 'nii', 'npy')):
     def find_files(template_fname):
         recursive = '**' in set(template_fname.split(op.sep))
-        return [f for f in glob.glob(template_fname, recursive=recursive) if op.isfile(f) and utils.file_type(f) in file_types]
+        return [f for f in glob.glob(template_fname, recursive=recursive) if op.isfile(f) and utils.file_type(f)
+                in file_types]
 
     files = find_files(template_fname)
     if len(files) == 0:
@@ -1210,7 +1214,8 @@ def find_template_files(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy
     return files
 
 
-def find_hemi_files_from_template(template_fname, file_types=('mgz', 'nii.gz', 'nii', 'npy'), convert_to_mgz=True):
+def find_hemi_files_from_template(template_fname, file_types=('mgz', 'mgh', 'nii.gz', 'nii', 'npy'),
+                                  convert_to_mgz=True):
     try:
         if isinstance(file_types, str):
             file_types = [file_types]
@@ -1664,9 +1669,9 @@ def get_unique_files_into_mgz(files):
         ft = utils.file_type(contrast_file)
         contrast_files_dic[contrast_file[:-len(ft) - 1]].append(ft)
     for contrast_file, fts in contrast_files_dic.items():
-        if 'mgz' not in fts and 'nii.gz' in fts:
-            # fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
-            fu.nii_gz_to_mgz('{}.nii.gz'.format(contrast_file))
+        if 'mgz' not in fts and len(set(['nii', 'nii.gz', 'mgh']) & set(fts)) > 0:
+            fu.mri_convert_to('{}.{}'.format(contrast_file, fts[0]), 'mgz')
+            # fu.nii_gz_to_mgz('{}.nii.gz'.format(contrast_file))
     files = ['{}.mgz'.format(contrast_file) for contrast_file in contrast_files_dic.keys()]
     print('get_unique_files_into_mgz: {}'.format(files))
     return files

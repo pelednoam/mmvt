@@ -779,7 +779,7 @@ class CreateMovie(bpy.types.Operator):
                 if len(movies) > 0:
                     output_fname = op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
                         mu.namebase(bpy.context.scene.output_path)))
-                    if output_fname != movies[0] and op.isfiel(movies[0]):
+                    if output_fname != movies[0] and op.isfile(movies[0]):
                         shutil.copy(movies[0], output_fname)
                 #     temp_fol = op.join(bpy.context.scene.output_path, 'new_images')
                 #     if op.isdir(temp_fol):

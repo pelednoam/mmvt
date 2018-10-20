@@ -950,8 +950,11 @@ def run_command(cmd, shell=True, pipe=False, cwd=None):
 
 
 def make_dir(fol):
-    if not os.path.isdir(fol):
-        os.makedirs(fol)
+    try:
+        if not op.isdir(fol) and not op.islink(fol):
+            os.makedirs(fol)
+    except:
+        pass
     return fol
 
 
@@ -1920,6 +1923,10 @@ def view_selected():
             override["region"] = region
             select_all_brain(True)
             bpy.ops.view3d.view_selected(override)
+
+
+def deselect_all_objects():
+    bpy.ops.object.select_all(action='DESELECT')
 
 
 def select_all_brain(val):
