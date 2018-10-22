@@ -653,7 +653,8 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
     for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
         all_done = True
         for label_ind, label in enumerate(labels):
-            output_fname = op.join(fol, '{}_{}_{}_{}_induced_power.npz'.format(cond_name, label.name, inverse_method, em))
+            output_fname = op.join(fol, '{}_{}_{}_{}_{}_induced_power.npz'.format(
+                cond_name, label.name, atlas, inverse_method, em))
             if not op.isfile(output_fname) or overwrite:
                 all_done = False
                 break
@@ -672,7 +673,8 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
                 epochs.info['sfreq'], freqs, n_cycles=n_cycles, zero_mean=False)) for freqs in bands.values()]
         label_now = time.time()
         for label_ind, label in enumerate(labels):
-            output_fname = op.join(fol, '{}_{}_{}_{}_induced_power.npz'.format(cond_name, label.name, inverse_method, em))
+            output_fname = op.join(fol, '{}_{}_{}_{}_{}_induced_power.npz'.format(
+                cond_name, label.name, atlas, inverse_method, em))
             if op.isfile(output_fname) and not overwrite:
                 continue
             utils.time_to_go(label_now, label_ind, len(labels), runs_num_to_print=1)

@@ -65,9 +65,11 @@ def anatomy_preproc(args, subject=''):
     args = anat.read_cmd_args(dict(
         subject=args.subject if subject == '' else subject,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
-        high_level_atlas_name='darpa_atlas',
-        function='create_annotation,create_high_level_atlas',
+        # high_level_atlas_name='darpa_atlas',
+        # function='create_annotation,create_high_level_atlas',
+        function='create_annotation',
         overwrite_fs_files=args.overwrite,
+        atlas='laus125',
         ignore_missing=False
     ))
     anat.call_main(args)
@@ -227,7 +229,7 @@ def meg_preproc_evoked(args):
 
 
 def meg_preproc_power(args):
-    inv_method, em, atlas= 'dSPM', 'mean_flip', 'darpa_atlas'
+    inv_method, em, atlas = 'dSPM', 'mean_flip', 'laus125' # 'darpa_atlas'
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
     subjects_with_error = []
@@ -251,7 +253,7 @@ def meg_preproc_power(args):
             #         continue
 
             input_fnames = glob.glob(
-                op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em)))
+                op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
             if len(input_fnames) == 28:
                 print('{} has already all the results for {}'.format(subject, task))
                 continue
@@ -389,18 +391,22 @@ def post_meg_preproc(args):
     subjects = args.subject
     res_fol = utils.make_dir(op.join(utils.get_parent_fol(MMVT_DIR), 'msit-ecr'))
     subjects_with_results = {}
-    labels_names = lu.read_labels(subjects[0], SUBJECTS_DIR, atlas, only_names=True)
+    labels = lu.read_labels(subjects[0], SUBJECTS_DIR, atlas)
+    labels_names = [l.name for l in labels]
     labels_num = len(labels_names)
     epochs_max_num = 50
+    template_brain = 'colin27'
 
     now = time.time()
+    bands_power_mmvt_all = []
     for subject_ind, subject in enumerate(subjects):
         utils.time_to_go(now, subject_ind, len(subjects), runs_num_to_print=1)
         subjects_with_results[subject] = {}
         input_fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
         plots_fol = utils.make_dir(op.join(input_fol, 'plots'))
         args.subject = subject
-        for task in args.tasks:
+        bands_power_mmvt = {'rh':{}, 'lh':{}}
+        for task_ind, task in enumerate(args.tasks):
             task = task.lower()
             input_fnames = glob.glob(op.join(input_fol, '{}_*_{}_{}_induced_power.npz'.format(task, inv_method, em)))
             if len(input_fnames) < 1:# labels_num:
@@ -408,7 +414,6 @@ def post_meg_preproc(args):
                 subjects_with_results[subject][task] = False
                 continue
             # input_dname = ecr_caudalanteriorcingulate-lh_dSPM_mean_flip_induced_power
-            subjects_with_results[subject][task] = True
             # if not do_plot:
             #     continue
             bands_power = np.empty((len(bands), labels_num, epochs_max_num))
@@ -419,8 +424,16 @@ def post_meg_preproc(args):
                 # for band_ind in range(len(bands)):
                 #     label_power[band_ind] /= label_power[band_ind][:, norm_times[0]:norm_times[1]].mean()
                 label_ind = labels_names.index(label_name)
+                hemi = labels[label_ind].hemi
                 for band_ind, band in enumerate(bands.keys()):
-                    bands_power[band_ind, label_ind] = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
+                    label_power_norm = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
+                    if len(label_power_norm) != epochs_max_num:
+                        print('{} does have {} epochs!'.format(input_fname, len(label_power_norm)))
+                        break
+                    bands_power[band_ind, label_ind] = label_power_norm
+                    if band not in bands_power_mmvt[hemi]:
+                        bands_power_mmvt[hemi][band] = np.empty((len(labels_names), label_power[band_ind].shape[1], 1, len(args.tasks)))
+                    bands_power_mmvt[hemi][band][label_ind, :, 0, task_ind] = label_power[band_ind].mean(axis=0)
                 fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label_name, task))
                 if do_plot: # not op.isfile(fig_fname) and
                     times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
@@ -429,10 +442,24 @@ def post_meg_preproc(args):
                 power_fname = op.join(
                     res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
                 np.savez(power_fname, data=np.array(bands_power[band_ind]), names=labels_names)
+            subjects_with_results[subject][task] = True
 
-            # utils.make_dir(op.join(res_fol, subject))
-            # power_fname = op.join(
-            #     res_fol, subject, '{}_labels_{}_{}_{}_induced_power.npz'.format(task.lower(), inv_method, em, band))
+
+        if all(subjects_with_results[subject].values()):
+            bands_power_mmvt_all.append(bands_power_mmvt)
+        else:
+            print('{} does not have both tasks data!'.format(subject))
+
+    labels_data_template = op.join(MMVT_DIR, template_brain, 'meg', 'labels_data_power_{}_{}_{}_{}_{}.npz')  # task, atlas, extract_method, hemi
+    for hemi in utils.HEMIS:
+        for band_ind, band in enumerate(bands.keys()):
+            power = np.array([x[hemi][band] for x in bands_power_mmvt_all]).mean(axis=0)
+            labels_output_fname = meg.get_labels_data_fname(
+                labels_data_template, inv_method, band, atlas, em, hemi)
+            utils.make_dir(utils.get_parent_fol(labels_output_fname))
+            np.savez(labels_output_fname, data=power, names=labels_names, conditions=args.tasks)
+
+
     have_all = len([subject for subject, results in subjects_with_results.items() if all(results.values())])
     print('{}/{} with all files'.format(have_all, len(subjects)))
     print(subjects_with_results)
