@@ -733,6 +733,7 @@ def add_data_to_brain(source_files):
         for obj_name, data in zip(f['names'], f['data']):
             if data.ndim == 1 and len(f['conditions']) == 1:
                 data = data.reshape((len(data), 1))
+            data = data.squeeze()
             obj_name = obj_name.astype(str)
             if not bpy.context.scene.import_unknown and 'unknown' in obj_name:
                 continue
@@ -865,6 +866,7 @@ def add_data_to_parent_obj(parent_obj, source_files, stat):
     for f in source_files:
         for obj_name, data in zip(f['names'], f['data']):
             obj_name = obj_name.astype(str)
+            data = data.squeeze()
             # Check if there is only one condition
             if data.ndim == 1 or data.shape[1] == 1:
                 stat = STAT_AVG

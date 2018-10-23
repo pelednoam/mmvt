@@ -65,7 +65,7 @@ def anatomy_preproc(args, subject=''):
     args = anat.read_cmd_args(dict(
         subject=args.subject if subject == '' else subject,
         remote_subject_dir='/autofs/space/lilli_001/users/DARPA-Recons/{subject}',
-        # high_level_atlas_name='darpa_atlas',
+        # high_level_atlas_name='darpa-atlas',
         # function='create_annotation,create_high_level_atlas',
         function='create_annotation',
         overwrite_fs_files=args.overwrite,
@@ -142,7 +142,7 @@ def get_empty_fnames(subject, tasks, args, overwrite=False):
 
 
 def meg_preproc_evoked(args):
-    inv_method, em, atlas= 'dSPM', 'mean_flip', 'darpa_atlas'
+    inv_method, em, atlas= 'dSPM', 'mean_flip', args.atlas
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
     subjects_with_error = []
@@ -229,7 +229,7 @@ def meg_preproc_evoked(args):
 
 
 def meg_preproc_power(args):
-    inv_method, em, atlas = 'dSPM', 'mean_flip', 'laus125' # 'darpa_atlas'
+    inv_method, em, atlas = 'dSPM', 'mean_flip', args.atlas
     # bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     times = (-2, 4)
     subjects_with_error = []
@@ -325,7 +325,7 @@ def meg_preproc_power(args):
 
 
 # def calc_source_band_induced_power(args):
-#     inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa_atlas'
+#     inv_method, em, atlas= 'MNE', 'mean_flip', 'darpa-atlas'
 #     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
 #     times = (-2, 4)
 #     subjects_with_error = []
@@ -383,7 +383,7 @@ def meg_preproc_power(args):
 
 
 def post_meg_preproc(args):
-    inv_method, em, atlas = 'dSPM', 'mean_flip', 'darpa_atlas'
+    inv_method, em, atlas = 'dSPM', 'mean_flip', args.atlas
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
     norm_times = (500, 2500)
     do_plot = False
@@ -727,8 +727,8 @@ def get_good_subjects(args, check_dict=False):
     else:
         good_subjects = []
         for subject in args.subject:
-            if subject == 'pp009':
-                continue
+            # if subject == 'pp009':
+            #     continue
             if check_dict and subject not in msit_ecr_subjects:
                 print('*** {} not in the meta data!'.format(subject))
                 continue
@@ -772,7 +772,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=False, default='meg_preproc_power')
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='darpa_atlas')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus125') #darpa-atlas')
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--overwrite_connectivity', required=False, default=False, type=au.is_true)
