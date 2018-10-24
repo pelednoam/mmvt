@@ -294,7 +294,7 @@ def meg_preproc_power(args):
                 use_empty_room_for_noise_cov=True,
                 read_only_from_annot=False,
                 # pick_ori='normal',
-                overwrite_labels_power_spectrum = args.overwrite_output_files,
+                overwrite_labels_induced_power = args.overwrite_output_files,
                 overwrite_evoked=args.overwrite,
                 overwrite_fwd=args.overwrite,
                 overwrite_inv=args.overwrite,
