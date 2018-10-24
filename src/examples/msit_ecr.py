@@ -253,7 +253,7 @@ def meg_preproc_power(args):
             #         print('{} already exist!'.format(output_fname))
             #         continue
 
-            if not args.overwrite:
+            if not args.overwrite_files:
                 input_fnames = glob.glob(
                     op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
                 if len(input_fnames) == 28:
@@ -777,6 +777,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='laus125') #darpa-atlas')
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
+    parser.add_argument('--overwrite_files', required=False, default=False, type=au.is_true)
     parser.add_argument('--overwrite_connectivity', required=False, default=False, type=au.is_true)
     parser.add_argument('--overwrite_labels_power_spectrum', required=False, default=False, type=au.is_true)
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
