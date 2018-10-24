@@ -34,26 +34,29 @@ def prepare_files(args):
                     (op.islink(local_raw_fname) or op.isfile(local_raw_fname)):
                 continue
 
-            if op.islink(local_epo_fname) or op.isfile(local_epo_fname):
+            if op.islink(local_epo_fname) or op.isfile(local_epo_fname) and args.overwrite:
                 os.remove(local_epo_fname)
-            remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
-            if not op.isfile(remote_epo_fname):
-                print('{} does not exist!'.format(remote_epo_fname))
-                ret[subject] = False
-                continue
-            print('Creating a link {} -> {}'.format(remote_epo_fname, local_epo_fname))
-            utils.make_link(remote_epo_fname, local_epo_fname)
-            if op.islink(local_raw_fname) or op.isfile(local_raw_fname):
+            if not op.islink(local_epo_fname) and not op.isfile(local_epo_fname):
+                remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
+                if not op.isfile(remote_epo_fname):
+                    print('{} does not exist!'.format(remote_epo_fname))
+                    ret[subject] = False
+                    continue
+                print('Creating a link {} -> {}'.format(remote_epo_fname, local_epo_fname))
+                utils.make_link(remote_epo_fname, local_epo_fname)
+
+            if op.islink(local_raw_fname) or op.isfile(local_raw_fname) and args.overwrite:
                 os.remove(local_raw_fname)
-            remote_raw_fname = op.join(
-                utils.get_parent_fol(args.meg_dir), 'raw_preprocessed', subject,
-                args.raw_template.format(subject=subject, task=task))
-            if not op.isfile(remote_epo_fname):
-                print('{} does not exist!'.format(remote_raw_fname))
-                ret[subject] = False
-                continue
-            print('Creating a link {} -> {}'.format(remote_raw_fname, local_raw_fname))
-            utils.make_link(remote_raw_fname, local_raw_fname)
+            if not op.islink(local_raw_fname) and not op.isfile(local_raw_fname):
+                remote_raw_fname = op.join(
+                    utils.get_parent_fol(args.meg_dir), 'raw_preprocessed', subject,
+                    args.raw_template.format(subject=subject, task=task))
+                if not op.isfile(remote_raw_fname):
+                    print('{} does not exist!'.format(remote_raw_fname))
+                    ret[subject] = False
+                    continue
+                print('Creating a link {} -> {}'.format(remote_raw_fname, local_raw_fname))
+                utils.make_link(remote_raw_fname, local_raw_fname)
         ret[subject] = ret[subject] and (op.isfile(local_epo_fname) or op.islink(local_epo_fname)) and \
                        (op.isfile(local_raw_fname) or op.islink(local_raw_fname))
     print('Good subjects:')
@@ -294,7 +297,7 @@ def meg_preproc_power(args):
                 use_empty_room_for_noise_cov=True,
                 read_only_from_annot=False,
                 # pick_ori='normal',
-                overwrite_labels_induced_power = args.overwrite_output_files,
+                overwrite_labels_induced_power=args.overwrite_output_files,
                 overwrite_evoked=args.overwrite,
                 overwrite_fwd=args.overwrite,
                 overwrite_inv=args.overwrite,
@@ -751,9 +754,9 @@ def get_good_subjects(args, check_dict=False):
                 print('*** {}: one of the tasks does not have a cor transformation matrix!'.format(subject))
                 print(cors)
                 continue
-            data_fol = op.join(args.meg_dir, subject)
-            files_exist = op.isfile(op.join(data_fol, args.epo_template.format(subject=subject, task='ECR'))) and \
-                op.isfile(op.join(data_fol, args.epo_template.format(subject=subject, task='MSIT')))
+            files_exist = \
+                op.isfile(op.join(args.meg_dir.format(task='ECR'), subject, args.epo_template.format(subject=subject, task='ECR'))) and \
+                op.isfile(op.join(args.meg_dir.format(task='MSIT'), subject, args.epo_template.format(subject=subject, task='MSIT')))
             if not files_exist and args.check_for_both_files:
                 print('**** {} doesn\'t have both MSIT and ECR files!'.format(subject))
                 continue
@@ -791,9 +794,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--remote_root_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/')
-    meg_dirs = ['/home/npeled/meg/msit_ecr',
+    meg_dirs = ['/home/npeled/meg/{task}',
                 '/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs']
-    meg_dir = [d for d in meg_dirs if op.isdir(d)][0]
+    meg_dir = [d for d in meg_dirs if op.isdir(d.format(task='MSIT'))][0]
     parser.add_argument('--meg_dir', required=False, default=meg_dir)
                         # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
     remote_subject_dirs = ['/autofs/space/lilli_001/users/DARPA-Recons/',
