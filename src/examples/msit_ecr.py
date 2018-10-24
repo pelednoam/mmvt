@@ -28,7 +28,7 @@ def prepare_files(args):
         ret[subject] = True
         for task in args.tasks:
             fol = utils.make_dir(op.join(MEG_DIR, task, subject))
-            local_epo_fname = op.join(fol, '{}_{}_Onset-epo.fif'.format(subject, task))
+            local_epo_fname = op.join(fol, args.epo_template.format(subject=subject, task=task))
             local_raw_fname = op.join(fol, '{}_{}-raw.fif'.format(subject, task))
             if not args.overwrite and (op.islink(local_epo_fname) or op.isfile(local_epo_fname)) and \
                     (op.islink(local_raw_fname) or op.isfile(local_raw_fname)):
@@ -36,7 +36,7 @@ def prepare_files(args):
 
             if op.islink(local_epo_fname) or op.isfile(local_epo_fname):
                 os.remove(local_epo_fname)
-            remote_epo_fname = op.join(args.meg_dir, subject, '{}_{}_meg_Onset-epo.fif'.format(subject, task))
+            remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
             if not op.isfile(remote_epo_fname):
                 print('{} does not exist!'.format(remote_epo_fname))
                 ret[subject] = False
@@ -46,7 +46,8 @@ def prepare_files(args):
             if op.islink(local_raw_fname) or op.isfile(local_raw_fname):
                 os.remove(local_raw_fname)
             remote_raw_fname = op.join(
-                utils.get_parent_fol(args.meg_dir), 'raw_preprocessed', subject, '{}_{}_meg_ica-raw.fif'.format(subject, task))
+                utils.get_parent_fol(args.meg_dir), 'raw_preprocessed', subject,
+                args.raw_template.format(subject=subject, task=task))
             if not op.isfile(remote_epo_fname):
                 print('{} does not exist!'.format(remote_raw_fname))
                 ret[subject] = False
@@ -178,8 +179,8 @@ def meg_preproc_evoked(args):
                 task=task, inverse_method=inv_method, extract_mode=em, atlas=atlas,
                 remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
                 get_task_defaults=False,
-                fname_format='{}_{}_Onset'.format('{subject}', task),
-                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+                fname_format=args.epo_template.format(subject=subject, task=task)[:-len('-epo.fif')],
+                raw_fname=op.join(MEG_DIR, task, subject, args.raw_template.format(subject=subject, task=task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task] if empty_fnames != '' else '',
                 function='make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition,calc_labels_min_max',
@@ -272,8 +273,8 @@ def meg_preproc_power(args):
                 # meg_dir=args.meg_dir,
                 remote_subject_dir=args.remote_subject_dir, # Needed for finding COR
                 get_task_defaults=False,
-                fname_format='{}_{}_Onset'.format('{subject}', task),
-                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+                fname_format=args.epo_template.format(subject=subject, task=task)[:-len('-epo.fif')],
+                raw_fname=op.join(MEG_DIR, task, subject, args.raw_template.format(subject=subject, task=task)),
                 epo_fname=local_epo_fname,
                 empty_fname=empty_fnames[task] if empty_fnames != '' else '',
                 function='make_forward_solution,calc_inverse_operator,calc_labels_induced_power',#,
@@ -510,8 +511,8 @@ def calc_meg_connectivity(args):
                 remote_subject_dir=args.remote_subject_dir,  # Needed for finding COR
                 get_task_defaults=False,
                 data_per_task=True,
-                fname_format='{}_{}_Onset'.format('{subject}', task),
-                raw_fname=op.join(MEG_DIR, task, subject, '{}_{}-raw.fif'.format(subject, task)),
+                fname_format=args.epo_template.format(subject=subject, task=task)[:-len('-epo.fif')],
+                raw_fname=op.join(MEG_DIR, task, subject, args.raw_template.format(subject=subject, task=task)),
                 epo_fname=local_epo_fname,
                 # empty_fname=empty_fnames[task],
                 function='calc_labels_connectivity',
@@ -750,8 +751,8 @@ def get_good_subjects(args, check_dict=False):
                 print(cors)
                 continue
             data_fol = op.join(args.meg_dir, subject)
-            files_exist = op.isfile(op.join(data_fol, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, 'ECR'))) and \
-                op.isfile(op.join(data_fol, '{}_{}_meg_Onset_ar-epo.fif'.format(subject, 'MSIT')))
+            files_exist = op.isfile(op.join(data_fol, args.epo_template.format(subject=subject, task='ECR'))) and \
+                op.isfile(op.join(data_fol, args.epo_template.format(subject=subject, task='MSIT')))
             if not files_exist and args.check_for_both_files:
                 print('**** {} doesn\'t have both MSIT and ECR files!'.format(subject))
                 continue
@@ -799,8 +800,8 @@ if __name__ == '__main__':
     parser.add_argument('--remote_subject_dir', required=False, default=remote_subject_dir)
     parser.add_argument('--remote_meg_dir', required=False,
                         default='/autofs/space/lilli_003/users/DARPA-TRANSFER/meg')
-    parser.add_argument('--epo_template', required=False,
-                        default='{subject}_{task}_meg_Onset_ar-epo.fif')
+    parser.add_argument('--epo_template', required=False, default='{subject}_{task}_meg_Onset_ar-epo.fif')
+    parser.add_argument('--raw_template', required=False, default='{subject}_{task}_meg_ica-raw.fif')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
     args = utils.Bag(au.parse_parser(parser))
 
