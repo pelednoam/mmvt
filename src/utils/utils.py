@@ -946,6 +946,7 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                     os.remove(local_fname)
                                 if not op.isfile(local_fname):
                                     print('coping {} to {}'.format(remote_fname, local_fname))
+                                    make_dir(get_parent_fol(local_fname))
                                     shutil.copyfile(remote_fname, local_fname)
                                 if op.isfile(local_fname) and op.getsize(remote_fname) != op.getsize(remote_fname):
                                     os.remove(local_fname)
