@@ -34,7 +34,7 @@ def prepare_files(args):
                     (op.islink(local_raw_fname) or op.isfile(local_raw_fname)):
                 continue
 
-            if op.islink(local_epo_fname) or op.isfile(local_epo_fname) and args.overwrite:
+            if op.islink(local_epo_fname) or op.isfile(local_epo_fname) and args.overwrite_local_files:
                 os.remove(local_epo_fname)
             if not op.islink(local_epo_fname) and not op.isfile(local_epo_fname):
                 remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
@@ -45,7 +45,7 @@ def prepare_files(args):
                 print('Creating a link {} -> {}'.format(remote_epo_fname, local_epo_fname))
                 utils.make_link(remote_epo_fname, local_epo_fname)
 
-            if op.islink(local_raw_fname) or op.isfile(local_raw_fname) and args.overwrite:
+            if op.islink(local_raw_fname) or op.isfile(local_raw_fname) and args.overwrite_local_files:
                 os.remove(local_raw_fname)
             if not op.islink(local_raw_fname) and not op.isfile(local_raw_fname):
                 remote_raw_fname = op.join(
@@ -781,6 +781,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--tasks', help='tasks', required=False, default='MSIT,ECR', type=au.str_arr_type)
     parser.add_argument('--overwrite', required=False, default=False, type=au.is_true)
     parser.add_argument('--overwrite_output_files', required=False, default=False, type=au.is_true)
+    parser.add_argument('--overwrite_local_files', required=False, default=False, type=au.is_true)
     parser.add_argument('--overwrite_connectivity', required=False, default=False, type=au.is_true)
     parser.add_argument('--overwrite_labels_power_spectrum', required=False, default=False, type=au.is_true)
     parser.add_argument('--throw', required=False, default=False, type=au.is_true)
