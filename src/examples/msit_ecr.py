@@ -41,7 +41,7 @@ def prepare_files(args):
                 print('{} does not exist!'.format(remote_epo_fname))
                 ret[subject] = False
                 continue
-            print('Creating a local link to {}'.format(remote_epo_fname))
+            print('Creating a link {} -> {}'.format(remote_epo_fname, local_epo_fname))
             utils.make_link(remote_epo_fname, local_epo_fname)
             if op.islink(local_raw_fname) or op.isfile(local_raw_fname):
                 os.remove(local_raw_fname)
@@ -52,7 +52,7 @@ def prepare_files(args):
                 print('{} does not exist!'.format(remote_raw_fname))
                 ret[subject] = False
                 continue
-            print('Creating a local link to {}'.format(remote_raw_fname))
+            print('Creating a link {} -> {}'.format(remote_raw_fname, local_raw_fname))
             utils.make_link(remote_raw_fname, local_raw_fname)
         ret[subject] = ret[subject] and (op.isfile(local_epo_fname) or op.islink(local_epo_fname)) and \
                        (op.isfile(local_raw_fname) or op.islink(local_raw_fname))
@@ -789,8 +789,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--remote_root_dir', required=False,
                         default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/')
-    meg_dirs = ['/home/npeled/meg/msit_ecr/',
-                '/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs/']
+    meg_dirs = ['/home/npeled/meg/msit_ecr',
+                '/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/epochs']
     meg_dir = [d for d in meg_dirs if op.isdir(d)][0]
     parser.add_argument('--meg_dir', required=False, default=meg_dir)
                         # default='/autofs/space/karima_001/users/alex/MSIT_ECR_Preprocesing_for_Noam/raw_preprocessed')
