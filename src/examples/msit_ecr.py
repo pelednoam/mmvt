@@ -257,9 +257,16 @@ def meg_preproc_power(args):
             #         continue
 
             if not args.overwrite_output_files:
-                input_fnames = glob.glob(
+                output_fnames = glob.glob(
                     op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
-                if len(input_fnames) == 28:
+                overwrite = False
+                for output_fname in output_fnames:
+                    file_mod_time = utils.file_modification_time_struct(output_fname)
+                    if file_mod_time.tm_year < 2018 or (file_mod_time.tm_mon == 10 and file_mod_time.tm_mday < 23) or \
+                            (file_mod_time.tm_mon < 10):
+                        overwrite = True
+
+                if len(output_fnames) == 28:
                     print('{} has already all the results for {}'.format(subject, task))
                     continue
 
