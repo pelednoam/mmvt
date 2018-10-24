@@ -253,11 +253,12 @@ def meg_preproc_power(args):
             #         print('{} already exist!'.format(output_fname))
             #         continue
 
-            input_fnames = glob.glob(
-                op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
-            if len(input_fnames) == 28:
-                print('{} has already all the results for {}'.format(subject, task))
-                continue
+            if not args.overwrite:
+                input_fnames = glob.glob(
+                    op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
+                if len(input_fnames) == 28:
+                    print('{} has already all the results for {}'.format(subject, task))
+                    continue
 
             remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
             local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))
