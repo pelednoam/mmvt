@@ -256,19 +256,19 @@ def meg_preproc_power(args):
             #         print('{} already exist!'.format(output_fname))
             #         continue
 
-            if not args.overwrite_output_files:
-                output_fnames = glob.glob(
-                    op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
-                overwrite = False
-                for output_fname in output_fnames:
-                    file_mod_time = utils.file_modification_time_struct(output_fname)
-                    if file_mod_time.tm_year < 2018 or (file_mod_time.tm_mon == 10 and file_mod_time.tm_mday < 23) or \
-                            (file_mod_time.tm_mon < 10):
-                        overwrite = True
-
-                if len(output_fnames) == 28:
-                    print('{} has already all the results for {}'.format(subject, task))
-                    continue
+            # if not args.overwrite_output_files:
+            #     output_fnames = glob.glob(
+            #         op.join(input_fol, '{}_*_{}_{}_{}_induced_power.npz'.format(task.lower(), atlas, inv_method, em)))
+            #     overwrite = False
+            #     for output_fname in output_fnames:
+            #         file_mod_time = utils.file_modification_time_struct(output_fname)
+            #         if file_mod_time.tm_year < 2018 or (file_mod_time.tm_mon == 10 and file_mod_time.tm_mday < 23) or \
+            #                 (file_mod_time.tm_mon < 10):
+            #             overwrite = True
+            #
+            #     if len(output_fnames) == 28:
+            #         print('{} has already all the results for {}'.format(subject, task))
+            #         continue
 
             remote_epo_fname = op.join(args.meg_dir, subject, args.epo_template.format(subject=subject, task=task))
             local_epo_fname = op.join(MEG_DIR, task, subject, args.epo_template.format(subject=subject, task=task))

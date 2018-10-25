@@ -680,6 +680,7 @@ def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', ext
             output_fname = op.join(fol, '{}_{}_{}_{}_{}_induced_power.npz'.format(
                 cond_name, label.name, atlas, inverse_method, em))
             if op.isfile(output_fname) and not overwrite:
+                print('calc_labels_induced_power: {} is already calculated'.format(label.name))
                 continue
             utils.time_to_go(label_now, label_ind, len(labels), runs_num_to_print=1)
             powers, times = None, None
