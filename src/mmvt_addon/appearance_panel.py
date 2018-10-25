@@ -637,11 +637,11 @@ class SelectionListener(bpy.types.Operator):
             if event.type == 'TIMER':
                 if bpy.context.scene.rotate_brain:
                     if _addon().render.is_camera_view():
-                        _addon().camera_mode('ORTHO')
-                        _addon().rotate_brain()
-                        _addon().camera_mode('CAMERA')
+                        _addon().render.camera_mode('ORTHO')
+                        _addon().show_hide.rotate_brain()
+                        _addon().render.camera_mode('CAMERA')
                     else:
-                        _addon().rotate_brain()
+                        _addon().show_hide.rotate_brain()
 
         if _addon() and _addon().render_in_queue():
             rendering_data = mu.queue_get(_addon().render_in_queue())

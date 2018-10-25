@@ -154,18 +154,20 @@ def switch_to_object_mode(area=None):
 
 
 def switch_to_camera_mode(area=None):
-    if area is None:
-        area = bpy.data.screens['Neuro'].areas[1]
+    # if area is None:
+    #     # area = bpy.data.screens['Neuro'].areas[1]
+    #     area = next(mu.get_3d_areas())
     _addon().change_to_rendered_brain()
     bpy.data.objects['Camera'].select = True
     bpy.context.scene.objects.active = bpy.data.objects['Camera']
     ob = bpy.context.object
     bpy.context.scene.camera = ob
+    area, region = mu.get_3d_area_region()
     for region in area.regions:
         if region.type == 'WINDOW':
             override = bpy.context.copy()
             override['area'] = area
-            override["region"] = region
+            override['region'] = region
             mu.select_all_brain(True)
             bpy.ops.view3d.camera_to_view(override)
             bpy.ops.view3d.camera_to_view_selected(override)
