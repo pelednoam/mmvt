@@ -104,6 +104,7 @@ def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=Fals
     dx = bpy.context.scene.rotate_dx if dx is None else dx
     dy = bpy.context.scene.rotate_dy if dy is None else dy
     dz = bpy.context.scene.rotate_dz if dz is None else dz
+    ShowHideObjectsPanel.rotate_dxyz += np.array([dx, dy, dz])
     bpy.context.scene.rotate_dx, bpy.context.scene.rotate_dy, bpy.context.scene.rotate_dz = dx, dy, dz
     rv3d = mu.get_view3d_region()
     rv3d.view_rotation.rotate(mathutils.Euler((math.radians(d) for d in (dx, dy, dz))))
@@ -111,7 +112,9 @@ def rotate_brain(dx=None, dy=None, dz=None, keep_rotating=False, save_image=Fals
         _addon().save_image('rotation', view_selected=bpy.context.scene.save_selected_view)
     if bpy.context.scene.rotate_and_render or render_image:
         _addon().render_image('rotation')
-    if keep_rotating:
+    if bpy.context.scene.rotate_360 and any([ShowHideObjectsPanel.rotate_dxyz[k] >= 360 for k in range(3)]):
+        stop_rotating()
+    elif keep_rotating:
         start_rotating()
 
 
@@ -130,6 +133,15 @@ def start_rotating():
 
 def stop_rotating():
     bpy.context.scene.rotate_brain = False
+
+
+def get_rotate_dxyz():
+    return ShowHideObjectsPanel.rotate_dxyz
+
+
+def rotate_brain_update(self, context):
+    if not bpy.context.scene.rotate_brain:
+        ShowHideObjectsPanel.rotate_dxyz = np.array([0., 0., 0.])
 
 
 def show_only_redner_update(self, context):
@@ -630,6 +642,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
     split_view_text = {0:'Split Lateral', 1:'Split Medial', 2:'Normal view'}
     electrodes_are_shown = False
     time_of_view_selection = mu.get_time_obj
+    rotate_dxyz = np.array([0., 0., 0.])
 
     def draw(self, context):
         if not ShowHideObjectsPanel.init:
@@ -700,6 +713,7 @@ class ShowHideObjectsPanel(bpy.types.Panel):
             row.prop(context.scene, 'rotate_dy')
             row.prop(context.scene, 'rotate_dz')
             # row = col.row(align=True)
+            col.prop(context.scene, 'rotate_360')
             col.prop(context.scene, 'rotate_and_save')
             # col.prop(context.scene, 'rotate_and_render')
 
@@ -734,13 +748,15 @@ bpy.types.Scene.show_hide_cerebellum = bpy.props.BoolProperty(default=False, upd
     description='Hide/Show the cerebellum')
 bpy.types.Scene.show_only_render = bpy.props.BoolProperty(
     default=True, update=show_only_redner_update, description='Removes the crosshairs and other descriptive markers')
-bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain',
+bpy.types.Scene.rotate_brain = bpy.props.BoolProperty(default=False, name='Rotate the brain', update=rotate_brain_update,
     description='When the box is checked the brain starts to rotate according the values that were set to the x,y,x '
                 'axis below the check box')
 bpy.types.Scene.rotate_and_save = bpy.props.BoolProperty(default=False, name='Save an image each rotation',
     description='Saves an image each rotation according the values that were set to the x,y,x axis below the check box. '
                 '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '
                 '\nExample:  ..\ mmvt\mmvt_root\mmvt_blend\colin27\\figures')
+bpy.types.Scene.rotate_360 = bpy.props.BoolProperty(default=False, name='Rotate full 360 deg',
+    description='Rotate a full 360 degrees ')
 bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Render an image each rotation',
     description='Renders an image each rotation according the values that were set to the x,y,x axis below the check box. '
                 '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '
