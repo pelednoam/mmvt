@@ -39,6 +39,11 @@ def elc_size_update(self, context):
         pass
 
 
+def show_electrodes_labels_update(self, context):
+    for elec_obj in ElecsPanel.parent.children:
+        elec_obj.show_name = bpy.context.scene.show_electrodes_labels
+
+
 def set_show_electrodes_groups_leads(val):
     bpy.context.scene.show_electrodes_groups_leads = val
 
@@ -602,6 +607,7 @@ def elecs_draw(self, context):
         # box.prop(context.scene, "electrodes_hemi_labels", text="")
 
     if bpy.context.scene.electrodes_more_settings:
+        layout.prop(context.scene, 'show_electrodes_labels', text="Show labels")
         layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
         # row = layout.row(align=True)
         if ElecsPanel.electrodes_labeling_file_exist:
@@ -863,6 +869,8 @@ bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False,
 bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_color_only_selected = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_electrodes_labels = bpy.props.BoolProperty(default=False, update=show_electrodes_labels_update)
+
 
 bpy.types.Scene.electrodes_hemis = bpy.props.EnumProperty(
     items=[('left', 'lh', '', 1), ('right', 'rh', '', 2)], update=electrodes_hemis_update)
@@ -935,6 +943,7 @@ def init(addon, do_register=True):
     bpy.context.scene.electrode_rotate = False
     bpy.context.scene.electrodes_more_settings = False
     bpy.context.scene.electrodes_create_curved_leads = False
+    bpy.context.scene.show_electrodes_labels = False
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")
