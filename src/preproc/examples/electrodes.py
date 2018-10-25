@@ -45,52 +45,52 @@ def save_msit_single_trials_data(subject, bipolar):
     elecs.main(subject, args)
 
 
+# def load_edf_data_seizure(args):
+#     args = elecs.read_cmd_args(utils.Bag(
+#         subject=args.subject,
+#         atlas='laus250',
+#         function='create_raw_data_from_edf',
+#         task='seizure',
+#         bipolar=False,
+#         raw_fname='Bakhamis_Amal_1.edf',
+#         start_time='00:01:34',
+#         # seizure_onset='00:03:33',
+#         seizure_onset='00:03:28',
+#         seizure_end='00:03:50',
+#         baseline_onset='00:01:34',
+#         baseline_end='00:03:11',
+#         lower_freq_filter=0.5,
+#         upper_freq_filter=70,
+#         power_line_notch_widths=5,
+#         ref_elec='CII',
+#         normalize_data=False,
+#         calc_zscore=False,
+#         factor=1000
+#     ))
+#     pu.run_on_subjects(args, elecs.main)
+
+
 def load_edf_data_seizure(args):
     args = elecs.read_cmd_args(utils.Bag(
         subject=args.subject,
-        atlas='laus250',
-        function='create_raw_data_for_blender',
-        task='seizure',
-        bipolar=False,
-        raw_fname='Bakhamis_Amal_1.edf',
-        start_time='00:01:34',
-        # seizure_onset='00:03:33',
-        seizure_onset='00:03:28',
-        seizure_end='00:03:50',
-        baseline_onset='00:01:34',
-        baseline_end='00:03:11',
-        lower_freq_filter=0.5,
-        upper_freq_filter=70,
-        power_line_notch_widths=5,
-        ref_elec='CII',
-        normalize_data=False,
-        calc_zscore=False,
-        factor=1000
-    ))
-    pu.run_on_subjects(args, elecs.main)
-
-
-def load_edf_data_seizure_2(args):
-    args = elecs.read_cmd_args(utils.Bag(
-        subject=args.subject,
         atlas='laus125',
-        function='create_raw_data_for_blender',
+        function='create_raw_data_from_edf',
         task='seizure',
         bipolar=args.bipolar,
-        raw_fname=op.join(ELECTRODES_DIR, args.subject[0], 'DMphaseIISz_TG.edf'),# '/cluster/neuromind/npeled/taha/dm04002705/edf/DMphaseIISz_TG.edf',
+        raw_fname=op.join(ELECTRODES_DIR, args.subject[0], '{}.edf'.format(args.edf)),
         start_time='00:00:00',
         seizure_onset='00:01:20',
         seizure_end='00:02:00',
         baseline_onset='00:00:00',
         baseline_end='00:01:00',
-        lower_freq_filter=2,
-        upper_freq_filter=70,
+        lower_freq_filter=1,
+        upper_freq_filter=150,
         power_line_notch_widths=5,
         ref_elec='PST1',
         normalize_data=False,
         calc_zscore=False,
         factor=1000,
-        channels_names_mismatches='LFO=LIF'
+        # channels_names_mismatches='LFO=LIF'
     ))
     pu.run_on_subjects(args, elecs.main)
 
@@ -98,11 +98,12 @@ def load_edf_data_seizure_2(args):
 def load_edf_data_rest(args):
     args = elecs.read_cmd_args(utils.Bag(
         subject=args.subject,
-        function='create_raw_data_for_blender',
+        function='create_raw_data_from_edf',
         task='rest',
         bipolar=False,
         remove_power_line_noise=True,
-        raw_fname='MG102_d3_Fri.edf',
+        # raw_fname='MG102_d3_Fri.edf',
+        raw_fname=op.join(ELECTRODES_DIR, args.subject[0], '{}.edf'.format(args.edf)),
         # rest_onset_time='6:50:00',
         # end_time='7:05:00',
         normalize_data=False,
@@ -201,6 +202,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-b', '--bipolar', help='bipolar', required=False, type=au.is_true)
+    parser.add_argument('-e', '--edf', help='edf name', required=False)
     parser.add_argument('-f', '--function', help='function name', required=False)
     parser.add_argument('-u', '--sftp_username', help='sftp username', required=False, default='npeled')
     parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')

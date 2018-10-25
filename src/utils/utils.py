@@ -45,6 +45,7 @@ hemi_files_exists = mu.hemi_files_exists
 natural_keys = mu.natural_keys
 elec_group_number = mu.elec_group_number
 elec_group = mu.elec_group
+get_group_and_number = mu.get_group_and_number
 run_command_in_new_thread = mu.run_command_in_new_thread
 is_linux = mu.is_linux
 is_windows = mu.is_windows
@@ -78,6 +79,8 @@ change_fname_extension = mu.change_fname_extension
 copy_file = mu.copy_file
 namebase = mu.namebase
 check_if_atlas_exist = mu.check_if_atlas_exist
+get_label_for_full_fname = mu.get_label_for_full_fname
+to_str = mu.to_str
 
 from src.mmvt_addon.scripts import scripts_utils as su
 get_link_dir = su.get_link_dir
@@ -246,6 +249,15 @@ def read_ply_file(ply_file, npz_fname=''):
     return verts, faces
 
 
+def ply2fs(ply_fname, fs_fname=''):
+    import nibabel.freesurfer as fs
+    if fs_fname == '':
+        fs_fname = op.join(get_parent_fol(ply_fname), ply_fname[:-len('.ply')])
+    verts, faces = read_ply_file(ply_fname)
+    fs.io.write_geometry(fs_fname, verts, faces)
+    return op.isfile(fs_fname)
+
+
 def load_surf(subject, mmvt_dir, subjects_dir, surf_type='pial'):
     verts = {}
     for hemi in HEMIS:
@@ -280,13 +292,14 @@ def write_ply_file(verts, faces, ply_file_name, write_also_npz=False):
     try:
         verts_num = verts.shape[0]
         faces_num = faces.shape[0]
-        faces = faces.astype(np.int)
-        faces_for_ply = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
         with open(ply_file_name, 'w') as f:
             f.write(PLY_HEADER.format(verts_num, faces_num))
         with open(ply_file_name, 'ab') as f:
             np.savetxt(f, verts, fmt='%.5f', delimiter=' ')
-            np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
+            if faces_num > 0:
+                faces = faces.astype(np.int)
+                faces_for_ply = np.hstack((np.ones((faces_num, 1)) * faces.shape[1], faces))
+                np.savetxt(f, faces_for_ply, fmt='%d', delimiter=' ')
         if write_also_npz:
             np.savez('{}.npz'.format(op.splitext(ply_file_name)[0]), verts=verts, faces=faces)
         return True
@@ -902,8 +915,9 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
     else:
         for fol, files in necessary_files.items():
             fol = fol.replace(':', op.sep)
-            if not op.isdir(op.join(local_subject_dir, fol)):
-                os.makedirs(op.join(local_subject_dir, fol))
+            # if not op.isdir(op.join(local_subject_dir, fol)):
+            #     os.makedirs(op.join(local_subject_dir, fol))
+            make_dir(op.join(local_subject_dir, fol))
             for file_name in files:
                 try:
                     file_name = file_name.replace('{subject}', subject)
@@ -913,7 +927,7 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                     if len(local_files) == 0 or overwrite_files:
                         remote_files = glob.glob(remote_fname)
                         if len(remote_files) > 0:
-                            remote_fname = remote_files[0]
+                            remote_fname = select_one_file(remote_files, files_desc=file_name)
                             remote_lower = namebase_with_ext(remote_fname).lower()
                             if subject.lower() in remote_lower and subject not in namebase(remote_fname):
                                 ind = remote_lower.index(subject)
@@ -921,7 +935,10 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                 local_fname = op.join(local_subject_dir, fol, new_file_name)
                             else:
                                 local_fname = op.join(local_subject_dir, fol, namebase_with_ext(remote_fname))
+                            make_dir(op.join(local_subject_dir, fol))
                             if remote_fname != local_fname:
+                                if not op.isfile(remote_fname) and not op.isfile(local_fname):
+                                    print('Can\'t find {} nor {}!'.format(remote_fname, local_fname))
                                 if overwrite_files and op.isfile(local_fname):
                                     os.remove(local_fname)
                                 elif op.isfile(local_fname) and op.getsize(remote_fname) != op.getsize(remote_fname):
@@ -929,6 +946,7 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                                     os.remove(local_fname)
                                 if not op.isfile(local_fname):
                                     print('coping {} to {}'.format(remote_fname, local_fname))
+                                    make_dir(get_parent_fol(local_fname))
                                     shutil.copyfile(remote_fname, local_fname)
                                 if op.isfile(local_fname) and op.getsize(remote_fname) != op.getsize(remote_fname):
                                     os.remove(local_fname)
@@ -1460,9 +1478,42 @@ def set_exe_permissions(fpath):
     os.chmod(fpath, 0o744)
 
 
+# def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
+#     import xlrd
+#     import csv
+#     wb = xlrd.open_workbook(xlsx_fname)
+#     sheet_num = 0
+#     if len(wb.sheets()) > 1 and sheet_name == '':
+#         print('More than one sheet in the xlsx file:')
+#         for ind, sh in enumerate(wb.sheets()):
+#             print('{}) {}'.format(ind + 1, sh.name))
+#         sheet_num = input('Which one do you want to load (1, 2, ...)? ')
+#         while not is_int(sheet_num):
+#             print('Please enter a valid integer')
+#             sheet_num = input('Which one do you want to load (1, 2, ...)? ')
+#         sheet_num = int(sheet_num) - 1
+#     if sheet_name != '':
+#         sh = wb.sheet_by_name(sheet_name)
+#     else:
+#         sh = wb.sheets()[sheet_num]
+#     print('Converting sheet "{}" to csv'.format(sh.name))
+#     with open(csv_fname, 'w') as csv_file:
+#         wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+#         for rownum in range(sh.nrows):
+#             wr.writerow([val for val in sh.row_values(rownum)])
+#             # csv_file.write(b','.join([str(val).encode('utf_8') for val in sh.row_values(rownum)]) + b'\n')
+
 def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
-    import xlrd
     import csv
+    print('Converting xlsx to csv')
+    with open(csv_fname, 'w') as csv_file:
+        wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        for line in xlsx_reader(xlsx_fname, sheet_name):
+            wr.writerow(line)
+
+
+def xlsx_reader(xlsx_fname, sheet_name='', skip_rows=0):
+    import xlrd
     wb = xlrd.open_workbook(xlsx_fname)
     sheet_num = 0
     if len(wb.sheets()) > 1 and sheet_name == '':
@@ -1478,12 +1529,9 @@ def csv_from_excel(xlsx_fname, csv_fname, sheet_name=''):
         sh = wb.sheet_by_name(sheet_name)
     else:
         sh = wb.sheets()[sheet_num]
-    print('Converting sheet "{}" to csv'.format(sh.name))
-    with open(csv_fname, 'w') as csv_file:
-        wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
-        for rownum in range(sh.nrows):
-            wr.writerow([val for val in sh.row_values(rownum)])
-            # csv_file.write(b','.join([str(val).encode('utf_8') for val in sh.row_values(rownum)]) + b'\n')
+    for rownum in range(sh.nrows):
+        if rownum >= skip_rows:
+            yield sh.row_values(rownum)
 
 
 def get_all_subjects(subjects_dir, prefix, exclude_substr):
@@ -1780,10 +1828,10 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
         exist = op.isfile(fname)
     if not exist:
         glob_pattern = [op.join(parent_fol, g) if get_parent_fol(g) == '' else g for g in glob_pattern]
-        lists = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in glob_pattern]
+        lists = [glob.glob(op.join(parent_fol, '**', namebase_with_ext(gb)), recursive=True) for gb in glob_pattern]
         files = list(itertools.chain.from_iterable(lists))
         if exclude_pattern != '':
-            exclude_glob_patterns = [op.join(parent_fol, exclude_pattern) if get_parent_fol(g) == '' else g for g in glob_pattern]
+            exclude_glob_patterns = [op.join(parent_fol, exclude_pattern)] # if get_parent_fol(g) == '' else g for g in glob_pattern]
             excludes = [glob.glob(op.join(parent_fol, '**', gb), recursive=True) for gb in exclude_glob_patterns]
             excludes = list(itertools.chain.from_iterable(excludes))
             files = list(set(files) - set(excludes))
@@ -1792,6 +1840,7 @@ def locating_file(default_fname, glob_pattern, parent_fol, raise_exception=False
             if len(files) == 1:
                 fname = files[0]
             else:
+                files = sorted(files)
                 for ind, fname in enumerate(files):
                     print('{}) {}'.format(ind+1, fname))
                 ind = int(input('There are more than one {} files. Please choose the one you want to use: '.format(
@@ -1879,6 +1928,10 @@ def find_num_in_str(string):
 
 def file_modification_time(fname):
     return time.strftime('%H:%M:%S %m/%d/%Y', time.gmtime(op.getmtime(fname)))
+
+
+def file_modification_time_struct(fname):
+    return time.gmtime(op.getmtime(fname))
 
 
 def file_is_newer(fname1, fname2):
@@ -2082,7 +2135,16 @@ def insensitive_glob(pattern):
         return glob.glob(pattern)
 
 
-def power_spectrum(x, fs, scaling='spectrum'):
+def find_recursive(fol, name):
+    if not is_windows():
+        res = run_script('find {} -name "{}"'.format(fol, name))
+        files = [f for f in res.decode(sys.getfilesystemencoding(), 'ignore').split('\n') if op.isfile(f)]
+    else:
+        files = glob.glob(op.join(fol, '**', name), recursive=True)
+    return files
+
+
+def power_spectrum(x, fs, scaling='density'):
     r'''
     Estimate power spectral density using Welch's method.
 
@@ -2114,6 +2176,6 @@ def power_spectrum(x, fs, scaling='spectrum'):
     '''
 
     from scipy import signal
-    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling='spectrum') # 1024
+    frequencies, Pxx_spec = signal.welch(x, fs, 'flattop', scaling=scaling) # 1024
     linear_spectrum = np.log(np.sqrt(Pxx_spec))
     return frequencies, linear_spectrum #[Hz] / [V RMS]

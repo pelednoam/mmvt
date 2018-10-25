@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path as op
+import glob
 
 try:
     from src.mmvt_addon.scripts import scripts_utils as su
@@ -10,7 +11,7 @@ except:
     import scripts_utils as su
 
 
-def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=True):
+def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=True, run_blender=True):
     args = None
     if sys.argv[0] == __file__:
         args = read_args(raise_exp=raise_exp)
@@ -23,11 +24,43 @@ def run(subject='', atlas='dkt', run_in_background=False, debug=None, raise_exp=
         args.atlas = atlas
     if debug is not None:
         args.debug = debug
-    su.call_script(__file__, args, run_in_background=run_in_background)
-    mmvt = su.get_mmvt_object(args.subject)
-    if mmvt is not None:
-        print('We got the mmvt object!')
-    return mmvt
+    if run_blender:
+        su.call_script(__file__, args, run_in_background=run_in_background)
+    mmvt_agent = su.get_mmvt_object(args.subject)
+    if mmvt_agent is not None:
+        print('We got the mmvt object ({})!'.format(list(mmvt_agent._proxy_agent.connections.keys())[0]))
+    return MMVT(mmvt_agent)
+
+
+class MMVT(object):
+
+    def __init__(self, mmvt_agent, prefix=''):
+        self.mmvt_agent = mmvt_agent
+        # self.prefix = prefix
+
+    def __getattr__(self, item):
+        panels = [su.namebase(f)[:-len('_panel')] for f in glob.glob(op.join(su.get_mmvt_addon_dir(), '*_panel.py'))]
+        # if item in ['scripts', 'appearance', 'show_hide', 'coloring', 'render', 'transparency', 'play']:
+        if item in panels:
+            return self
+        elif item == 'utils':
+            return MMVTUtils(self.mmvt_agent)
+        else:
+            return self.mmvt_agent.__getattr__(item)
+
+    def __setattr__(self, item, value):
+        if item == 'mmvt_agent':
+            super().__setattr__(item, value)
+        else:
+            return self.mmvt_agent.__setattr__(item, value)
+
+
+class MMVTUtils(MMVT):
+    def __init__(self, mmvt_agent):
+        self.mmvt_agent = mmvt_agent
+
+    def __getattr__(self, item):
+        return self.mmvt_agent.__getattr__('mmvt_utils.{}'.format(item))
 
 
 def read_args(argv=None, raise_exp=True):

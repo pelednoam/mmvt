@@ -60,7 +60,17 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
     else:
         output_fname = op.join(subjects_dir, '{subject}', 'mri_cvs_register_to_{}'.format(subject_to),
                                'combined_to{}_elreg_afteraseg-norm.tm3d'.format(subject_to))
+    for subject in subjects:
+        if op.isfile(output_fname.format(subject=subject)):
+            print('{} was already morphed to {}'.format(subject, subject_to))
+    no_morph_subjects = []
+    for subject in subjects:
+        if not op.isfile(output_fname.format(subject=subject)):
+            print('{} has to be morphed to {}'.format(subject, subject_to))
+            no_morph_subjects.append(subject)
+    print('Need to morph {}/{} subjecs'.format(len(no_morph_subjects), len(subjects)))
     subjects = [s for s in subjects if s != subject_to and (overwrite or not op.isfile(output_fname.format(subject=s)))]
+
     if len(subjects) == 0:
         return
     indices = np.array_split(np.arange(len(subjects)), n_jobs)
@@ -72,6 +82,12 @@ def cvs_register_to_template(subjects, template_system, subjects_dir, overwrite=
 def _mri_cvs_register_parallel(p):
     subjects, subject_to, subjects_dir, overwrite, print_only = p
     for subject_from in subjects:
+        # output_fname = op.join(SUBJECTS_DIR, subject_from, 'mri_cvs_register_to_colin27', 'combined_tocolin27_elreg_afteraseg-norm.tm3d')
+        # if op.isfile(output_fname) and not overwrite:
+        #     print('Already done for {}'.format(subject_from))
+        #     continue
+        # else:
+        #     print('Running mri_cvs_register for {}'.format(subject_from))
         if overwrite and not print_only:
             utils.delete_folder_files(op.join(subjects_dir, subject_from, 'mri_cvs_register_to_{}'.format(subject_to)))
         rs = utils.partial_run_script(locals(), print_only=print_only)
@@ -91,7 +107,7 @@ def morph_electrodes(electrodes, template_system, subjects_dir, mmvt_dir, overwr
     chunks = [([subjects[ind] for ind in chunk_indices], subject_to, subjects_dir, mmvt_dir, output_fname, overwrite, print_only)
               for chunk_indices in indices]
     utils.run_parallel(_morph_electrodes_parallel, chunks, n_jobs)
-    bad_subjects = []
+    bad_subjects, good_subjects = [], []
     for subject_from in subjects:
         ret = op.isfile(output_fname.format(subject=subject_from))
         if not ret:
@@ -453,7 +469,11 @@ def create_electrodes_files(electrodes, subjects_dir, overwrite=False):
         csv_fname = op.join(fol, electrodes_to_morph_file_name)
         # if op.isfile(csv_fname) and not overwrite:
         #     continue
-        t1_header = nib.load(op.join(subjects_dir, subject, 'mri', 'T1.mgz')).header
+        t1_fname = op.join(subjects_dir, subject, 'mri', 'T1.mgz')
+        if not op.isfile(t1_fname):
+            print('Can\'t find T1.mgz for {}!'.format(subject))
+            continue
+        t1_header = nib.load(t1_fname).header
         brain_mask_fname = op.join(subjects_dir, subject, 'mri', 'brainmask.mgz')
         if op.isfile(brain_mask_fname):
             brain_mask = nib.load(brain_mask_fname).get_data()
@@ -533,21 +553,21 @@ def get_all_subjects(remote_subject_template):
 def main(subjects, template_system, remote_subject_templates=(), bipolar=False, save_as_bipolar=False, prefix='', print_only=False, n_jobs=4):
     good_subjects = prepare_files_for_subjects(subjects, remote_subject_templates, overwrite=False)
     electrodes = read_all_electrodes(good_subjects, bipolar)
-    cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
-                             overwrite=True)
-    create_electrodes_files(electrodes, SUBJECTS_DIR, True)
-    morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
-                     print_only=print_only)
+    # cvs_register_to_template(good_subjects, template_system, SUBJECTS_DIR, n_jobs=n_jobs, print_only=print_only,
+    #                        overwrite=False)
+    # create_electrodes_files(electrodes, SUBJECTS_DIR, True)
+    # morph_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=False, n_jobs=n_jobs,
+    #               print_only=print_only)
     read_morphed_electrodes(electrodes, template_system, SUBJECTS_DIR, MMVT_DIR, overwrite=True)
     save_template_electrodes_to_template(None, save_as_bipolar, MMVT_DIR, template_system, prefix)
-    export_into_csv(template_system, MMVT_DIR, prefix)
-    create_mmvt_coloring_file(template_system, electrodes)
+    # export_into_csv(template_system, MMVT_DIR, prefix)
+    # create_mmvt_coloring_file(template_system, electrodes)
 
 
 if __name__ == '__main__':
     template_system = 'mni'# ''ras' #'matt_hibert' # 'mni' # hc029
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
-    bipolar, save_as_bipolar = True, True
+    bipolar, save_as_bipolar = False, False
     use_apply_morph = True
     prefix, postfix = '', '' # 'stim_'
     overwrite=False
@@ -555,7 +575,8 @@ if __name__ == '__main__':
     n_jobs=4
     # subjects = ['mg96', 'mg105', 'mg107', 'mg108', 'mg111']
     remote_subject_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
-    subjects = get_all_subjects(remote_subject_template)
+    # subjects = get_all_subjects(remote_subject_template)
+    subjects = ['MG72','MG73','MG76','MG84','MG84','MG84','MG85','MG86','MG87','MG87','MG90','MG91','MG91','MG92','MG93','MG94','MG95','MG96','MG96','MG100','MG103','MG104','MG105','MG105','MG107','MG108','MG108','MG109','MG109','MG111','MG112','MG112','MG114','MG114','MG115','MG51b','MG110','MG116','MG118','MG106']
 
     remote_subject_template1 = '/mnt/cashlab/projects/DARPA/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput_REDONE'
     remote_subject_template2 = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'

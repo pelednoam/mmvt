@@ -227,9 +227,9 @@ def check_voxel_dist_to_dural(voxel, subject_fol, ct_header, brain_header, sigma
     for hemi in ['rh', 'lh']:
         dists = cdist([electrodes_t1_tkreg], verts[hemi])
         close_verts_indices = np.argmin(dists, axis=1)[0]
-        inside, v = fect.point_in_mesh(electrodes_t1_tkreg, verts[hemi][close_verts_indices],
-                                       normals[hemi][close_verts_indices], sigma=sigma, return_v=True)
-        print(hemi, inside, v)
+        inside = fect.point_in_mesh(electrodes_t1_tkreg, verts[hemi][close_verts_indices],
+                                       normals[hemi][close_verts_indices], sigma=sigma)
+        print(hemi, inside)
 
 
 def check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct_header, brain_header):
@@ -302,7 +302,7 @@ if __name__ == '__main__':
     from src.utils import utils
     import nibabel as nib
     import matplotlib.pyplot as plt
-    subject = 'nmr01209' #'mg105' # 'nmr01183'
+    subject = 'mg120' # 'nmr01209' #'mg105' # 'nmr01183'
     threshold_percentile = 99.9
     min_distance = 2.5
     error_r = 2
@@ -328,7 +328,8 @@ if __name__ == '__main__':
     print('threshold: {}'.format(threshold))
     output_fol = op.join(mmvt_dir, subject, 'ct', 'finding_electrodes_in_ct')
     user_fol = op.join(mmvt_dir, subject)
-    subject_fol = op.join(subjects_dir, subject)
+    # subject_fol = op.join(subjects_dir, subject)
+    subject_fol = op.join(MMVT_DIR, subject)
 
     verts_dural_neighbors_fname = op.join(mmvt_dir, subject, 'verts_neighbors_dural_{hemi}.pkl')
     verts_dural_nei = {hemi:utils.load(verts_dural_neighbors_fname.format(hemi=hemi)) for hemi in utils.HEMIS}
@@ -344,15 +345,16 @@ if __name__ == '__main__':
     # calc_dist_on_cylinder('RUN57', 'RUN82', threshold, output_fol, error_r)
     # check_if_outside_pial(threshold, user_fol, output_fol, subject_fol, ct.header, brain, aseg, sigma=2)
     # check_dist_to_pial_vertices('LUN195', subject_fol, threshold)
-    # check_voxel_dist_to_dural([130, 85, 157], subject_fol, ct.header, brain.header, sigma=1)
+    # check_voxel_dist_to_dural([173, 15, 20], subject_fol, ct.header, brain.header, sigma=1)
     # calc_groups_dist_to_dura('RUN98', output_fol, threshold)
     # get_electrodes_above_threshold(ct_data, ct.header, brain, threshold, user_fol, subject_fol)
     # get_voxel_neighbors_ct_values([97, 88, 125], ct_data)
     # load_find_electrode_lead_log(output_fol, 'f7ea9', '_find_electrode_lead_302-335_302_2951', threshold)
     # check_voxels_around_electrodes_in_group(ct_data, output_fol, threshold, ct.header, brain.header)
     # check_voxels_around_electrodes(ct_data, output_fol, threshold, ct.header, brain.header)
-    find_points_on_dural_surface('G37', 'G20', verts_dural, verts_dural_nei, threshold, True)
+    # find_points_on_dural_surface('G37', 'G20', verts_dural, verts_dural_nei, threshold, True)
     # for pt1, pt2 in zip(['G38', 'G64', 'G19', 'G49', 'G37', 'G46', 'G7', 'G22'], ['G26', 'G52', 'G56', 'G41', 'G20', 'G47', 'G15', 'G48']):
     #     find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
     # for pt1, pt2 in zip(['G38', 'G25', 'G61', 'G36', 'G4', 'G39', 'G23', 'G26'], ['G22', 'G58', 'G35', 'G1', 'G63', 'G30', 'G13', 'G48']):
     #     find_points_on_dural_surface(pt1, pt2, verts_dural, verts_dural_nei, threshold)
+    print(fect.get_t1_voxels_inside_dural(np.array([[-37.0,39.0,60.0]]), brain.header, subject_fol, use_brain_surf=False, sigma=1))

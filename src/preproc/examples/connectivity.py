@@ -44,7 +44,7 @@ def calc_electrodes_con(args):
     args = con.read_cmd_args(utils.Bag(
         subject=args.subject,
         atlas='laus250',
-        function='save_electrodes_coh',
+        function='calc_electrodes_coh',
         threshold_percentile=95,
         conditions='interference,non-interference'))
     pu.run_on_subjects(args, con.main)
@@ -103,6 +103,25 @@ def calc_meg_connectivity(args):
         # recalc_connectivity=True,
         max_windows_num=100,
         recalc_connectivity=True,
+        n_jobs=args.n_jobs
+    ))
+    con.call_main(args)
+
+
+def calc_meg_gamma_connectivity(args):
+    args = con.read_cmd_args(utils.Bag(
+        subject=args.subject,
+        # atlas='laus125',
+        function='calc_lables_connectivity',
+        connectivity_modality='meg',
+        connectivity_method='pli',
+        windows_length=100,
+        windows_shift=10,
+        # sfreq=1000.0,
+        fmin=30,
+        fmax=55,
+        recalc_connectivity=True,
+        # max_windows_num=100,
         n_jobs=args.n_jobs
     ))
     con.call_main(args)

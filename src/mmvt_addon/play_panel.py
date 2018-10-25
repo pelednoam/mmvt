@@ -38,13 +38,18 @@ items_names = [("meg", "MEG activity"), ("meg_labels", 'MEG Labels'),
        ("stim", "Electrodes stimulation"), ("stim_sources", "Electrodes stimulation & sources"),
        ("meg_elecs", "Meg & Electrodes activity"),
        ("meg_elecs_coh", "Meg & Electrodes activity & coherence"),
-       ("eeg_helmet", "EEG helmet"), ("meg_sensors", "MEG sensors"),
-       ("eeg_sensors", "EEG sensors")]
+       ("meg_sensors", "MEG sensors"), ("meg_helmet", "MEG helmet"),
+       ("eeg_helmet", "EEG helmet"), ("eeg_sensors", "EEG sensors"),
+       ('meg_helmet_source', 'MEG helmet & source'),
+       ('eeg_helmet_source', 'EEG helmet & source')]
 items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
 bpy.types.Scene.play_type = bpy.props.EnumProperty(items=items, description='Chooses the displayed modality\n\nCurrent modality')
 bpy.types.Scene.frames_num = bpy.props.IntProperty(default=5, min=1, description='Sets the frames per second for the video')
+bpy.types.Scene.add_reverse_frames = bpy.props.BoolProperty(
+    default=False, description='Add reverse frames to the end of the movie')
 bpy.types.Scene.play_miscs = bpy.props.EnumProperty(
     items=[('inflating', 'inflating', '', 1), ('slicing', 'slicing', '', 2)])
+
 
 def _addon():
     return PlayPanel.addon
@@ -56,6 +61,10 @@ def get_current_t():
 
 def set_current_t(t):
     bpy.context.scene.frame_current = t
+
+
+def set_rotate_brain_while_playing(val=True):
+    bpy.context.scene.rotate_brain_while_playing = val
 
 
 class ModalTimerOperator(bpy.types.Operator):
@@ -90,13 +99,14 @@ class ModalTimerOperator(bpy.types.Operator):
         if event.type == 'TIMER':
             # print(time.time() - self._time)
             if time.time() - self._time > bpy.context.scene.play_time_step:
-                if bpy.context.scene.rotate_brain_while_playing and (
-                            bpy.context.scene.render_movie or bpy.context.scene.save_images):
-                    _addon().camera_mode('ORTHO')
-                    _addon().rotate_brain()
-                    _addon().camera_mode('CAMERA')
-                elif bpy.context.scene.rotate_brain_while_playing:
-                    _addon().rotate_brain()
+                rotate_while_playing()
+                # if bpy.context.scene.rotate_brain_while_playing and (
+                #             bpy.context.scene.render_movie or bpy.context.scene.save_images):
+                #     _addon().camera_mode('ORTHO')
+                #     _addon().rotate_brain()
+                #     _addon().camera_mode('CAMERA')
+                # elif bpy.context.scene.rotate_brain_while_playing:
+                #     _addon().rotate_brain()
 
                 bpy.context.scene.frame_current = self.limits
                 # print(self.limits, time.time() - self._time)
@@ -132,31 +142,52 @@ class ModalTimerOperator(bpy.types.Operator):
             wm.event_timer_remove(ModalTimerOperator._timer)
 
 
-def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_to_camera_mode=False):
+def rotate_while_playing():
+    if bpy.context.scene.rotate_brain_while_playing and (
+            bpy.context.scene.render_movie or bpy.context.scene.save_images):
+        _addon().camera_mode('ORTHO')
+        _addon().rotate_brain()
+        _addon().camera_mode('CAMERA')
+    elif bpy.context.scene.rotate_brain_while_playing:
+        _addon().rotate_brain()
+
+
+def render_movie(play_type, play_from, play_to, camera_fname='', play_dt=1, set_to_camera_mode=True, rotate_brain=False):
     set_play_to(play_to)
     bpy.context.scene.play_type = play_type
     bpy.context.scene.render_movie = True
+    bpy.context.scene.rotate_brain_while_playing = rotate_brain
     print('In play movie!')
-    for limits in range(play_from, play_to + 1, play_dt):
+    play_range = list(range(play_from, play_to + 1, play_dt))
+    runs_num = len(play_range)
+    for run, limits in enumerate(play_range):
         print('limits: {}'.format(limits))
-        mu.write_to_stderr('rendering frame {}'.format(limits))
+        mu.write_to_stderr('Plotting {} frame {} ({}-{}, dt {})'.format(play_type, limits, play_from, play_to, play_dt))
         bpy.context.scene.frame_current = limits
+        rotate_while_playing()
         try:
+            now = time.time()
             plot_something(None, bpy.context, limits, camera_fname=camera_fname, set_to_camera_mode=set_to_camera_mode)
         except:
             print(traceback.format_exc())
             print('Error in plotting at {}!'.format(limits))
             mu.write_to_stderr(traceback.format_exc())
         else:
-            mu.write_to_stderr('Done!')
+            time_took = time.time() - now
+            more_time = time_took / (run + 1) * (runs_num - (run +  1))
+            mu.write_to_stderr(('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)))
 
 
-def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_camera_mode=True):
+def plot_something(self=None, context=None, cur_frame=0, uuid='', camera_fname='', set_to_camera_mode=True,
+                   play_type=None):
+    if context is None:
+        context = bpy.context
     if bpy.context.scene.frame_current > bpy.context.scene.play_to:
         return
 
     plot_subcorticals = True
-    play_type = bpy.context.scene.play_type
+    if play_type is None:
+        play_type = bpy.context.scene.play_type
 
     # todo: implement the important times
     # imp_time = False
@@ -170,12 +201,14 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
     # if False: #PlayPanel.init_play:
 
     successful_ret = True
-    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh']:
+    if play_type in ['meg', 'meg_elecs', 'meg_elecs_coh', 'meg_helmet_source', 'eeg_helmet_source']:
         # if PlayPanel.loop_indices:
         #     _addon().default_coloring(PlayPanel.loop_indices)
         # PlayPanel.loop_indices =
-        successful_ret = _addon().plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
-            PlayPanel.meg_sub_activity, plot_subcorticals)
+        _addon().coloring.plot_meg()
+        _addon().colorbar.lock_colorbar_values(False)
+        # successful_ret = _addon().plot_activity('MEG', PlayPanel.faces_verts, bpy.context.scene.meg_threshold,
+        #     PlayPanel.meg_sub_activity, plot_subcorticals)
     if play_type in ['fmri']:
         successful_ret = _addon().activity_map_coloring('FMRI')
     if play_type in ['fmri_dynamics']:
@@ -202,32 +235,24 @@ def plot_something(self, context, cur_frame, uuid='', camera_fname='', set_to_ca
         # _addon().color_objects_homogeneously(PlayPanel.stim_data)
     if play_type in ['stim_sources']:
         _addon().color_electrodes_sources()
-    if play_type in ['eeg_helmet']:
+    if play_type in ['eeg_helmet', 'eeg_helmet_source']:
+        _addon().color_eeg_sensors()
         _addon().color_eeg_helmet()
     if play_type in ['eeg_sensors']:
         _addon().color_eeg_sensors()
     if play_type in ['meg_sensors']:
         _addon().color_meg_sensors()
+    if play_type in ['meg_helmet', 'meg_helmet_source']:
+        _addon().color_meg_sensors()
+        _addon().color_meg_helmet()
     if successful_ret:
         if bpy.context.scene.save_images:
             _addon().save_image(play_type, bpy.context.scene.save_selected_view,
                                           bpy.context.scene.frame_current)
         if bpy.context.scene.render_movie:
             _addon().render_image(set_to_camera_mode=set_to_camera_mode)
-        # mu.show_only_render(True)
-        # view3d_context = mu.get_view3d_context()
-        # bpy.ops.render.opengl(view3d_context)
-        # # mu.view_selected()
-        # image_context = mu.get_image_area()
-        # image_name = op.join(bpy.path.abspath(bpy.context.scene.output_path),
-        #                      '{}_{}.png'.format(play_type, bpy.context.scene.frame_current))
-        # bpy.ops.image.save_as({'area': image_context},  # emulate an imageEditor
-        #                       'INVOKE_DEFAULT',  # invoke the operator
-        #                       copy=True,
-        #                       filepath=image_name)  # export it to this location
     else:
         print("The image wasn't rendered due to an error in the plotting.")
-    # plot_graph(context, graph_data, graph_colors, image_fol)
 
 
 def capture_graph(play_type=None, output_path=None, selection_type=None):
@@ -283,8 +308,9 @@ def create_movie():
     output_file = op.join(bpy.context.scene.output_path, 'combine_images_cmd.txt')
     if op.isfile(output_file):
         os.remove(output_file)
-    flags = '--fol {} --copy_files 1 --frame_rate {}'.format(
-        bpy.context.scene.output_path, bpy.context.scene.frames_num)
+    flags = '--fol {} --copy_files 1 --frame_rate {} --add_reverse_frames {}'.format(
+        bpy.context.scene.output_path, bpy.context.scene.frames_num,
+        bpy.context.scene.add_reverse_frames)
     mu.run_mmvt_func('src.utils.movies_utils', 'combine_images', flags=flags)
 
 
@@ -489,16 +515,19 @@ def init_stim():
 def inflating_movie():
     _addon().hide_subcorticals()
     if _addon().flat_map_exists():
-        for inflating in np.arange(-1, 1, 0.01):
-            bpy.context.scene.inflating = inflating
-            _addon().save_image('inflating', bpy.context.scene.save_selected_view)
+        inf_range = np.arange(-1, 1, 0.01)
+    else:
+        inf_range = np.arange(-1, 0, 0.01)
+    for inflating in inf_range:
+        bpy.context.scene.inflating = inflating
+        _addon().save_image('inflating', bpy.context.scene.save_selected_view)
 
 
 def slicing_movie():
     coordinates = bpy.context.scene.cursor_location
     _addon().create_slices()
     for z in np.arange(7.3, -3.6, -0.1):
-        cut_pos = [0, 0 , z]
+        cut_pos = [0, 0, z]
         coordinates[2] = z
         _addon().slice_brain(cut_pos, save_image=True)
         _addon().clear_slice()
@@ -579,19 +608,24 @@ def play_panel_draw(context, layout):
         row.prop(context.scene, 'rotate_dy')
         row.prop(context.scene, 'rotate_dz')
 
-    # row = layout.row(align=0)
-    # row.prop(context.scene, 'play_miscs', text='')
-    # row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
-    # layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
+    row = layout.row(align=0)
+    row.prop(context.scene, 'play_miscs', text='')
+    row.operator(InflatingMovie.bl_idname, text="Play", icon='LOGIC')
+    layout.operator(ExportGraph.bl_idname, text="Export graph", icon='SNAP_NORMAL')
 
-    files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
-                              glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(
-                                  _addon().get_figure_format())))])
+    try:
+        files_with_numbers = sum([len(re.findall('\d+', mu.namebase(f))) for f in
+                                  glob.glob(op.join(bpy.context.scene.output_path, '*.{}'.format(
+                                      _addon().get_figure_format())))])
+    except:
+        files_with_numbers = 0
+
     if files_with_numbers > 0:
         if not CreateMovie.running:
             layout.operator(CreateMovie.bl_idname, text="Create Movie", icon='RENDER_ANIMATION')
             layout.label(text='From images in {}'.format(mu.namebase(bpy.context.scene.output_path)))
             layout.prop(context.scene, 'frames_num', text="frames per second")
+            layout.prop(context.scene, 'add_reverse_frames', text='add reverse loop')
         else:
             layout.label(text='Rendering the movie...')
 
@@ -745,7 +779,7 @@ class CreateMovie(bpy.types.Operator):
                 if len(movies) > 0:
                     output_fname = op.join(mu.get_user_fol(), 'figures', '{}.mp4'.format(
                         mu.namebase(bpy.context.scene.output_path)))
-                    if output_fname != movies[0]:
+                    if output_fname != movies[0] and op.isfile(movies[0]):
                         shutil.copy(movies[0], output_fname)
                 #     temp_fol = op.join(bpy.context.scene.output_path, 'new_images')
                 #     if op.isdir(temp_fol):

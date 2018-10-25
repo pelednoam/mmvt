@@ -211,7 +211,7 @@ def install_reqs(do_upgrade=False, only_verbose=False):
                 if do_upgrade:
                     pipcode = pipmain(['install', '--upgrade', line.strip()])
                 else:
-                    pipcode = pipmain(['install', line.strip()])
+                    pipcode = pipmain(['install', '--user', line.strip()])
                 retcode = retcode or pipcode
     return retcode
 
@@ -294,6 +294,13 @@ def get_blender_python_exe(blender_fol, gui=True):
         blender_bin_fol = blender_bin_folders[-1]
     python_exe = 'python.exe' if utils.is_windows() else 'python3.5m'
     return blender_bin_fol, python_exe
+
+
+def get_pip_update_cmd(package='numpy'):
+    blender_fol = utils.get_link_dir(utils.get_links_dir(), 'blender')
+    blender_bin_fol, python_exe = get_blender_python_exe(blender_fol, False)
+    install_cmd = '{} install --upgrade {}'.format(op.join(blender_bin_fol, 'bin', 'pip'), package)
+    print(install_cmd)
 
 
 def install_blender_reqs(blender_fol='', gui=True):
@@ -405,6 +412,9 @@ def main(args):
 
     if 'find_blender' in args.function:
         find_blender()
+
+    if 'get_pip_update_cmd' in args.function:
+        get_pip_update_cmd()
 
     # print('Finish!')
 

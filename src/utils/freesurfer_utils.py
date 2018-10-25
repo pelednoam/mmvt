@@ -42,8 +42,8 @@ mri_aparc2aseg = 'mri_aparc2aseg --s {subject} --annot {atlas} --o {atlas}+aseg.
 
 mris_flatten = 'mris_flatten {hemi}.inflated.patch {hemi}.flat.patch'
 
-mri_robust_register = 'mri_robust_register --mov {source_fname} --dst {target_fname} --lta {lta_fname} ' + \
-                      '--satit --vox2vox --mapmov {output_fname} --cost {cost_function}'
+mri_robust_register = 'mri_robust_register --mov "{source_fname}" --dst "{target_fname}" --lta {lta_fname} ' + \
+                      '--satit --vox2vox --mapmov "{output_fname}" --cost {cost_function}'
 
 # Creating the seghead surface
 mkheadsurf = 'mkheadsurf -subjid {subject} -srcvol T1.mgz'
@@ -502,8 +502,12 @@ def mri_convert(org_fname, new_fname, overwrite=False, print_only=False, **kargs
 
 
 def mri_convert_to(org_fname, new_file_type, overwrite=False, **kargs):
-    new_fname = '{}.{}'.format(op.splitext(org_fname)[0], new_file_type)
-    return mri_convert(org_fname, new_fname, overwrite)
+    if org_fname.endswith('nii.gz'):
+        new_fname = nii_gz_to_mgz_name(org_fname)
+    else:
+        new_fname = '{}.{}'.format(op.splitext(org_fname)[0], new_file_type)
+    new_fname = mri_convert(org_fname, new_fname, overwrite)
+    return new_fname
 
 
 def nii_gz_to_mgz_name(fmri_fname, **kargs):

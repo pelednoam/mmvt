@@ -39,6 +39,15 @@ def elc_size_update(self, context):
         pass
 
 
+def show_electrodes_labels_update(self, context):
+    for elec_obj in ElecsPanel.parent.children:
+        elec_obj.show_name = bpy.context.scene.show_electrodes_labels
+
+
+def set_show_electrodes_groups_leads(val):
+    bpy.context.scene.show_electrodes_groups_leads = val
+
+
 def show_electrodes_groups_leads_update(self, context):
     parent_name = 'leads'
     leads_obj = bpy.data.objects.get(parent_name, None)
@@ -588,16 +597,17 @@ def elecs_draw(self, context):
         # box = layout.box()
         col = box.column()
         for subcortical_name, subcortical_prob in zip(ElecsPanel.subcortical_rois, ElecsPanel.subcortical_probs):
-            mu.add_box_line(col, subcortical_name, '{:.2f}'.format(subcortical_prob), 0.8)
+            mu.add_box_line(col, subcortical_name, '{:.3f}'.format(subcortical_prob), 0.8)
         for cortical_name, cortical_prob in zip(ElecsPanel.cortical_rois, ElecsPanel.cortical_probs):
-            if cortical_prob >= 0.01:
-                mu.add_box_line(col, cortical_name, '{:.2f}'.format(cortical_prob), 0.8)
+            if cortical_prob >= 0.001:
+                mu.add_box_line(col, cortical_name, '{:.3f}'.format(cortical_prob), 0.8)
 
         # box = layout.box()
         # box.prop(context.scene, "electrodes_hemis", text="")
         # box.prop(context.scene, "electrodes_hemi_labels", text="")
 
     if bpy.context.scene.electrodes_more_settings:
+        layout.prop(context.scene, 'show_electrodes_labels', text="Show labels")
         layout.prop(context.scene, 'show_only_lead', text="Show only the current lead")
         # row = layout.row(align=True)
         if ElecsPanel.electrodes_labeling_file_exist:
@@ -614,7 +624,6 @@ def elecs_draw(self, context):
             layout.prop(context.scene, "electrode_rotate", text="Rotate view on click")
 
         # layout.prop(context.scene, "elc_size", text="")
-        # layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
         row = layout.row(align=True)
         row.prop(context.scene, "show_electrodes_groups_leads", text="Show leads")
         leads_obj = bpy.data.objects.get('leads', None)
@@ -642,7 +651,10 @@ def elecs_draw(self, context):
             mu.add_box_line(col, 'Down', 'Previous lead')
             mu.add_box_line(col, 'Up', 'Next lead')
         row.operator(ColorElectrodes.bl_idname, text="Color electrodes")
+        row.prop(context.scene, "electrodes_color_only_selected", text='Only selected')
         row.prop(context.scene, 'electrodes_color', text='')
+        layout.operator(ExportElectrodes.bl_idname, text="Export", icon='EXPORT')
+
     layout.operator(ClearElectrodes.bl_idname, text="Clear", icon='PANEL_CLOSE')
     layout.prop(context.scene, 'electrodes_more_settings', text='More settings')
 
@@ -777,9 +789,14 @@ class ColorElectrodes(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def invoke(self, context, event=None):
-        for elc_obj in ElecsPanel.parent.children:
-            if not elc_obj.hide:
-                _addon().object_coloring(elc_obj, bpy.context.scene.electrodes_color)
+        if bpy.context.scene.electrodes_color_only_selected:
+            for elc_obj in bpy.context.selected_objects:
+                if not elc_obj.hide and mu.check_obj_type(elc_obj) == mu.OBJ_TYPE_ELECTRODE:
+                    _addon().object_coloring(elc_obj, bpy.context.scene.electrodes_color)
+        else:
+            for elc_obj in ElecsPanel.parent.children:
+                if not elc_obj.hide:
+                    _addon().object_coloring(elc_obj, bpy.context.scene.electrodes_color)
         return {'FINISHED'}
 
 
@@ -851,6 +868,9 @@ bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False,
     description='Rotates the view of the brain to show the selected electrode')
 bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.electrodes_color_only_selected = bpy.props.BoolProperty(default=False)
+bpy.types.Scene.show_electrodes_labels = bpy.props.BoolProperty(default=False, update=show_electrodes_labels_update)
+
 
 bpy.types.Scene.electrodes_hemis = bpy.props.EnumProperty(
     items=[('left', 'lh', '', 1), ('right', 'rh', '', 2)], update=electrodes_hemis_update)
@@ -879,6 +899,7 @@ class ElecsPanel(bpy.types.Panel):
     bpy.context.scene.elc_size = 1
     atlases_exist = False
     labling_files = []
+    electrodes_labeling_file_exist = False
 
     def draw(self, context):
         elecs_draw(self, context)
@@ -922,6 +943,7 @@ def init(addon, do_register=True):
     bpy.context.scene.electrode_rotate = False
     bpy.context.scene.electrodes_more_settings = False
     bpy.context.scene.electrodes_create_curved_leads = False
+    bpy.context.scene.show_electrodes_labels = False
     if not ElecsPanel.electrodes_locs or not ElecsPanel.lookup:
         if not ElecsPanel.electrodes_locs:
             print("!!! Can't find electrodes labeling files in user/electrdes!")

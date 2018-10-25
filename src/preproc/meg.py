@@ -24,6 +24,7 @@ except:
 
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               write_inverse_operator, read_inverse_operator)
+from mne.minimum_norm.inverse import _prepare_forward
 from mne.preprocessing import ICA
 from mne.preprocessing import create_ecg_epochs, create_eog_epochs
 
@@ -242,6 +243,7 @@ def calcNoiseCov(epoches):
 
 
 def create_demi_events(raw, windows_length, windows_shift, epoches_nun=0):
+    # todo: replace with mne.event.make_fixed_length_events
     import math
     T = raw.last_samp - raw.first_samp + 1
     if epoches_nun == 0:
@@ -260,7 +262,7 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                  power_line_freq=60, epo_fname='', task='', windows_length=1000, windows_shift=500,
                  windows_num=0, overwrite_epochs=False, eve_template='*eve.fif', raw_fname='',
                  using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
-                 ar_n_interpolates=None, bad_ar_threshold = 0.5, n_jobs=6):
+                 ar_n_interpolates=None, bad_ar_threshold = 0.5, use_demi_events=False, notch_widths=None, n_jobs=6):
     epo_fname = get_epo_fname(epo_fname)
     if op.isfile(epo_fname) and not overwrite_epochs:
         epochs = mne.read_epochs(epo_fname)
@@ -279,7 +281,8 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
         reject_dict = None
     # epochs = find_epoches(raw, picks, events, events, tmin=tmin, tmax=tmax)
     if remove_power_line_noise:
-        raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq), picks=picks)
+        raw.notch_filter(np.arange(power_line_freq, power_line_freq * 4 + 1, power_line_freq),
+                         notch_widths=notch_widths, picks=picks)
         # raw.notch_filter(np.arange(60, 241, 60), picks=picks)
     if read_events_from_file:
         events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
@@ -287,21 +290,29 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
             # events_fname = events_fname if events_fname != '' else EVE
             print('read events from {}'.format(events_fname))
             events = mne.read_events(events_fname)
-    else:
-        if events is None:
-            try:
-                print('Finding events in {}'.format(stim_channels))
-                events = mne.find_events(raw, stim_channel=stim_channels)
-            except:
-                print('No stim channels found!')
-                events = np.array([])
-    if events.shape[0] == 0:
+    elif use_demi_events or (events is not None and events.shape[0] == 0):
         if task != 'rest':
             ans = input('Are you sure you want to have only one epoch, containing all the data (y/n)? ')
             if ans != 'y':
                 return None
         events, conditions = create_demi_events(raw, windows_length, windows_shift, windows_num)
         tmax = windows_length / 1000.0
+    elif events is None:
+        try:
+            print('Finding events in {}'.format(stim_channels))
+            events = mne.find_events(raw, stim_channel=stim_channels)
+        except:
+            print('No stim channels found!')
+
+    if events is None:
+        print('Trying to find events file')
+        events_fname, event_fname_exist = locating_meg_file(EVE, glob_pattern=eve_template)
+        if events is None and event_fname_exist:
+            print('read events from {}'.format(events_fname))
+            events = mne.read_events(events_fname)
+
+    if events is None:
+        raise Exception('Can\'t find events!')
 
     if tmax - tmin <= 0:
         raise Exception('tmax-tmin must be greater than zero!')
@@ -321,18 +332,23 @@ def calc_epoches(raw, conditions, tmin, tmax, baseline, read_events_from_file=Fa
                         baseline=baseline, preload=True, reject=reject_dict)
     min_bad_num = len(events) * 0.5
     bad_channels_max_num = 20
+    min_good_epochs_num = len(events) * 0.5
     bad_channels = Counter(utils.flat_list_of_lists(epochs.drop_log))
-    if len(epochs) < min_bad_num or max(bad_channels.values()) > bad_channels_max_num:
+    bad_channels = {ch_name: num for ch_name, num in bad_channels.items() if ch_name in raw.info['ch_names']}
+    if len(epochs) < min_bad_num and max(bad_channels.values()) > bad_channels_max_num:
         for bad_ch, cnt in bad_channels.items():
             if cnt > bad_channels_max_num:
                 raw.info['bads'].append(bad_ch)
         if raw_fname == '':
             raw_fname = get_raw_fname(raw_fname)
-        raw.save(raw_fname, overwrite=True)
+        try:
+            raw.save(raw_fname, overwrite=True)
+        except:
+            pass
         picks = mne.pick_types(raw.info, meg=pick_meg, eeg=pick_eeg, eog=pick_eog, exclude='bads')
         epochs = mne.Epochs(raw, events, events_conditions, tmin, tmax, proj=True, picks=picks,
                             baseline=baseline, preload=True, reject=reject_dict)
-    if len(epochs) < min_bad_num:
+    if len(epochs) < min_good_epochs_num:
         raise Exception('Not enough good epochs!')
     print('{} good epochs'.format(len(epochs)))
     save_epochs(epochs, epo_fname)
@@ -434,7 +450,7 @@ def calc_epochs_wrapper_args(conditions, args, raw=None):
         args.bad_channels, args.l_freq, args.h_freq, args.task, args.windows_length, args.windows_shift,
         args.windows_num, args.overwrite_epochs, args.epo_fname, args.raw_fname, args.eve_template,
         args.using_auto_reject, args.ar_compute_thresholds_method, args.ar_consensus_percs,
-        args.ar_n_interpolates, args.bad_ar_threshold, args.n_jobs)
+        args.ar_n_interpolates, args.bad_ar_threshold, args.use_demi_events, args.power_line_notch_widths, args.n_jobs)
 
 
 def calc_epochs_wrapper(
@@ -444,7 +460,7 @@ def calc_epochs_wrapper(
         power_line_freq=60, bad_channels=[], l_freq=None, h_freq=None, task='', windows_length=1000, windows_shift=500,
         windows_num=0, overwrite_epochs=False, epo_fname='', raw_fname='', eve_template='*eve.fif',
         using_auto_reject=True, ar_compute_thresholds_method='random_search', ar_consensus_percs=None,
-        ar_n_interpolates=None, bad_ar_threshold=0.5, n_jobs=6):
+        ar_n_interpolates=None, bad_ar_threshold=0.5, use_demi_events=False, notch_widths=None, n_jobs=6):
     # Calc evoked data for averaged data and for each condition
     try:
         epo_fname = get_epo_fname(epo_fname)
@@ -475,7 +491,7 @@ def calc_epochs_wrapper(
                 pick_eeg, pick_eog, reject, reject_grad, reject_mag, reject_eog, remove_power_line_noise,
                 power_line_freq, epo_fname, task, windows_length, windows_shift, windows_num, overwrite_epochs,
                 eve_template, raw_fname, using_auto_reject, ar_compute_thresholds_method, ar_consensus_percs,
-                ar_n_interpolates, bad_ar_threshold, n_jobs)
+                ar_n_interpolates, bad_ar_threshold, use_demi_events, notch_widths, n_jobs)
         # if task != 'rest':
         #     all_evoked = calc_evoked_from_epochs(epochs, conditions)
         # else:
@@ -487,6 +503,253 @@ def calc_epochs_wrapper(
         flag = False
 
     return flag, epochs
+
+
+@utils.tryit()
+def calc_labels_power_spectrum(
+        subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
+        fmin=0, fmax=200, bandwidth=2., bands=None, max_epochs_num=0,
+        mri_subject='', epo_fname='', inv_fname='', snr=3.0, pick_ori=None, apply_SSP_projection_vectors=True,
+        add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True, surf_name='pial', precentiles=(1, 99),
+        epochs=None, src=None, overwrite=False, do_plot=True, save_tmp_files=True, n_jobs=6):
+    if mri_subject == '':
+        mri_subject = subject
+    if inv_fname == '':
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    epo_fname = get_epo_fname(epo_fname)
+    if isinstance(extract_modes, str):
+        extract_modes = [extract_modes]
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
+    lambda2 = 1.0 / snr ** 2
+    fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
+    plots_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', 'plots'))
+    if save_tmp_files:
+        tmp_fol = utils.make_dir(op.join(fol, 'labels_power'))
+    power_spectrum = None
+    first_time = True
+    labels = None
+    for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        output_fname = op.join(fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
+        if op.isfile(output_fname) and not overwrite:
+            print('{} already exist'.format(output_fname))
+            if do_plot:
+                d = np.load(output_fname)
+                labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, surf_name=surf_name, n_jobs=n_jobs)
+                plot_psds(subject, d['power_spectrum'], d['frequencies'], labels, cond_ind, cond_name, plots_fol)
+            continue
+
+        if first_time:
+            first_time = False
+            labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, surf_name=surf_name, n_jobs=n_jobs)
+            inverse_operator, src = get_inv_src(inv_fname, src)
+
+        if epochs is None:
+            epo_cond_fname = get_cond_fname(epo_fname, cond_name)
+            if not op.isfile(epo_cond_fname):
+                print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
+                return False
+            epochs = mne.read_epochs(epo_cond_fname, apply_SSP_projection_vectors, add_eeg_ref)
+        sfreq = epochs.info['sfreq']
+        try:
+            mne.set_eeg_reference(epochs, ref_channels=None)
+            epochs.apply_proj()
+        except:
+            print('annot create EEG average reference projector (no EEG data found)')
+        if inverse_operator is None:
+            inverse_operator, src = get_inv_src(inv_fname, src, cond_name)
+
+        # epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
+        now = time.time()
+        epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
+
+        for label_ind, label in enumerate(labels):
+            utils.time_to_go(now, label_ind, len(labels), 1)
+            stcs = mne.minimum_norm.compute_source_psd_epochs(
+                epochs, inverse_operator, lambda2=lambda2, method=inverse_method, fmin=fmin, fmax=fmax,
+                bandwidth=bandwidth, label=label, return_generator=True)
+            for epoch_ind, stc in enumerate(stcs):
+                if epoch_ind >= epochs_num:
+                    break
+                freqs = stc.times
+                if power_spectrum is None:
+                    # print('Freqs: {}'.format(freqs))
+                    power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
+                power_spectrum[epoch_ind, label_ind, :, cond_ind] = np.mean(stc.data, axis=0)
+            if save_tmp_files:
+                output_fname = op.join(tmp_fol, '{}_{}_{}_{}_power_spectrum.npz'.format(
+                    cond_name, inverse_method, em, label.name))
+                np.savez(output_fname, power_spectrum=power_spectrum[:, label_ind, :, cond_ind], frequencies=freqs,
+                         label=label.name, cond=cond_name)
+            if do_plot:
+                plot_label_psd(power_spectrum[:, label_ind, :, cond_ind], freqs, label, cond_name, plots_fol)
+
+        # stcs = mne.minimum_norm.apply_inverse_epochs(
+        #     epochs, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori, return_generator=True)
+        # labels_ts = mne.extract_label_time_course(stcs, labels, src, mode=em, return_generator=True)
+        # for epoch_ind, label_ts in enumerate(labels_ts):
+        #     if epoch_ind == epochs_num:
+        #         break
+        #     utils.time_to_go(now, epoch_ind, epochs_num, runs_num_to_print=10)
+        #     psds, freqs = mne.time_frequency.psd_array_multitaper(
+        #         label_ts, sfreq, fmin, fmax, bandwidth, n_jobs=n_jobs)
+        #     if power_spectrum is None:
+        #         power_spectrum = np.empty((epochs_num, len(labels), len(freqs), len(events)))
+        #     power_spectrum[epoch_ind, :, :, cond_ind] = psds
+
+        # if do_plot:
+        #     plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name, plots_fol)
+
+        np.savez(output_fname, power_spectrum=power_spectrum, frequencies=freqs)
+
+    calc_labels_power_bands(
+        mri_subject, atlas, events, inverse_method, extract_modes, precentiles, bands, labels, overwrite, n_jobs=n_jobs)
+    return True
+
+
+def plot_psds(subject, power_spectrum, freqs, labels, cond_ind, cond_name, plots_fol):
+    print('Saving plots in {}'.format(plots_fol))
+    for label_ind, label in enumerate(labels):
+        psd = power_spectrum[:, label_ind, :, cond_ind]
+        plot_label_psd(psd, freqs, label, cond_name, plots_fol)
+
+
+def plot_label_psd(psd, freqs, label, cond_name, plots_fol):
+    psd_mean = psd.mean(0)
+    psd_std = psd.std(0)
+    plt.plot(freqs, psd_mean, color='k')
+    plt.fill_between(freqs, psd_mean - psd_std, psd_mean + psd_std, color='k', alpha=.5)
+    plt.title('{} {} Multitaper PSD'.format(label.name, cond_name))
+    plt.xlabel('Frequency')
+    plt.ylabel('Power Spectral Density (dB)')
+    plt.savefig(op.join(plots_fol, 'psd_{}_{}.jpg'.format(label.name, cond_name)))
+    plt.close()
+
+
+def calc_labels_induced_power(subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
+        bands=None, max_epochs_num=0, n_cycles=7.0, mri_subject='', epo_fname='', inv_fname='',
+        snr=3.0, pick_ori='normal', apply_SSP_projection_vectors=True,
+        add_eeg_ref=True, fwd_usingMEG=True, fwd_usingEEG=True,  epochs=None, overwrite=False, n_jobs=6):
+
+    if mri_subject == '':
+        mri_subject = subject
+    if inv_fname == '':
+        inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
+    if not op.isfile(inv_fname):
+        raise Exception('Can\'t find the inverse file! {}'.format(inv_fname))
+    inverse_operator, _ = get_inv_src(inv_fname)
+    epo_fname = get_epo_fname(epo_fname)
+    if isinstance(extract_modes, str):
+        extract_modes = [extract_modes]
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
+    lambda2 = 1.0 / snr ** 2
+    if bands is None:
+        bands = dict(theta=np.arange(4, 8, 1), alpha=np.arange(8, 15, 1), beta=np.arange(15, 30, 2),
+                     gamma=np.arange(30, 55, 3), high_gamma=np.arange(65, 120, 5))
+    labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, n_jobs=n_jobs)
+    if len(labels) == 0:
+        return False
+
+    ws = None
+    ret = True
+    # fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg', 'labels'))
+    fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
+    for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        if not overwrite:
+            all_done = True
+            for label_ind, label in enumerate(labels):
+                output_fname = op.join(fol, '{}_{}_{}_{}_{}_induced_power.npz'.format(
+                    cond_name, label.name, atlas, inverse_method, em))
+                if not op.isfile(output_fname) or overwrite:
+                    all_done = False
+                    break
+            if all_done:
+                continue
+
+        epo_cond_fname = get_cond_fname(epo_fname, cond_name)
+        if not op.isfile(epo_cond_fname):
+            print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
+            return False
+        if epochs is None:
+            epochs = mne.read_epochs(epo_cond_fname, apply_SSP_projection_vectors, add_eeg_ref)
+        epochs_num = min(max_epochs_num, len(epochs)) if max_epochs_num != 0 else len(epochs)
+        if ws is None:
+            ws = [(mne.time_frequency.morlet(
+                epochs.info['sfreq'], freqs, n_cycles=n_cycles, zero_mean=False)) for freqs in bands.values()]
+        label_now = time.time()
+        for label_ind, label in enumerate(labels):
+            output_fname = op.join(fol, '{}_{}_{}_{}_{}_induced_power.npz'.format(
+                cond_name, label.name, atlas, inverse_method, em))
+            if op.isfile(output_fname) and not overwrite:
+                print('calc_labels_induced_power: {} is already calculated'.format(label.name))
+                continue
+            utils.time_to_go(label_now, label_ind, len(labels), runs_num_to_print=1)
+            powers, times = None, None
+            stcs = mne.minimum_norm.apply_inverse_epochs(
+                epochs, inverse_operator, lambda2, inverse_method, label, pick_ori=pick_ori, return_generator=True)
+            stc_now = time.time()
+            for stc_ind, stc in enumerate(stcs):
+                utils.time_to_go(stc_now, stc_ind, len(epochs), runs_num_to_print=1)
+                if stc_ind >= epochs_num:
+                    break
+                if powers is None:
+                    powers = np.empty((len(bands), epochs_num, stc.shape[1]))
+                    times = stc.times
+
+                params = [(stc.data, ws[band_ind], band_ind) for band_ind in range(len(bands.keys()))]
+                powers_bands = utils.run_parallel(_calc_tfr_cwt_parallel, params, len(bands.keys()))
+                for power_band, band_ind in powers_bands:
+                    powers[band_ind, stc_ind] = power_band
+                # for band_ind in range(len(bands.keys())):
+                #     tfr = mne.time_frequency.tfr.cwt(
+                #         stc.data, ws[band_ind], use_fft=False)
+                #     powers[band_ind, stc_ind] = (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
+            print('calc_labels_induced_power: Saving results in {}'.format(output_fname))
+            np.savez(output_fname, label_name=label.name, atlas=atlas, data=powers, times=times)
+            ret = ret and op.isfile(output_fname)
+
+    return ret
+
+
+def _calc_tfr_cwt_parallel(p):
+    stc_data, ws_band, band_ind = p
+    tfr = mne.time_frequency.tfr.cwt(stc_data, ws_band, use_fft=False)
+    power = (tfr * tfr.conj()).real.mean((0, 1))  # avg over label vertices and band's freqs
+    return power, band_ind
+
+
+def calc_labels_power_bands(mri_subject, atlas, events, inverse_method='dSPM', extract_modes=['mean_flip'],
+                            precentiles=(1, 99), bands=None, labels=None, overwrite=False, n_jobs=6):
+    meg_fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'meg'))
+    events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
+    if bands is None:
+        bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
+    if labels is None:
+        labels = lu.read_labels(mri_subject, SUBJECTS_MRI_DIR, atlas, only_names=True, n_jobs=n_jobs)
+    ret = True
+    fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, 'labels', 'labels_data'))
+    for (cond_ind, cond_name), em in product(enumerate(events_keys), extract_modes):
+        input_fname = op.join(meg_fol, '{}_{}_{}_power_spectrum.npz'.format(cond_name, inverse_method, em))
+        if not op.isfile(input_fname):
+            print('No power specturm for {}!'.format(cond_name))
+            continue
+        d = utils.Bag(np.load(input_fname))
+        psd = d.power_spectrum # (epochs_num, len(labels), len(freqs), len(events))
+        freqs = d.frequencies
+        for band, (lf, hf) in bands.items():
+            output_fname = op.join(fol, '{}_labels_{}_{}_{}_power.npz'.format(cond_name, inverse_method, em, band))
+            # if op.isfile(output_fname) and not overwrite:
+            #     return True
+            band_mask = np.where((freqs >= lf) & (freqs <= hf))
+            band_power = np.empty((len(labels), psd.shape[0]))
+            for label_ind, label_name in enumerate(labels):
+                band_power[label_ind] = psd[:, label_ind, band_mask, cond_ind].mean(axis=2).squeeze()
+            data_max = utils.calc_max(band_power, norm_percs=precentiles)
+            print('calc_labels_power_bands: Saving results in {}'.format(output_fname))
+            np.savez(output_fname, names=np.array(labels), atlas=atlas, data=band_power,
+                     title='labels {} power ({})'.format(band, cond_name), data_min=0, data_max=data_max, cmap='RdOrYl')
+            ret = ret and op.isfile(output_fname)
+
+    return ret
 
 
 @utils.tryit()
@@ -510,9 +773,10 @@ def calc_labels_connectivity(
     events_keys = list(events.keys()) if events is not None and isinstance(events, dict) else ['all']
     lambda2 = 1.0 / snr ** 2
     if bands is None or bands == '':
-        bands = [[4, 8], [8, 15], [15, 30], [30, 55], [65, 200]]
+        bands = [[4, 8], [8, 15], [15, 30], [30, 55], [65, 120]]
+        # bands = [[30, 55]]
     if cwt_frequencies is None or cwt_frequencies == '':
-        cwt_frequencies = np.arange(4, 200, 2)
+        cwt_frequencies = np.arange(4, 120, 2)
     fol = utils.make_dir(op.join(mmvt_dir, mri_subject, 'connectivity'))
     ret = True
     first_time = True
@@ -526,13 +790,15 @@ def calc_labels_connectivity(
             first_time = False
             labels = lu.read_labels(mri_subject, subjects_dir, atlas, surf_name=surf_name, n_jobs=n_jobs)
             inverse_operator, src = get_inv_src(inv_fname, src)
-            if raw is None:
-                raw_fname = get_raw_fname(raw_fname)
-                if not op.isfile(raw_fname):
-                    print('Can\'t find the raw data! ({})'.format(raw_fname))
-                    return False
-                raw = mne.io.read_raw_fif(raw_fname)
-                sfreq = raw.info['sfreq']
+            if inverse_operator is None or src is None:
+                print('Can\'t find the inverse_operator!')
+            # if raw is None:
+            #     raw_fname = get_raw_fname(raw_fname)
+            #     if not op.isfile(raw_fname):
+            #         print('Can\'t find the raw data! ({})'.format(raw_fname))
+            #         return False
+            #     raw = mne.io.read_raw_fif(raw_fname)
+            #     sfreq = raw.info['sfreq']
 
         if epochs is None:
             epo_cond_fname = get_cond_fname(epo_fname, cond_name)
@@ -540,6 +806,7 @@ def calc_labels_connectivity(
                 print('single_trial_stc and not epochs file was found! ({})'.format(epo_cond_fname))
                 return False
             epochs = mne.read_epochs(epo_cond_fname, apply_SSP_projection_vectors, add_eeg_ref)
+        sfreq = epochs.info['sfreq']
         try:
             mne.set_eeg_reference(epochs, ref_channels=None)
             epochs.apply_proj()
@@ -556,27 +823,34 @@ def calc_labels_connectivity(
         con, freqs, times, n_epochs, n_tapers = spectral_connectivity(
             label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
             cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=1)
-        np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
-        ret = ret and op.isfile(output_fname)
+        if con is not None:
+            np.savez(output_fname, con=con, freqs=freqs, times=times, n_epochs=n_epochs, n_tapers=n_tapers)
+            ret = ret and op.isfile(output_fname)
+        else:
+            ret = False
     return ret
 
 
 def spectral_connectivity(label_ts, con_method, con_mode, sfreq, fmin, fmax, faverage=True, mt_adaptive=True,
                           cwt_frequencies=None, cwt_n_cycles=7, n_jobs=1):
-    if con_mode == 'cwt_morlet':
-        con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
-            label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=faverage, mt_adaptive=mt_adaptive,
-            cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
-    elif con_mode == 'multitaper':
-        con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
-            label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=faverage, mt_adaptive=True, n_jobs=n_jobs)
-    else:
-        con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
-            label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
-            fmax=fmax, faverage=True, n_jobs=n_jobs)
-    return con, freqs, times, n_epochs, n_tapers
+    try:
+        if con_mode == 'cwt_morlet':
+            con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
+                label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
+                fmax=fmax, faverage=faverage, mt_adaptive=mt_adaptive,
+                cwt_frequencies=cwt_frequencies, cwt_n_cycles=cwt_n_cycles, n_jobs=n_jobs)
+        elif con_mode == 'multitaper':
+            con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
+                label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
+                fmax=fmax, faverage=faverage, mt_adaptive=True, n_jobs=n_jobs)
+        else:
+            con, freqs, times, n_epochs, n_tapers = mne.connectivity.spectral_connectivity(
+                label_ts, method=con_method, mode=con_mode, sfreq=sfreq, fmin=fmin,
+                fmax=fmax, faverage=True, n_jobs=n_jobs)
+        return con, freqs, times, n_epochs, n_tapers
+    except:
+        print(traceback.format_exc())
+        return None, None, None, 0, 0
 
 
 def get_inv_src(inv_fname, src=None, cond_name=''):
@@ -596,10 +870,11 @@ def get_inv_src(inv_fname, src=None, cond_name=''):
     return inverse_operator, src
 
 
-def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='', norm_by_percentile=False,
+def calc_evokes(epochs, events, mri_subject, normalize_data=False, epo_fname='', evoked_fname='', norm_by_percentile=False,
                 norm_percs=None, modality='meg', calc_max_min_diff=True, calc_evoked_for_all_epoches=False,
                 overwrite_evoked=False, task='', set_eeg_reference=True, average_per_event=True):
     try:
+        epo_fname = get_epo_fname(epo_fname)
         evoked_fname = get_evo_fname(evoked_fname)
         fol = utils.make_dir(op.join(MMVT_DIR, mri_subject, modality))
         task_str = '{}_'.format(task) if task != '' else ''
@@ -611,11 +886,13 @@ def calc_evokes(epochs, events, mri_subject, normalize_data=True, evoked_fname='
             return True, evoked
         events_keys = list(events.keys())
         if epochs is None:
-            epochs = mne.read_epochs(EPO)
-        if average_per_event:
+            epochs = mne.read_epochs(epo_fname)
+        if average_per_event and not (len(events_keys) == 1 and events_keys[0] == 'rest'):
             if any([event not in epochs.event_id for event in events_keys]):
                 print('Not all the events can be found in the epochs! (events = {})'.format(events_keys))
                 events_keys = list(set(epochs.event_id.keys()) & set(events.keys()))
+                if len(events_keys) == 0:
+                    events_keys = list(set(epochs.event_id.keys()))
                 # return False, None
             evokes = [epochs[event].average() for event in events_keys] # if event in list(epochs.event_id.keys())]
         else:
@@ -684,7 +961,7 @@ def save_evokes_to_mmvt(evokes, events_keys, mri_subject, evokes_all=None, norma
     else:
         factor = 6 if modality == 'eeg' else 12 # micro V for EEG, fT (Magnetometers) and fT/cm (Gradiometers) for MEG
         data *= np.power(10, factor)
-    if calc_max_min_diff:
+    if calc_max_min_diff and len(events_keys) == 2:
         data_diff = np.diff(data) if len(events_keys) > 1 else np.squeeze(data)
         data_max, data_min = utils.get_data_max_min(data_diff, norm_by_percentile, norm_percs)
     else:
@@ -778,7 +1055,7 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
         if not recreate_the_source_space:
             ans = input("Can't find the source file, recreate it (y/n)? (spacing={}, surface={}) ".format(
                 recreate_src_spacing, recreate_src_surface))
-        if recreate_the_source_space or ans == 'y':
+        if recreate_the_source_space or ans == 'y' :
             # oct_name, oct_num = recreate_src_spacing[:3], recreate_src_spacing[-1]
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, op.join(SUBJECTS_MRI_DIR, mri_subject),
@@ -792,25 +1069,53 @@ def check_src(mri_subject, recreate_the_source_space=False, recreate_src_spacing
     return src
 
 
-def check_bem(mri_subject, remote_subject_dir, args={}):
+def check_bem(mri_subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution=False, args={}):
+    bem_sol = None
     if len(args) == 0:
         args = utils.Bag(
             sftp=False, sftp_username='', sftp_domain='', sftp_password='',
             overwrite_fs_files=False, print_traceback=False, sftp_port=22)
-    bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.fif')
+    bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.*')
     if not bem_exist:
         prepare_subject_folder(
             mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
-            {'bem': ['*-bem-sol.fif']}, args, use_subject_anat_folder=True)
-    if not op.isfile(bem_fname):
-        prepare_bem_surfaces(mri_subject, remote_subject_dir)
-        model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR)
-        bem = mne.make_bem_solution(model)
-        mne.write_bem_solution(BEM, bem)
-    return op.isfile(bem_fname)
+            {'bem': ['*-bem-sol.*']}, args, use_subject_anat_folder=True)
+        bem_fname, bem_exist = locating_subject_file(BEM, '*-bem-sol.*')
+    if not op.isfile(bem_fname) or recreate_bem_solution:
+        # todo: check if the bem and src has same ico
+        prepare_bem_surfaces(mri_subject, remote_subject_dir, args)
+        model = mne.make_bem_model(mri_subject, subjects_dir=SUBJECTS_MRI_DIR, ico=int(recreate_src_spacing[3:]))
+        bem_sol = mne.make_bem_solution(model)
+        save_bem_solution(bem_sol, bem_fname)
+    if bem_sol is None and op.isfile(bem_fname):
+        bem_sol = read_bem_solution(bem_fname)
+    return op.isfile(bem_fname), bem_sol
 
 
-def prepare_bem_surfaces(mri_subject, remote_subject_dir):
+def save_bem_solution(bem_sol, bem_fname):
+    try:
+        mne.write_bem_solution(bem_fname, bem_sol)
+    except:
+        try:
+            mne.externals.h5io.write_hdf5(bem_fname, bem_sol)
+        except:
+            print(traceback.format_exc())
+            print('Can\'t write the BEM solution!')
+
+
+def read_bem_solution(bem_fname):
+    bem_sol = None
+    if utils.file_type(bem_fname) == 'fif':
+        bem_sol = mne.read_bem_solution(bem_fname)
+    elif utils.file_type(bem_fname) == 'h5':
+        bem_sol = mne.externals.h5io.read_hdf5(bem_fname)
+        bem_sol = mne.bem.ConductorModel(bem_sol)
+    if bem_sol is None:
+        raise Exception('Can\'t read the BEM solution! {}'.format(bem_fname))
+    return bem_sol
+
+
+def prepare_bem_surfaces(mri_subject, remote_subject_dir, args):
     bem_files = ['brain.surf', 'inner_skull.surf', 'outer_skin.surf', 'outer_skull.surf']
     watershed_files = ['{}_brain_surface', '{}_inner_skull_surface', '{}_outer_skin_surface',
                        '{}_outer_skull_surface']
@@ -820,19 +1125,29 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir):
         prepare_subject_folder(
             mri_subject, remote_subject_dir, SUBJECTS_MRI_DIR,
             {'bem': [f for f in bem_files]}, args)
+    bem_files_exist = np.all([op.isfile(op.join(bem_fol, bem_fname)) for bem_fname in bem_files])
     watershed_files_exist = np.all(
         [op.isfile(op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
          watershed_files])
+    if not watershed_files_exist:
+        remote_bem_fol = op.join(remote_subject_dir, 'bem')
+        watershed_files_exist = np.all(
+            [op.isfile(op.join(remote_bem_fol, 'watershed', watershed_fname.format(mri_subject))) for watershed_fname in
+             watershed_files])
+        if watershed_files_exist:
+            utils.make_link(op.join(remote_bem_fol, 'watershed'), op.join(bem_fol, 'watershed'))
     if not bem_files_exist and not watershed_files_exist:
         err_msg = '''BEM files don't exist, you should create it first using mne_watershed_bem.
             For that you need to open a terminal, define SUBJECTS_DIR, SUBJECT, source MNE, and run
             mne_watershed_bem.
+            cshrc: setenv SUBJECT subject_name
+            basrc: export SUBJECT=subject_name
             You can take a look here:
             http://perso.telecom-paristech.fr/~gramfort/mne/MRC/mne_anatomical_workflow.pdf '''
         raise Exception(err_msg)
     if not bem_files_exist and watershed_files_exist:
         for bem_file, watershed_file in zip(bem_files, watershed_files):
-            utils.remove_file(bem_file)
+            utils.remove_file(op.join(bem_fol, bem_file))
             shutil.copy(op.join(bem_fol, 'watershed', watershed_file.format(mri_subject)),
                         op.join(bem_fol, bem_file))
     return [op.join(bem_fol, 'watershed', watershed_fname.format(mri_subject)) for watershed_fname in watershed_files]
@@ -840,8 +1155,9 @@ def prepare_bem_surfaces(mri_subject, remote_subject_dir):
 
 def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', fwd_fname='', cor_fname='',
                           sub_corticals_codes_file='', usingMEG=True, usingEEG=True, calc_corticals=True,
-                          calc_subcorticals=True, recreate_the_source_space=False, recreate_src_spacing='oct6',
-                          recreate_src_surface='white', overwrite_fwd=False, remote_subject_dir='', n_jobs=4, args={}):
+                          calc_subcorticals=True, recreate_the_source_space=False, recreate_bem_solution=False,
+                          recreate_src_spacing='oct6', recreate_src_surface='white', overwrite_fwd=False,
+                          remote_subject_dir='', n_jobs=4, args={}):
     fwd, fwd_with_subcortical = None, None
     raw_fname = get_raw_fname(raw_fname)
     evo_fname = get_evo_fname(evo_fname)
@@ -852,12 +1168,14 @@ def make_forward_solution(mri_subject, events=None, raw_fname='', evo_fname='', 
         src = check_src(mri_subject, recreate_the_source_space, recreate_src_spacing, recreate_src_surface,
                         remote_subject_dir, n_jobs)
         check_src_ply_vertices_num(src)
-        check_bem(mri_subject, remote_subject_dir, args)
+        bem_exist, bem = check_bem(
+            mri_subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution, args)
         sub_corticals = utils.read_sub_corticals_code_file(sub_corticals_codes_file)
         if '{cond}' not in evo_fname:
             if calc_corticals:
                 if overwrite_fwd or not op.isfile(fwd_fname):
-                    fwd = _make_forward_solution(src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs)
+                    fwd = _make_forward_solution(
+                        src, raw_fname, evo_fname, cor_fname, usingMEG, usingEEG, n_jobs, bem=bem)
                     mne.write_forward_solution(fwd_fname, fwd, overwrite=True)
             if calc_subcorticals and len(sub_corticals) > 0:
                 # add a subcortical volumes
@@ -932,26 +1250,40 @@ def make_forward_solution_to_specific_points(events, pts, region_name, epo_fname
     return fwd
 
 
-def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6):
-    bem = BEM
-    if not op.isfile(BEM):
-        bem = utils.select_one_file(op.join(SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
-        if op.isfile(bem):
-            shutil.copy(bem, BEM)
-        else:
-            raise Exception("Can't find the BEM file!")
-    if op.isfile(epo_fname):
-        info = epo_fname
-    else:
-        raw_fname = get_raw_fname(raw_fname)
-        if op.isfile(raw_fname):
-            info = raw_fname
-        else:
-            raise Exception("Can't find info object for make_forward_solution!")
+def _make_forward_solution(src, raw_fname, epo_fname, cor_fname, usingMEG=True, usingEEG=True, n_jobs=6, bem=None,
+                           bem_fname=''):
+    if bem is None:
+        if bem_fname == '':
+            bem_fname = BEM
+        if not op.isfile(bem_fname):
+            bem_fname = utils.select_one_file(op.join(
+                SUBJECTS_MRI_DIR, MRI_SUBJECT, 'bem', '*-bem-sol.fif'), '', 'bem files')
+            if op.isfile(bem_fname):
+                shutil.copy(bem_fname, BEM)
+            else:
+                raise Exception("Can't find the BEM file!")
 
-    fwd = mne.make_forward_solution(info=info, trans=cor_fname, src=src, bem=bem, # mri=MRI
-                                    meg=usingMEG, eeg=usingEEG, mindist=5.0,
-                                    n_jobs=n_jobs, overwrite=True)
+    # if op.isfile(evo_fname):
+    #     info_fname = evo_fname
+    if op.isfile(epo_fname):
+        info_fname = epo_fname
+    elif op.isfile(raw_fname):
+        info_fname = raw_fname
+    else:
+        raise Exception("Can't find info object for make_forward_solution!")
+
+    bem = bem_fname if bem is None else bem
+    try:
+        fwd = mne.make_forward_solution(
+            info=info_fname, trans=cor_fname, src=src, bem=bem, meg=usingMEG, eeg=usingEEG, mindist=5.0,
+            n_jobs=n_jobs, overwrite=True)
+    except:
+        utils.print_last_error_line()
+        print('Trying to create fwd only with MEG')
+        fwd = mne.make_forward_solution(
+            info=info_fname, trans=cor_fname, src=src, bem=bem_fname, meg=usingMEG, eeg=False, mindist=5.0,
+            n_jobs=n_jobs, overwrite=True)
+
     return fwd
 
 
@@ -1135,6 +1467,10 @@ def get_empty_fname(empty_fname=''):
         empty_fname = EMPTY_ROOM
     print('Looking for empty room fif file...')
     empty_fname, empty_exist = locating_meg_file(empty_fname, '*empty*.fif')
+    if not empty_exist:
+        empty_fname, empty_exist = locating_meg_file(empty_fname, '*noise*.fif')
+    if not empty_exist:
+        empty_fname, empty_exist = locating_meg_file(empty_fname, '*.fif')
     return empty_fname
 
 
@@ -1180,6 +1516,7 @@ def calc_inverse_operator(
                     noise_cov = calc_noise_cov(epochs, noise_t_min, noise_t_max, noise_cov_fname, args)
             else:
                 noise_cov = mne.read_cov(noise_cov_fname)
+
             # todo: should use noise_cov = calc_cov(...
             if calc_for_cortical_fwd and (not op.isfile(get_cond_fname(inv_fname, cond))
                                           or overwrite_inverse_operator):
@@ -1187,7 +1524,7 @@ def calc_inverse_operator(
                     cortical_fwd = get_cond_fname(fwd_fname, cond)
                 _calc_inverse_operator(
                     cortical_fwd, get_cond_fname(inv_fname, cond), raw_fname, get_cond_fname(evo_fname, cond),
-                    noise_cov, inv_loose, inv_depth)
+                    noise_cov, inv_loose, inv_depth, noise_cov_fname)
             if calc_for_sub_cortical_fwd and (not op.isfile(get_cond_fname(INV_SUB, cond))
                                               or overwrite_inverse_operator):
                 if subcortical_fwd is None:
@@ -1208,8 +1545,10 @@ def calc_inverse_operator(
     return flag
 
 
-def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_cov, inv_loose=0.2, inv_depth=0.8):
+def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_cov, inv_loose=0.2, inv_depth=0.8,
+                           noise_cov_fname=''):
     fwd = mne.read_forward_solution(fwd_name)
+    # info = fwd['info']
     if op.isfile(evoked_fname):
         evoked = mne.read_evokeds(evoked_fname)[0]
         info = evoked.info
@@ -1220,9 +1559,73 @@ def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_co
             info = raw.info
         else:
             raise Exception("Can't find info for calculating the inverse operator!")
+
+    noise_cov = check_noise_cov_channels(noise_cov, info, fwd, noise_cov_fname)
     inverse_operator = make_inverse_operator(info, fwd, noise_cov,
         loose=inv_loose, depth=inv_depth)
     write_inverse_operator(inv_name, inverse_operator)
+
+
+def check_noise_cov_channels(noise_cov, info, fwd, noise_cov_fname=''):
+    fwd_sol_ch_names = fwd['sol']['row_names']
+    if set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
+        return noise_cov
+
+    cov_dict = utils.Bag(dict(noise_cov))
+    ch0 = info['chs'][0]['ch_name']
+    group, num = utils.get_group_and_number(ch0)
+    if '{}{}'.format(group, num) == ch0:
+        sep = ''
+    else:
+        sep = ch0[len(group) - 1:-len(num)]
+    num_len_dict = {'MEG': 0, 'EEG': 0}
+    for group_type in num_len_dict.keys():
+        for c in info['chs']:
+            if c['ch_name'].startswith(group_type):
+                group, num = utils.get_group_and_number(c['ch_name'])
+                num_len_dict[group_type] = len(num)
+                break
+    cov_dict.names, cov_dict.bads = [], []
+    for c in noise_cov.ch_names:
+        group, num = get_sensor_group_num(c)
+        cov_dict.names.append('{}{}{}'.format(group, sep, num.zfill(num_len_dict[group])))
+    for c in noise_cov['bads']:
+        group, num = get_sensor_group_num(c)
+        cov_dict.bads.append('{}{}{}'.format(group, sep, num.zfill(num_len_dict[group])))
+    noise_cov = get_cov_from_dict(cov_dict)
+
+    if args.check_for_channels_inconsistency:
+        C = [c['ch_name'] for c in info['chs'] if c['ch_name'][:3] in ['MEG', 'EEG']]
+        N = [c for c in noise_cov.ch_names if c[:3] in ['MEG', 'EEG']]
+        F = [c for c in fwd_sol_ch_names if c[:3] in ['MEG', 'EEG']]
+        if not len(C) == len(N) == len(F):
+            print('Inconsistency in channels num: info:{}, noise:{}, fwd:{}'.format(len(C), len(N), len(F)))
+            ret = input('Do you want to continue? ')
+            if not au.is_true(ret):
+                raise Exception('Inconsistency in channels names')
+        elif not set([c['ch_name'] for c in info['chs']]) == set(noise_cov.ch_names) == set(fwd_sol_ch_names):
+            for k in range(len(info['chs'])):
+                if not fwd_sol_ch_names[k] == noise_cov.ch_names[k] == info['chs'][k]['ch_name']:
+                    print(fwd_sol_ch_names[k], noise_cov.ch_names[k], info['chs'][k]['ch_name'])
+            ret = input('Inconsistency in channels names! Do you want to continue? ')
+            if not au.is_true(ret):
+                raise Exception('Inconsistency in channels names')
+
+    if noise_cov_fname == '':
+        noise_cov_fname = NOISE_COV
+    noise_cov.save(noise_cov_fname)
+    return noise_cov
+
+
+def get_sensor_group_num(sensor_name):
+    group, num = utils.get_group_and_number(sensor_name)
+    return group, num
+
+def get_cov_from_dict(cov_dict):
+    # (data=data, dim=len(data), names=names, bads=bads, nfree=nfree, eig=eig, eigvec=eigvec, diag=diag,
+    #     projs=projs, kind=FIFF.FIFFV_MNE_NOISE_COV)
+    return mne.Covariance(
+        cov_dict.data, cov_dict.names, cov_dict.bads, cov_dict.projs, cov_dict.nfree, cov_dict.eig, cov_dict.eigvec)
 
 
 # def calc_stc(inverse_method='dSPM'):
@@ -1238,7 +1641,7 @@ def _calc_inverse_operator(fwd_name, inv_name, raw_fname, evoked_fname, noise_co
 def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None, inverse_method='dSPM', baseline=(None, 0),
                            apply_SSP_projection_vectors=True, add_eeg_ref=True, pick_ori=None,
                            single_trial_stc=False, calc_source_band_induced_power=False, save_stc=True, snr=3.0,
-                           overwrite_stc=False, stc_template='', epo_fname='', evo_fname='', inv_fname='',
+                           overwrite_stc=False, stc_template='', raw_fname='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
                            modality='meg', calc_stc_for_all=False, calc_stcs_diff=True,
                            atlas='aparc.DKTatlas40', bands=None, calc_inducde_power_per_label=True,
@@ -1277,7 +1680,7 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                     print('No inverse operator was found!')
                     return False, stcs, stcs_num
                 inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
-            if single_trial_stc or calc_source_band_induced_power or events_keys == ['rest']:
+            if (single_trial_stc or calc_source_band_induced_power or events_keys == ['rest']) and not apply_on_raw:
                 if epochs is None:
                     epo_fname = epo_fname.format(cond=cond_name)
                     if not op.isfile(epo_fname):
@@ -1299,7 +1702,16 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                 stcs_num[cond_name] = epochs.events.shape[0]
             if not single_trial_stc: # So calc_source_band_induced_power can enter here also
                 if apply_on_raw:
-                    stcs_num[cond_name] = mne.minimum_norm.apply_inverse_raw(
+                    raw_fname = get_raw_fname(raw_fname)
+                    if op.isfile(raw_fname):
+                        raw = mne.io.read_raw_fif(raw_fname)
+                    else:
+                        raise Exception('Can\'t find the raw data!')
+                    try:
+                        mne.set_eeg_reference(raw, ref_channels=None)
+                    except:
+                        print('annot create EEG average reference projector (no EEG data found)')
+                    stcs[cond_name] = mne.minimum_norm.apply_inverse_raw(
                         raw, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                 else:
                     evoked = get_evoked_cond(
@@ -1323,25 +1735,29 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                             stcs[cond_name] = apply_inverse(
                                 evk, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
                     else:
-                        stcs[cond_name] = apply_inverse(evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
-            if np.max(stcs[cond_name].data) < 1e-4:
+                        stcs[cond_name] = apply_inverse(
+                            evoked, inverse_operator, lambda2, inverse_method, pick_ori=pick_ori)
+            # Can work only for non generator stcs
+            if not isinstance(stcs[cond_name], types.GeneratorType) and np.max(stcs[cond_name].data) < 1e-4:
                 factor = 6 if modality == 'eeg' else 12  # todo: depends on the inverse method, should check
                 stcs[cond_name] = mne.SourceEstimate(
                     stcs[cond_name].data * np.power(10, factor), vertices=stcs[cond_name].vertices,
                     tmin=stcs[cond_name].tmin, tstep=stcs[cond_name].tstep, subject=stcs[cond_name].subject,
                     verbose=stcs[cond_name].verbose)
-            if save_stc and (not op.isfile(stc_fname) or overwrite_stc):
+            if save_stc and (not op.isfile(stc_fname) or overwrite_stc) and \
+                    not isinstance(stcs[cond_name], types.GeneratorType):
                 mmvt_fol = utils.make_dir(op.join(MMVT_DIR, MRI_SUBJECT, modality))
                 print('Saving the source estimate to {}.stc and\n {}.stc'.format(
                     stc_fname, op.join(mmvt_fol, utils.namebase(stc_fname))))
                 print('max: {}, min: {}'.format(np.max(stcs[cond_name].data), np.min(stcs[cond_name].data)))
                 stcs[cond_name].save(stc_fname)
-                stcs[cond_name].save(op.join(mmvt_fol, utils.namebase(stc_fname)))
+                utils.make_link(stc_fname, op.join(mmvt_fol, utils.namebase_with_ext(stc_fname)))
+                # stcs[cond_name].save(op.join(mmvt_fol, utils.namebase(stc_fname)))
             flag = True
         except:
             print(traceback.format_exc())
             print('Error with {}!'.format(cond_name))
-    if calc_stcs_diff and len(events) > 1:
+    if calc_stcs_diff and len(events) == 2:
         calc_stc_diff_both_hemis(events, stc_hemi_template, inverse_method, overwrite_stc)
     return flag, stcs, stcs_num
 
@@ -1974,7 +2390,7 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
               overwrite=False, n_jobs=6):
     ret = True
     for ind, cond in enumerate(events.keys()):
-        input_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh')
+        input_fname = stc_fname = STC_HEMI.format(cond=cond, method=inverse_method, hemi='rh')
         if not op.isfile(input_fname):
             stcs_files = list(set([f[:-len('-rh.stc')] for f in glob.glob(op.join(SUBJECT_MEG_FOLDER, '*.stc'))]))
             stcs_files += list(
@@ -1996,10 +2412,10 @@ def morph_stc(subject, events, morph_to_subject, inverse_method='dSPM', grade=5,
         stc_morphed.save(output_fname)
         print('Morphed stc file was saves in {}'.format(output_fname))
         ret = ret and utils.both_hemi_files_exist(output_fname)
-    diff_template = op.join(SUBJECT_MEG_FOLDER, '{cond}-{hemi}.stc').replace(SUBJECT, morph_to_subject)
-    calc_stc_diff_both_hemis(events, diff_template, inverse_method, overwrite)
+    # diff_template = op.join(SUBJECT_MEG_FOLDER, '{cond}-{hemi}.stc').replace(SUBJECT, morph_to_subject)
+    diff_template = STC_HEMI.format(cond='{cond}', hemi='{hemi}', method=inverse_method).replace(SUBJECT, morph_to_subject)
+    ret = ret and calc_stc_diff_both_hemis(events, diff_template, inverse_method, overwrite)
     return ret
-
 
 
 # @utils.timeit
@@ -2382,6 +2798,12 @@ def calc_labels_avg_per_condition(
     if _check_all_files_exist() and not overwrite:
         return True
     try:
+        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
+                                labels_fol=labels_fol, read_only_from_annot=read_only_from_annot, n_jobs=n_jobs)
+        if len(labels) == 0:
+            print('No labels were found for {} atlas!'.format(atlas))
+            return False
+
         inv_fname = get_inv_fname(inv_fname, fwd_usingMEG, fwd_usingEEG)
         global_inverse_operator = False
         if events is None:
@@ -2403,8 +2825,10 @@ def calc_labels_avg_per_condition(
         conds_incdices = {cond_id:ind for ind, cond_id in zip(range(len(stcs)), events.values())}
         conditions = []
         labels_data = {}
-        labels = lu.read_labels(MRI_SUBJECT, SUBJECTS_MRI_DIR, atlas, hemi=hemi, surf_name=surf_name,
-                                labels_fol=labels_fol, read_only_from_annot=read_only_from_annot, n_jobs=n_jobs)
+
+        if not check_source_and_labels_interestion(src, labels):
+            return False
+
         for (cond_name, cond_id), stc_cond in zip(events.items(), stcs.values()):
             if do_plot:
                 plt.figure()
@@ -2416,9 +2840,6 @@ def calc_labels_avg_per_condition(
                         return False
                     inverse_operator = read_inverse_operator(inv_fname.format(cond=cond_name))
                     src = inverse_operator['src']
-            if len(labels) == 0:
-                print('No labels were found for {} atlas!'.format(atlas))
-                return False
 
             if isinstance(stc_cond, types.GeneratorType):
                 stc_cond_num = stcs_num[cond_name]
@@ -2456,6 +2877,42 @@ def calc_labels_avg_per_condition(
     return flag
 
 
+def check_source_and_labels_interestion(src, labels):
+    vertno = [s['vertno'] for s in src]
+    nvert = [len(vn) for vn in vertno]
+    labels_with_no_vertices = 0
+    for label in labels:
+        if label.hemi == 'both':
+            # handle BiHemiLabel
+            sub_labels = [label.lh, label.rh]
+        else:
+            sub_labels = [label]
+        this_vertidx = list()
+        for slabel in sub_labels:
+            if slabel.hemi == 'lh':
+                this_vertno = np.intersect1d(vertno[0], slabel.vertices)
+                vertidx = np.searchsorted(vertno[0], this_vertno)
+            elif slabel.hemi == 'rh':
+                this_vertno = np.intersect1d(vertno[1], slabel.vertices)
+                vertidx = nvert[0] + np.searchsorted(vertno[1], this_vertno)
+            else:
+                raise ValueError('label %s has invalid hemi' % label.name)
+            this_vertidx.append(vertidx)
+
+        this_vertidx = np.concatenate(this_vertidx)
+        if len(this_vertidx) == 0:
+            print('source space does not contain any vertices for label {}!'.format(label.name))
+            labels_with_no_vertices += 1
+        else:
+            print('label {} contain {} source space vertices'.format(label.name, len(this_vertidx)))
+    if labels_with_no_vertices > 0:
+        print('source space does not contain any vertices for {} labels!'.format(labels_with_no_vertices))
+        ret = input('Do you wish to continue? ')
+        if not au.is_true(ret):
+            return False
+    return True
+
+
 def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract_modes, inverse_method,
                      labels_data_template, task='', factor=1, positive=False, moving_average_win_size=0):
     if not isinstance(labels_names[0], str):
@@ -2473,7 +2930,6 @@ def save_labels_data(labels_data, hemi, labels_names, atlas, conditions, extract
         utils.make_dir(utils.get_parent_fol(labels_output_fname))
         # If labels_data is per ephoch: labels_num x time x conds_num x epoches_num
         np.savez(labels_output_fname, data=labels_data[em], names=labels_names, conditions=conditions)
-        # shutil.copyfile(labels_output_fname, lables_mmvt_fname)
 
 
 def calc_power_spectrum(subject, events, args, do_plot=False):
@@ -2553,14 +3009,20 @@ def get_info(info_fname='', evoked_fname='', raw_fname=''):
     return info
 
 
+def get_info_fname(info_fname=''):
+    if info_fname == '':
+        fwd_fname = INFO
+    info_fname, info_exist = locating_meg_file(fwd_fname, '*-info.pkl')
+    return info_fname, info_exist
+
+
 def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, overwrite_sensors=False,
                         trans_file='', info_fname='', info=None):
     if pick_eeg and pick_meg or (not pick_meg and not pick_eeg):
         raise Exception('read_sensors_layout: You should pick only meg or eeg!')
     if info is None:
-        if info_fname == '':
-            info_fname = INFO
-        if not op.isfile(info_fname):
+        info_fname, info_exist = get_info_fname(info_fname)
+        if not info_exist:
             raw_fname, raw_exist = locating_meg_file(RAW, args.raw_template)
             if not raw_exist:
                 print('No raw or raw info file!')
@@ -2602,25 +3064,62 @@ def read_sensors_layout(mri_subject, args=None, pick_meg=True, pick_eeg=False, o
     return ret
 
 
+def create_meg_mesh(subject, excludes=[], overwrite_faces_verts=True):
+    try:
+        from scipy.spatial import Delaunay
+        from src.utils import trig_utils
+        input_file = op.join(MMVT_DIR, subject, 'meg', 'meg_sensors_positions.npz')
+        mesh_ply_fname = op.join(MMVT_DIR, subject, 'meg', 'meg_helmet.ply')
+        faces_verts_out_fname = op.join(MMVT_DIR, subject, 'meg', 'meg_faces_verts.npy')
+        f = np.load(input_file)
+        verts = f['pos']
+        # excluded_inds = [np.where(f['names'] == e)[0] for e in excludes]
+        # verts = np.delete(verts, excluded_inds, 0)
+        verts_tup = [(x, y, z) for x, y, z in verts]
+        tris = Delaunay(verts_tup)
+        faces = tris.convex_hull
+        areas = [trig_utils.poly_area(verts[poly]) for poly in tris.convex_hull]
+        inds = [k for k, s in enumerate(areas) if s > np.percentile(areas, 97)]
+        faces = np.delete(faces, inds, 0)
+        utils.write_ply_file(verts, faces, mesh_ply_fname, True)
+        utils.calc_ply_faces_verts(verts, faces, faces_verts_out_fname, overwrite_faces_verts,
+                                   utils.namebase(faces_verts_out_fname))
+        np.savez(input_file, pos=f['pos'], names=f['names'], tri=faces, excludes=excludes)
+    except:
+        print('Error in create_eeg_mesh!')
+        print(traceback.format_exc())
+        return False
+    return True
+
+
 def find_trans_file(trans_file='', remote_subject_dir='', subject='', subjects_dir=''):
     subject = MRI_SUBJECT if subject == '' else subject
     subject_dir = SUBJECTS_MRI_DIR if subjects_dir == '' else subjects_dir
     trans_file = COR if trans_file == '' else trans_file
     if not op.isfile(trans_file):
-        trans_files = glob.glob(op.join(subject_dir, subject, '**', '*COR*.fif'), recursive=True)
+        # trans_files = glob.glob(op.join(subject_dir, subject, '**', '*COR*.fif'), recursive=True)
+        trans_files = utils.find_recursive(op.join(subject_dir, subject), '*COR*.fif')
         if len(trans_files) == 0 and remote_subject_dir != '':
-            trans_files = glob.glob(op.join(remote_subject_dir, '**', '*COR*.fif'), recursive=True)
+            # trans_files = glob.glob(op.join(remote_subject_dir, '**', '*COR*.fif'), recursive=True)
+            trans_files = utils.find_recursive(op.join(remote_subject_dir), '*COR*.fif')
         if len(trans_files) == 0:
-            trans_files = glob.glob(op.join(utils.get_parent_fol(trans_file), '**', '*COR*.fif'), recursive=True)
-        bem_trans_files = glob.glob(op.join(subjects_dir, subject, 'bem', '*-head.fif'))
+            # trans_files = glob.glob(op.join(utils.get_parent_fol(trans_file), '**', '*COR*.fif'), recursive=True)
+            trans_files = utils.find_recursive(op.join(utils.get_parent_fol(trans_file)), '*COR*.fif')
+        # bem_trans_files = glob.glob(op.join(subjects_dir, subject, 'bem', '*-head.fif'))
+        bem_trans_files = utils.find_recursive(op.join(subjects_dir, subject, 'bem'), '*-head.fif')
         if len(bem_trans_files):
             trans_files += bem_trans_files
         else:
-            trans_files += glob.glob(op.join(remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
+            # trans_files += glob.glob(op.join(remote_subject_dir, 'bem', '*-head.fif'), recursive=True)
+            trans_files += utils.find_recursive(op.join(remote_subject_dir, 'bem'), '*-head.fif')
         ok_trans_files = filter_trans_files(trans_files)
         trans_file = utils.select_one_file(
             ok_trans_files, template='*COR*.fif', files_desc='MRI-Head transformation',
             file_func=lambda fname:read_trans(fname))
+    if op.isfile(trans_file):
+        print('trans file was found in {}'.format(trans_file))
+    else:
+        raise Exception('trans file wasn\'t found!')
     return trans_file
 
 
@@ -2765,6 +3264,14 @@ def get_fname_format(task, fname_format='', fname_format_cond='', args_condition
             fname_format_cond = '{subject}_arc_rer_{cleaning_method}_{cond}-{ana_type}.{file_type}'
             fname_format = '{subject}_arc_rer_{cleaning_method}-{ana_type}.{file_type}'
             conditions = dict(low_risk=1, med_risk=2, high_risk=3)
+        elif task == 'audvis':
+            conditions = dict(LA=1, RA=2, LV=3, RV=4, smiley=5, button=32)
+            fname_format_cond = '{subject}_audvis_{cond}_{ana_type}.{file_type}'
+            fname_format = '{subject}_audvis_{ana_type}.{file_type}'
+        elif task == 'vis':
+            conditions = dict(LV=3, RV=4)
+            fname_format_cond = '{subject}_audvis_{cond}_{ana_type}.{file_type}'
+            fname_format = '{subject}_audvis_{ana_type}.{file_type}'
         elif task == 'rest':
             fname_format = fname_format_cond = '{subject}_{cleaning_method}-rest-{ana_type}.{file_type}'
             conditions = dict(rest=1)
@@ -2804,19 +3311,16 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
         return flags
     if mri_subject == '':
         mri_subject = subject
-    raw_fname = get_raw_fname(args.raw_fname)
     inv_fname = get_inv_fname(args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG)
     fwd_fname = get_fwd_fname(args.fwd_fname, args.fwd_usingMEG, args.fwd_usingEEG)
-    epo_fname = get_epo_fname(args.epo_fname)
-    evo_fname = get_evo_fname(args.evo_fname)
-    cor_fname = get_cor_fname(args.cor_fname)
-    noise_cov_fname = NOISE_COV if args.noise_cov_fname == '' else args.noise_cov_fname
     get_meg_files(subject, [inv_fname], args, conditions)
-    if args.overwrite_inv or not op.isfile(inv_fname) or (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
+    if args.overwrite_inv or args.overwrite_fwd or not op.isfile(inv_fname) or \
+            (args.inv_calc_subcorticals and not op.isfile(INV_SUB)):
         if utils.should_run(args, 'make_forward_solution') and (not op.isfile(fwd_fname) or args.overwrite_fwd):
             # prepare_subject_folder(
             #     mri_subject, args.remote_subject_dir, SUBJECTS_MRI_DIR,
             #     {op.join('mri', 'T1-neuromag', 'sets'): ['COR.fif']}, args)
+            cor_fname = get_cor_fname(args.cor_fname)
             trans_file = find_trans_file(cor_fname, args.remote_subject_dir)
             if trans_file is None:
                 flags['make_forward_solution'] = False
@@ -2831,7 +3335,8 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
                     if trans_file != COR:
                         shutil.copy(trans_file, local_cor_fname)
                 args.cor_fname = local_cor_fname
-            src_dic = dict(bem=['*-oct-6*-src.fif'])
+            src_dic = dict(bem=['*-{}-{}*-src.fif'.format(
+                args.recreate_src_spacing[:3], args.recreate_src_spacing[-1])])
             create_src_dic = dict(surf=['lh.{}'.format(args.recreate_src_surface), 'rh.{}'.format(args.recreate_src_surface),
                        'lh.sphere', 'rh.sphere'])
             for nec_file in [src_dic, create_src_dic]:
@@ -2840,16 +3345,22 @@ def calc_fwd_inv_wrapper(subject, args, conditions=None, flags={}, mri_subject='
                     nec_file, args)
                 if file_exist:
                     break
+            evo_fname = get_evo_fname(args.evo_fname)
             get_meg_files(subject, [evo_fname], args, conditions)
             sub_corticals_codes_file = op.join(MMVT_DIR, 'sub_cortical_codes.txt')
+            raw_fname = get_raw_fname(args.raw_fname)
             flags['make_forward_solution'], fwd, fwd_subs = make_forward_solution(
-                mri_subject, conditions, raw_fname, evo_fname, fwd_fname, args.cor_fname, sub_corticals_codes_file, args.fwd_usingMEG,
-                args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals, args.fwd_recreate_source_space,
-                args.recreate_src_spacing, args.recreate_src_surface, args.overwrite_fwd, args.remote_subject_dir,
-                args.n_jobs, args)
+                mri_subject, conditions, raw_fname, evo_fname, fwd_fname, args.cor_fname, sub_corticals_codes_file,
+                args.fwd_usingMEG, args.fwd_usingEEG, args.fwd_calc_corticals, args.fwd_calc_subcorticals,
+                args.fwd_recreate_source_space, args.recreate_bem_solution, args.recreate_src_spacing,
+                args.recreate_src_surface, args.overwrite_fwd, args.remote_subject_dir, args.n_jobs, args)
 
         if utils.should_run(args, 'calc_inverse_operator') and flags.get('make_forward_solution', True):
+            epo_fname = get_epo_fname(args.epo_fname)
+            evo_fname = get_evo_fname(args.evo_fname)
             get_meg_files(subject, [epo_fname, fwd_fname], args, conditions)
+            raw_fname = get_raw_fname(args.raw_fname)
+            noise_cov_fname = NOISE_COV if args.noise_cov_fname == '' else args.noise_cov_fname
             flags['calc_inverse_operator'] = calc_inverse_operator(
                 conditions, raw_fname, epo_fname, evo_fname, fwd_fname, inv_fname, noise_cov_fname, args.empty_fname,
                 args.inv_loose, args.inv_depth, args.noise_t_min, args.noise_t_max, args.overwrite_inv,
@@ -2872,7 +3383,7 @@ def calc_evokes_wrapper(subject, conditions, args, flags={}, raw=None, mri_subje
 
     if utils.should_run(args, 'calc_evokes'):
         flags['calc_evokes'], evoked = calc_evokes(
-            epochs, conditions, mri_subject, args.normalize_data, args.evo_fname,
+            epochs, conditions, mri_subject, args.normalize_data, args.epo_fname, args.evo_fname,
             args.norm_by_percentile, args.norm_percs, args.modality, args.calc_max_min_diff,
             args.calc_evoked_for_all_epoches, args.overwrite_evoked, args.task,
             args.set_eeg_reference, args.average_per_event)
@@ -2903,8 +3414,8 @@ def calc_stc_per_condition_wrapper(subject, conditions, inverse_method, args, fl
             conditions, args.task, args.stc_t_min, args.stc_t_max, inverse_method, args.baseline,
             args.apply_SSP_projection_vectors, args.add_eeg_ref, args.pick_ori, args.single_trial_stc,
             args.calc_source_band_induced_power, args.save_stc, args.snr, args.overwrite_stc, args.stc_template,
-            args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG, args.apply_on_raw,
-            raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff,
+            args.raw_fname, args.epo_fname, args.evo_fname, args.inv_fname, args.fwd_usingMEG, args.fwd_usingEEG,
+            args.apply_on_raw, raw, epochs, args.modality, args.calc_stc_for_all, args.calc_stc_diff,
             args.atlas, args.bands, args.calc_inducde_power_per_label, args.induced_power_normalize_proj, args.n_jobs)
     return flags, stcs_conds, stcs_num
 
@@ -3275,7 +3786,7 @@ def calc_labels_func(subject, task, atlas, inv_method, em, func=None, tmin=None,
     return op.isfile(output_fname)
 
 
-def calc_labels_power_bands(
+def calc_labels_power_bands_from_timeseries(
         subject, task, atlas, inv_method, em, tmin, tmax, precentiles=(1, 99), func_name='power', norm_data=False,
         bands=dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200]),
         overwrite=False):
@@ -3500,7 +4011,7 @@ def extract_time_series_for_cluster(subject, mri_subject, stc, hemi, clusters, c
 
 
 def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fname='', overwrite_ica=False,
-            do_plot=False, examine_ica=False, n_jobs=6):
+            do_plot=False, examine_ica=False, filter_low_freq=1, filter_high_freq=150, n_jobs=6):
     from mne.preprocessing import read_ica
     if raw_fname == '':
         raw_fname = RAW
@@ -3510,7 +4021,7 @@ def fit_ica(raw=None, n_components=0.95, method='fastica', ica_fname='', raw_fna
         ica = read_ica(ica_fname)
     else:
         ica = ICA(n_components=n_components, method=method)
-        raw.filter(1, 45, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
+        raw.filter(low_freq, high_freq, n_jobs=n_jobs, l_trans_bandwidth=0.5, h_trans_bandwidth=0.5,
                    filter_length='10s', phase='zero-double')
         picks = mne.pick_types(raw.info, meg=True, eeg=False, eog=False, ref_meg=False,
                                stim=False, exclude='bads')
@@ -3760,6 +4271,63 @@ def collect_raw_files(subjects='all', meg_root_fol='', excludes=()):
     return raw_files
 
 
+def stc_time_average(subject, dt, stc_template='*rh.stc', overwrite=False):
+    if stc_template == '':
+        stc_template = '*rh.stc'
+    stc_files = glob.glob(op.join(MMVT_DIR, subject, 'meg', stc_template))
+    stc_fname = utils.select_one_file(stc_files)
+    if not op.isfile(stc_fname):
+        return False
+    new_stc_fname = op.join(utils.get_parent_fol(stc_fname), '{}_{}'.format(
+        utils.namebase(stc_fname)[:-len('-rh')], dt))
+    new_stc_fname_template = '{}-{}.stc'.format(new_stc_fname, '{hemi}')
+    if utils.both_hemi_files_exist(new_stc_fname_template) and not overwrite:
+        return True
+    stc = mne.read_source_estimate(stc_fname, subject)
+    V, T = stc.data.shape
+    trim_data = stc.data[:, :-(T % dt)]
+    avg_data = trim_data.reshape(V, -1, dt).mean(axis=2)
+    residue = stc.data[:, -(T % dt):].mean(axis=1)
+    residue = residue[:, np.newaxis]
+    avg_data = np.hstack((avg_data, residue))
+    avg_data_stc = mne.SourceEstimate(avg_data, stc.vertices, stc.tmin, stc.tstep * dt, subject)
+    avg_data_stc.save(new_stc_fname)
+    return utils.both_hemi_files_exist(new_stc_fname_template)
+
+
+def sensors_time_average(subject, dt=10, overwrite=False):
+    fol = op.join(MMVT_DIR, subject, 'meg')
+    sensors_evoked_files = glob.glob(op.join(fol, '*sensors_evoked_data.npy'))
+    if len(sensors_evoked_files) == 0:
+        return
+    sensors_evoked_fname = utils.select_one_file(sensors_evoked_files)
+    if not op.isfile(sensors_evoked_fname):
+        return False
+    prefix = op.basename(sensors_evoked_fname)[:-len('sensors_evoked_data.npy')]
+    sensors_evoked_new_fname = op.join(fol, '{}_{}.npy'.format(utils.namebase(sensors_evoked_fname), dt))
+    meta_fname = op.join(fol, '{}sensors_evoked_data_meta.npz'.format(prefix))
+    meta_new_fname = op.join(fol, '{}_meta.npz'.format(utils.namebase(sensors_evoked_new_fname), dt))
+    evoked_minmax_new_fname = op.join(fol, '{}_minmax.npy'.format(utils.namebase(sensors_evoked_new_fname), dt))
+    if op.isfile(sensors_evoked_new_fname) and op.isfile(meta_new_fname) and op.isfile(evoked_minmax_new_fname) \
+            and not overwrite:
+        return True
+    data = np.load(op.join(sensors_evoked_fname))
+
+    C, T, K = data.shape
+    trim_data = data[:, :-(T % dt), :]
+    avg_data = trim_data.reshape(C, -1, dt, K).mean(axis=2)
+    residue = data[:, -(T % dt):, :].mean(axis=1)
+    residue = residue[:, np.newaxis, :]
+    avg_data = np.hstack((avg_data, residue))
+    data_max, data_min = utils.get_data_max_min(avg_data, True, (1, 99))
+
+    np.save(sensors_evoked_new_fname, avg_data)
+    meta = utils.Bag(np.load(meta_fname))
+    np.savez(meta_new_fname, names=meta.names, conditions=meta.conditions, dt=meta.dt * dt)
+    np.save(evoked_minmax_new_fname, [data_min, data_max])
+    return op.isfile(sensors_evoked_new_fname) and op.isfile(meta_new_fname) and op.isfile(evoked_minmax_new_fname)
+
+
 def load_fieldtrip_volumetric_data(subject, data_name, data_field_name,
                                    overwrite_nii_file=False, overwrite_surface=False, overwrite_stc=False):
     volumetric_meg_fname = op.join(MEG_DIR, subject, '{}.nii'.format(data_name))
@@ -3914,7 +4482,7 @@ def main(tup, remote_subject_dir, org_args, flags=None):
         flags['remove_artifacts'] = remove_artifacts(
             n_max_ecg=args.ica_n_max_ecg, n_max_eog=args.ica_n_max_eog, n_components=args.ica_n_components,
             method=args.ica_method, remove_from_raw=args.remove_artifacts_from_raw, overwrite_ica=args.overwrite_ica,
-            overwrite_raw=args.ica_overwrite_raw)
+            overwrite_raw=args.ica_overwrite_raw, raw_fname=args.raw_fname)
 
     if 'morph_stc' in args.function:
         flags['morph_stc'] = morph_stc(
@@ -3932,6 +4500,25 @@ def main(tup, remote_subject_dir, org_args, flags=None):
             args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.extract_mode, args.surf_name,
             args.con_method, args.con_mode, args.cwt_n_cycles, args.overwrite_connectivity, n_jobs=args.n_jobs)
 
+    if 'calc_labels_power_spectrum' in args.function:
+        flags['calc_labels_power_spectrum'] = calc_labels_power_spectrum(
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.fmin, args.fmax, args.bandwidth,
+            args.bands, args.max_epochs_num, MRI_SUBJECT, args.epo_fname, args.inv_fname, args.snr, args.pick_ori,
+            args.apply_SSP_projection_vectors, args.add_eeg_ref, args.fwd_usingMEG, args.fwd_usingEEG, args.surf_name,
+            args.precentiles, overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
+
+    if 'calc_labels_power_bands' in args.function:
+        flags['calc_labels_power_bands'] = calc_labels_power_bands(
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.precentiles,
+            overwrite=args.overwrite_labels_power_spectrum, n_jobs=args.n_jobs)
+
+    if 'calc_labels_induced_power' in args.function:
+        flags['calc_labels_induced_power'] = calc_labels_induced_power(
+            subject, args.atlas, conditions, inverse_method, args.extract_mode, args.bands,
+            args.max_epochs_num, args.cwt_n_cycles, MRI_SUBJECT, args.epo_fname, args.inv_fname,
+            args.snr, args.pick_ori, args.apply_SSP_projection_vectors, args.add_eeg_ref,
+            args.fwd_usingMEG, args.fwd_usingEEG, overwrite=args.overwrite_labels_induced_power, n_jobs=args.n_jobs)
+
     if 'load_fieldtrip_volumetric_data' in args.function:
         flags['load_fieldtrip_volumetric_data'] = load_fieldtrip_volumetric_data(
             subject, args.fieldtrip_data_name, args.fieldtrip_data_field_name, args.overwrite_nii_file,
@@ -3939,6 +4526,19 @@ def main(tup, remote_subject_dir, org_args, flags=None):
 
     if 'fit_ica_on_subjects' in args.function:
         fit_ica_on_subjects(args.subject, meg_root_fol=args.meg_root_fol)
+
+    if 'create_meg_mesh' in args.function:
+        flags['create_meg_mesh'] = create_meg_mesh(subject, excludes=[], overwrite_faces_verts=True)
+
+    if 'find_trans_file' in args.function:
+        flags['find_trans_file'] = op.isfile(find_trans_file(
+            '', args.remote_subject_dir, MRI_SUBJECT, SUBJECTS_MRI_DIR))
+
+    if 'stc_time_average' in args.function:
+        flags['stc_time_average'] = stc_time_average(subject, args.stc_time_average_dt, args.stc_template)
+
+    if 'sensors_time_average' in args.function:
+        flags['sensors_time_average'] = sensors_time_average(subject, args.stc_time_average_dt, args.overwrite)
 
     return flags
 
@@ -3971,6 +4571,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--calc_evoked_for_all_epoches', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--average_per_event', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--set_eeg_reference', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--max_epochs_num', help='', required=False, default=0, type=int)
+    parser.add_argument('--overwrite', help='general overwrite', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_epochs', help='overwrite_epochs', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_evoked', help='overwrite_evoked', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_sensors', help='overwrite_sensors', required=False, default=0, type=au.is_true)
@@ -3978,10 +4580,11 @@ def read_cmd_args(argv=None):
     parser.add_argument('--overwrite_inv', help='overwrite_inv', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_stc', help='overwrite_stc', required=False, default=0, type=au.is_true)
     parser.add_argument('--overwrite_labels_data', help='overwrite_labels_data', required=False, default=0, type=au.is_true)
-    parser.add_argument('--overwrite_labels_power_spectrum', help='overwrite_labels_power_spectrum', required=False,
-                        default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_power_spectrum', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--overwrite_labels_induced_power', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--read_events_from_file', help='read_events_from_file', required=False, default=0, type=au.is_true)
     parser.add_argument('--events_file_name', help='events_file_name', required=False, default='')
+    parser.add_argument('--use_demi_events', help='use_demi_events', required=False, default=0, type=au.is_true)
     parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
     parser.add_argument('--windows_num', help='', required=False, default=0, type=int)
@@ -3994,6 +4597,8 @@ def read_cmd_args(argv=None):
     parser.add_argument('--pick_eog', help='pick eog events', required=False, default=0, type=au.is_true)
     parser.add_argument('--remove_power_line_noise', help='remove power line noise', required=False, default=1, type=au.is_true)
     parser.add_argument('--power_line_freq', help='power line freq', required=False, default=60, type=int)
+    parser.add_argument('--power_line_notch_widths', help='notch_widths', required=False, default=None,
+                        type=au.float_or_none)
     parser.add_argument('--stim_channels', help='stim_channels', required=False, default='STI001', type=au.str_arr_type)
     parser.add_argument('--reject', help='reject trials', required=False, default=1, type=au.is_true)
     parser.add_argument('--reject_grad', help='', required=False, default=4000e-13, type=float)
@@ -4001,15 +4606,16 @@ def read_cmd_args(argv=None):
     parser.add_argument('--reject_eog', help='', required=False, default=150e-6, type=float)
     parser.add_argument('--apply_SSP_projection_vectors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--add_eeg_ref', help='', required=False, default=1, type=au.is_true)
-    parser.add_argument('--pick_ori', help='', required=False, default=None)
-    parser.add_argument('--t_min', help='', required=False, default=0.0, type=float)
-    parser.add_argument('--t_max', help='', required=False, default=0.0, type=float)
+    parser.add_argument('--pick_ori', help='', required=False, default='normal')
+    parser.add_argument('--t_min', help='', required=False, default=-0.2, type=float) # MNE python defaults
+    parser.add_argument('--t_max', help='', required=False, default=0.5, type=float) # MNE python defaults
     parser.add_argument('--noise_t_min', help='', required=False, default=None, type=au.float_or_none)
     parser.add_argument('--noise_t_max', help='', required=False, default=0, type=float)
     parser.add_argument('--snr', help='', required=False, default=3.0, type=float)
     parser.add_argument('--calc_stc_for_all', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--stc_t_min', help='', required=False, default=None, type=float)
     parser.add_argument('--stc_t_max', help='', required=False, default=None, type=float)
+    parser.add_argument('--stc_time_average_dt', help='', required=False, default=10, type=int)
     parser.add_argument('--baseline_min', help='', required=False, default=None, type=float)
     parser.add_argument('--baseline_max', help='', required=False, default=0, type=au.float_or_none)
     parser.add_argument('--files_includes_cond', help='', required=False, default=0, type=au.is_true)
@@ -4022,6 +4628,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--fwd_calc_corticals', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--fwd_calc_subcorticals', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--fwd_recreate_source_space', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--recreate_bem_solution', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--recreate_src_spacing', help='', required=False, default='oct6')
     parser.add_argument('--recreate_src_surface', help='', required=False, default='white')
     parser.add_argument('--surf_name', help='', required=False, default='pial')
@@ -4051,14 +4658,19 @@ def read_cmd_args(argv=None):
     parser.add_argument('--read_only_from_annot', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--colors_map', help='', required=False, default='OrRd')
     parser.add_argument('--save_smoothed_activity', help='', required=False, default=True, type=au.is_true)
-    parser.add_argument('--normalize_data', help='', required=False, default=1, type=au.is_true)
+    parser.add_argument('--normalize_data', help='', required=False, default=0, type=au.is_true)
     parser.add_argument('--norm_by_percentile', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--norm_percs', help='', required=False, default='1,99', type=au.int_arr_type)
     parser.add_argument('--remote_subject_meg_dir', help='remote_subject_dir', required=False, default='')
     parser.add_argument('--meg_root_fol', required=False, default='')
-    parser.add_argument('--bands', required=False, default='')
+    parser.add_argument('--bands', required=False, default=None)
     parser.add_argument('--calc_inducde_power_per_label', required=False, default=1, type=au.is_true)
     parser.add_argument('--induced_power_normalize_proj', required=False, default=1, type=au.is_true)
+    parser.add_argument('--fmin', required=False, default=0, type=int)
+    parser.add_argument('--fmax', required=False, default=200, type=int)
+    parser.add_argument('--bandwidth', required=False, default=2., type=float)
+    parser.add_argument('--precentiles', required=False, default='1,99', type=au.str_arr_type)
+    parser.add_argument('--check_for_channels_inconsistency', required=False, default=1, type=au.is_true)
 
     # parser.add_argument('--sftp_sso', help='ask for sftp pass only once', required=False, default=0, type=au.is_true)
     parser.add_argument('--eeg_electrodes_excluded_from_mesh', help='', required=False, default='', type=au.str_arr_type)
@@ -4096,7 +4708,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--cwt_n_cycles', required=False, default=7, type=int)
     parser.add_argument('--overwrite_connectivity', required=False, default=0, type=au.is_true)
     # AutoReject
-    parser.add_argument('--using_auto_reject', required=False, default=True, type=au.is_true)
+    parser.add_argument('--using_auto_reject', required=False, default=0, type=au.is_true)
     parser.add_argument('--ar_compute_thresholds_method', required=False, default='random_search',
                         choices=['random_search', 'bayesian_optimization'])
     parser.add_argument('--bad_ar_threshold', required=False, default=0.5, type=float)
@@ -4124,7 +4736,10 @@ def read_cmd_args(argv=None):
         args.use_empty_room_for_noise_cov = True
         args.baseline_min = 0
         args.baseline_max = 0
-
+    try:
+        args.precentiles = [float(p) for p in args.precentiles]
+    except:
+        args.precentiles = [0, 100]
     # todo: Was set as a remark, why?
     if args.n_jobs == -1:
         args.n_jobs = utils.get_n_jobs(args.n_jobs)

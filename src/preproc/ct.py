@@ -22,6 +22,13 @@ def convert_ct_to_mgz(subject, ct_raw_input_fol, ct_fol='', output_name='ct_org.
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
     if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
         return True
+    if op.isfile(op.join(ct_fol, output_name)):
+        return True
+    ct_fname = utils.select_one_file(glob.glob(op.join(ct_fol, '*.mgz')))
+    if op.isfile(ct_fname):
+        if utils.namebase(ct_fname) != 'ct_org':
+            utils.make_link(ct_fname, op.join(ct_fol, 'ct_org.mgz'))
+        return True
     output_fname = op.join(ct_fol, output_name)
     if op.isfile(output_fname):
         if not overwrite:
@@ -62,7 +69,10 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         shutil.copy(op.join(SUBJECTS_DIR, subject, 'ct', ct_name), op.join(MMVT_DIR, subject, 'ct', ct_name))
     if not op.isdir(ct_fol):
         ct_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
-    if op.isfile(op.join(ct_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
+    ct_mmvt_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'ct'))
+    t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
+    if op.isfile(op.join(ct_mmvt_fol, 'ct_reg_to_mr.mgz')) and not overwrite:
+        print('freeview -v "{}" "{}":colormap=Heat'.format(t1_fname, op.join(ct_mmvt_fol, register_ct_name)))
         return True
     if ct_name == '':
         ct_name = 'ct_org.mgz'
@@ -70,17 +80,15 @@ def register_to_mr(subject, ct_fol='', ct_name='', nnv_ct_name='', register_ct_n
         nnv_ct_name = 'ct_no_large_negative_values.mgz'
     if register_ct_name == '':
         register_ct_name = 'ct_reg_to_mr.mgz'
-    if print_only:
-        print('Removing large negative values: {} -> {}'.format(op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name)))
-    else:
-        ctu.remove_large_negative_values_from_ct(
-            op.join(ct_fol, ct_name), op.join(ct_fol, nnv_ct_name), threshold, overwrite)
+    print('Removing large negative values: {} -> {}'.format(op.join(ct_fol, ct_name), op.join(ct_mmvt_fol, nnv_ct_name)))
+    if not print_only:
+        nnv_ct_fname = ctu.remove_large_negative_values_from_ct(
+            op.join(ct_fol, ct_name), op.join(ct_mmvt_fol, nnv_ct_name), threshold, overwrite)
     ctu.register_ct_to_mr_using_mutual_information(
-        subject, SUBJECTS_DIR, op.join(ct_fol, nnv_ct_name), op.join(ct_fol, register_ct_name), lta_name='',
+        subject, SUBJECTS_DIR, nnv_ct_fname, op.join(ct_mmvt_fol, register_ct_name), lta_name='',
         overwrite=overwrite, cost_function=cost_function, print_only=print_only)
-    t1_fname = op.join(SUBJECTS_DIR, subject, 'mri', 'T1.mgz')
-    print('freeview -v {} {}'.format(t1_fname, op.join(ct_fol, register_ct_name)))
-    return True if print_only else op.isfile(op.join(ct_fol, register_ct_name))
+    print('freeview -v {} {}'.format(t1_fname, op.join(ct_mmvt_fol, register_ct_name)))
+    return True if print_only else op.isfile(op.join(ct_mmvt_fol, register_ct_name))
 
 
 def save_subject_ct_trans(subject, ct_name='ct_reg_to_mr.mgz', overwrite=False):
@@ -143,13 +151,16 @@ def apply_trans(trans, points):
     return np.array([np.dot(trans, np.append(p, 1))[:3] for p in points])
 
 
-def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz', output_name='ct_data', overwrite=False):
+def save_images_data_and_header(subject, ct_name='ct_reg_to_mr.mgz', output_name='ct_data', no_negatives=True,
+                                overwrite=False):
     ret = True
     data, header = ctu.get_data_and_header(subject, MMVT_DIR, SUBJECTS_DIR, ct_name)
     if data is None or header is None:
         return False
     affine = header.affine
     precentiles = np.percentile(data, (1, 99))
+    if no_negatives:
+        precentiles[0] = max(precentiles[0], 0)
     colors_ratio = 256 / (precentiles[1] - precentiles[0])
     output_fname = op.join(MMVT_DIR, subject, 'ct', '{}.npz'.format(output_name))
     if not op.isfile(output_fname) or overwrite:
@@ -227,7 +238,8 @@ def isotropization(subject, ct_fname, ct_fol, new_image_fname='', isotropization
     if new_image_fname == '':
         new_image_fname = 'iso_ct.{}'.format(utils.file_type(ct_fname))
     ct_fname = op.join(ct_fol, ct_fname)
-    iso_img = ctu.isotropization(ct_fname, isotropization_type=2, iso_vector_override=[2, 2, 1])
+    iso_img = ctu.isotropization(
+        ct_fname, isotropization_type=isotropization_type, iso_vector_override=iso_vector_override)
     nib.save(iso_img, op.join(ct_fol, new_image_fname))
 
 
@@ -248,7 +260,7 @@ def main(subject, remote_subject_dir, args, flags):
 
     if utils.should_run(args, 'save_images_data_and_header'):
         flags['save_images_data_and_header'] = save_images_data_and_header(
-            subject, args.register_ct_name, 'ct_data', args.overwrite)
+            subject, args.register_ct_name, 'ct_data', args.no_negatives, args.overwrite)
 
     if 'find_electrodes' in args.function:
         flags['find_electrodes'] = find_electrodes(
@@ -258,7 +270,9 @@ def main(subject, remote_subject_dir, args, flags):
             args.min_joined_items_num, args.min_distance_beteen_electrodes, args.overwrite, args.debug)
 
     if 'isotropization' in args.function:
-        flags['isotropization'] = isotropization(subject, args.ct_org_name, args.ct_fol)
+        flags['isotropization'] = isotropization(
+            subject, args.ct_org_name, args.ct_fol, isotropization_type=args.isotropization_type,
+            iso_vector_override=None)
 
     if 'save_electrode_ct_pics' in args.function:
         flags['save_electrode_ct_pics'] = save_electrode_ct_pics(
@@ -283,6 +297,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--nnv_ct_name', help='', required=False, default='ct_no_large_negative_values.mgz')
     parser.add_argument('--register_ct_name', help='', required=False, default='ct_reg_to_mr.mgz')
     parser.add_argument('--negative_threshold', help='', required=False, default=-200, type=int)
+    parser.add_argument('--no_negatives', help='', required=False, default=True, type=au.is_true)
     parser.add_argument('--register_cost_function', help='', required=False, default='nmi')
     parser.add_argument('--ct_threshold', help='', required=False, type=float)
     parser.add_argument('--overwrite', help='', required=False, default=0, type=au.is_true)
@@ -315,6 +330,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--group_name', help='', required=False, default='')
     parser.add_argument('--elc_name', help='', required=False, default='')
     parser.add_argument('--fig_name', help='', required=False, default='')
+    parser.add_argument('--isotropization_type', help='', required=False, default=1, type=int)
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))

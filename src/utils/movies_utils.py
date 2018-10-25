@@ -2,7 +2,6 @@ import os.path as op
 import glob
 from src.utils import utils
 
-
 FFMPEG_DIR = utils.get_link_dir(utils.get_links_dir(), 'ffmpeg')
 FFMPEG_DIR = op.join(FFMPEG_DIR, 'bin') if utils.is_windows() else FFMPEG_DIR
 FFMPEG_CMD = op.join(FFMPEG_DIR, 'ffmpeg') if op.isdir(FFMPEG_DIR) else 'ffmpeg'
@@ -152,34 +151,44 @@ def create_animated_gif(movie_fol, movie_name, out_movie_name, fps=None):
     video.write_gif(op.join(movie_fol, out_movie_name), fps=fps)#, program='ImageMagick', opt='OptimizeTransparency')
 
 
-def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
-    # First convert the part to avi, because mp4 cannot be concat
-    cmd = 'ffmpeg -i concat:"'
-    if len(parts) == 0:
-        parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
-    else:
-        parts = [op.join(fol, p) for p in parts]
-    for part_fname in parts:
-        part_name, _ = op.splitext(part_fname)
-        cmd = '{}{}.avi|'.format(cmd, op.join(fol, part_name))
-        utils.remove_file('{}.avi'.format(part_name))
-        utils.run_script('ffmpeg -i {} -codec copy {}.avi'.format(part_fname, op.join(fol, part_name)))
-    # cmd = '{}" -c copy -bsf:a aac_adtstoasc {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
-    cmd = '{}" -c copy {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
-    print(cmd)
-    utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
-    utils.run_script(cmd)
-    # clean up
-    # todo: doesn't clean the part filess
-    utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
-    for part_fname in parts:
-        part_name, _ = op.splitext(part_fname)
-        utils.remove_file('{}.avi'.format(part_name))
+def combine_movies(fol, final_movie_name, parts_names, fps=60, movie_type='mp4', threads=1):
+    from moviepy.editor import VideoFileClip, concatenate_videoclips
+
+    parts = [VideoFileClip(op.join(fol, '{}.{}'.format(movie_name, movie_type))) for movie_name in parts_names]
+    final_movie = concatenate_videoclips(parts, method='chain')
+    final_movie.write_videofile(op.join(fol, '{}.{}'.format(final_movie_name, movie_type)), fps=fps, threads=threads)
+
+
+# def combine_movies(fol, movie_name, parts=(), movie_type='mp4'):
+#     # First convert the part to avi, because mp4 cannot be concat
+#     cmd = 'ffmpeg -i concat:"'
+#     if len(parts) == 0:
+#         parts = sorted(glob.glob(op.join(fol, '{}_*.{}'.format(movie_name, movie_type))))
+#     else:
+#         parts = [op.join(fol, p) for p in parts]
+#     for part_fname in parts:
+#         part_name, _ = op.splitext(part_fname)
+#         cmd = '{}{}.{}|'.format(cmd, op.join(fol, part_name), movie_type)
+#         # utils.remove_file('{}.avi'.format(part_name))
+#         utils.run_script('ffmpeg -i {} -codec copy {}.{}'.format(part_fname, op.join(fol, part_name), movie_type))
+#     # cmd = '{}" -c copy -bsf:a aac_adtstoasc {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
+#     cmd = '{}" -c copy {}'.format(cmd[:-1], op.join(fol, '{}.{}'.format(movie_name, movie_type)))
+#     print(cmd)
+#     utils.remove_file('{}.{}'.format(op.join(fol, movie_name), movie_type))
+#     utils.run_script(cmd)
+#     # clean up
+#     # todo: doesn't clean the part filess
+#     utils.remove_file('{}.avi'.format(op.join(fol, movie_name)))
+#     for part_fname in parts:
+#         part_name, _ = op.splitext(part_fname)
+#         utils.remove_file('{}.avi'.format(part_name))
 
 
 def combine_images(fol, movie_name, frame_rate=10, start_number=-1, images_prefix='', images_format='',
-                   images_type='', ffmpeg_cmd='ffmpeg', movie_name_full_path=False, debug=False,
+                   images_type='', ffmpeg_cmd='', movie_name_full_path=False, debug=False,
                    copy_files=False, add_reverse_frames=False, **kwargs):
+    if ffmpeg_cmd == '':
+        ffmpeg_cmd = FFMPEG_CMD
     images_type, images_prefix, images_format, images_format_len, start_number = find_images_props(
         fol, start_number, images_prefix, images_format, images_type)
     if movie_name == '' and images_prefix != '':
@@ -289,7 +298,7 @@ if __name__ == '__main__':
     parser.add_argument('--fol', required=False)
     parser.add_argument('--movie_name', required=False, default='')
     parser.add_argument('--out_movie_name', required=False, default='output2')
-    parser.add_argument('--ffmpeg_cmd', required=False, default=FFMPEG_CMD)
+    parser.add_argument('--ffmpeg_cmd', required=False, default='')
     parser.add_argument('--frame_rate', required=False, default=10)
     parser.add_argument('--copy_files', required=False, default=0, type=au.is_true)
     parser.add_argument('--add_reverse_frames', required=False, default=0, type=au.is_true)
@@ -297,6 +306,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-f', '--function', help='function name', required=False, default='combine_images')
     args = utils.Bag(au.parse_parser(parser))
+    if args.ffmpeg_cmd == '':
+        args.ffmpeg_cmd = FFMPEG_CMD
     locals()[args.function](**args)
 
     # combine_images_to_movie('/autofs/space/thibault_001/users/npeled/mmvt/mg78/figures/inflated_labels_selection', 'inflated_labels_selection',

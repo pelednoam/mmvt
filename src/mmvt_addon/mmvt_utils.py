@@ -73,6 +73,8 @@ class empty_bpy(object):
             def __init__(self, **kargs): pass
         class FloatProperty(object):
             def __init__(self, **kargs): pass
+        class IntProperty(object):
+            def __init__(self, **kargs): pass
 
 
 class empty_bpy_extras(object):
@@ -410,7 +412,15 @@ def create_material(name, diffuseColors, transparency, copy_material=True):
     bpy.context.active_object.active_material.diffuse_color = diffuseColors[:3]
 
 
+
+
 def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False):
+    def get_child_names(obj):
+        for child in obj.children:
+            names.add(child.name)
+            if child.children:
+                get_child_names(child)
+
     bpy.ops.object.select_all(action='DESELECT')
     obj = bpy.data.objects.get(parent_obj_name)
     if obj is None:
@@ -418,12 +428,6 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
     obj.animation_data_clear()
     # Go over all the objects in the hierarchy like @zeffi suggested:
     names = set()
-    def get_child_names(obj):
-        for child in obj.children:
-            names.add(child.name)
-            if child.children:
-                get_child_names(child)
-
     get_child_names(obj)
     names = names - set(exceptions)
     # Remove the animation from the all the child objects
@@ -439,6 +443,20 @@ def delete_hierarchy(parent_obj_name, exceptions=(), delete_only_animation=False
             print ("Successfully deleted object")
         else:
             print ("Could not delete object")
+
+
+def delete_object(obj_name):
+    obj = bpy.data.objects.get(obj_name)
+    if obj is None:
+        return
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.animation_data_clear()
+    obj.select = True
+    result = bpy.ops.object.delete()
+    if result == {'FINISHED'}:
+        print("Successfully deleted {}".format(obj_name))
+    else:
+        print("Could not delete {}".format(obj_name))
 
 
 @functools.lru_cache(maxsize=None)
@@ -508,15 +526,19 @@ def view_all_in_graph_editor(context=None):
         pass
 
 
-def show_hide_hierarchy(val, obj_name, also_parent=False, select=True):
-    if bpy.data.objects.get(obj_name) is not None:
-        if also_parent:
-            bpy.data.objects[obj_name].hide_render = not val
-        for child in bpy.data.objects[obj_name].children:
-            child.hide = not val
-            child.hide_render = not val
-            if select:
-                child.select = val
+def show_hide_hierarchy(val, obj, also_parent=False, select=True):
+    if isinstance(obj, str):
+        obj = bpy.data.objects.get(obj, None)
+    if obj is None:
+        print('show_hide_hierarchy: obj is None!')
+        return
+    if also_parent:
+        obj.hide_render = not val
+    for child in obj.children:
+        child.hide = not val
+        child.hide_render = not val
+        if select:
+            child.select = val
 
 
 def show_hide_obj(obj, val=True):
@@ -559,7 +581,7 @@ def get_fcurve_current_frame_val(parent_obj_name, obj_name, cur_frame):
 
 
 def get_fcurve_name(fcurve):
-    return fcurve.data_path.split('"')[1]
+    return fcurve.data_path.split('"')[1].replace(' ', '')
 
 
 def show_only_selected_fcurves(context):
@@ -579,14 +601,18 @@ def show_only_selected_fcurves(context):
 #     return xs, ys
 
 
-def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1):
+def time_to_go(now, run, runs_num, runs_num_to_print=10, thread=-1, do_write_to_stderr=False):
     if run % runs_num_to_print == 0 and run != 0:
         time_took = time.time() - now
         more_time = time_took / run * (runs_num - run)
         if thread > 0:
-            print('{}: {}/{}, {:.2f}s, {:.2f}s to go!'.format(thread, run, runs_num, time_took, more_time))
+            str = '{}: {}/{}, {:.2f}s, {:.2f}s to go!'.format(thread, run, runs_num, time_took, more_time)
         else:
-            print('{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time))
+            str = '{}/{}, {:.2f}s, {:.2f}s to go!'.format(run, runs_num, time_took, more_time)
+        if do_write_to_stderr:
+            write_to_stderr(str)
+        else:
+            print(str)
 
 
 def show_hide_obj_and_fcurves(objs, val, exclude=[]):
@@ -703,7 +729,7 @@ def split_bipolar_name(elec_name):
     return elec_name1, elec_name2
 
 
-def elec_group_number(elec_name, bipolar=False):
+def elec_group_number(elec_name, bipolar=False, num_to_int=True):
     if isinstance(elec_name, bytes):
         elec_name = elec_name.decode('utf-8')
     if bipolar and '-' in elec_name:
@@ -716,7 +742,14 @@ def elec_group_number(elec_name, bipolar=False):
         elec_name = elec_name.strip()
         num = re.sub('\D', ',', elec_name).split(',')[-1]
         group = elec_name[:elec_name.rfind(num)]
-        return group, int(num) if num != '' else ''
+        if num_to_int:
+            num = int(num)
+        return group, num if num != '' else ''
+
+
+def get_group_and_number(ch_name):
+    return elec_group_number(ch_name, False, False)
+
 
 
 def elec_group(elec_name, bipolar=False):
@@ -917,8 +950,11 @@ def run_command(cmd, shell=True, pipe=False, cwd=None):
 
 
 def make_dir(fol):
-    if not os.path.isdir(fol):
-        os.makedirs(fol)
+    try:
+        if not op.isdir(fol) and not op.islink(fol):
+            os.makedirs(fol)
+    except:
+        pass
     return fol
 
 
@@ -1366,6 +1402,12 @@ def change_fcurve_color(fcurve, color, exclude=[]):
     fcurve.hide = False
 
 
+def get_animation_conditions(obj, take_my_first_child=False):
+    if take_my_first_child:
+        return [get_fcurve_name(f).split('_')[-1] for f in obj.children[0].animation_data.action.fcurves]
+    else:
+        return [get_fcurve_name(f).split('_')[-1] for f in obj.animation_data.action.fcurves]
+
 def count_fcurves(objs, recursive=False):
     if not isinstance(objs, Iterable):
         objs = [objs]
@@ -1624,7 +1666,7 @@ def round_np_to_int(x):
     return np.rint(x).astype(int)
 
 
-def get_data_max_min(data, norm_by_percentile=False, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=False):
+def get_data_max_min(data, norm_by_percentile=False, norm_percs=None, data_per_hemi=False, hemis=HEMIS, symmetric=True):
     if data_per_hemi:
         if norm_by_percentile:
             no_nan_data = {hemi:data[hemi][~np.isnan(data[hemi])] for hemi in hemis}
@@ -1685,13 +1727,13 @@ def queue_get(queue):
     except Empty:
         return None
 
-
-class dummy_bpy(object):
-    class types(object):
-        class Operator(object):
-            pass
-        class Panel(object):
-            pass
+#
+# class dummy_bpy(object):
+#     class types(object):
+#         class Operator(object):
+#             pass
+#         class Panel(object):
+#             pass
 
 
 def caller_func():
@@ -1883,6 +1925,10 @@ def view_selected():
             bpy.ops.view3d.view_selected(override)
 
 
+def deselect_all_objects():
+    bpy.ops.object.select_all(action='DESELECT')
+
+
 def select_all_brain(val):
     bpy.data.objects['inflated_lh'].hide_select = not val
     bpy.data.objects['inflated_lh'].select = val
@@ -1893,6 +1939,14 @@ def select_all_brain(val):
         if not val:
             for child in bpy.data.objects['Subcortical_fmri_activity_map'].children:
                 child.hide_select = True
+    # head = bpy.data.objects.get('seghead', None)
+    # if head is not None and not head.hide:
+    #     head.select = val
+    #     head.hide_select = not val
+    for obj in [bpy.data.objects.get(obj_name, None) for obj_name in ['eeg_helmet', 'meg_helmet', 'seghead']]:
+        if obj is not None and not obj.hide:
+            if obj is not None:
+                obj.select = val
 
 
 def get_view3d_region():
@@ -2292,7 +2346,7 @@ def read_labels_from_annots(atlas, hemi='both', labels_fol=''):
             labels_files = glob.glob(op.join(labels_fol, atlas, '*.label'))
             for label_fname in labels_files:
                 new_label = read_label_file(label_fname)
-                if new_label is not None:
+                if new_label is not None and new_label.hemi == hemi:
                     labels.append(new_label)
     return sorted(labels, key=lambda l: l.name)
 
@@ -2320,7 +2374,7 @@ def get_atlas_labels_fol(atlas):
 
 def check_if_atlas_exist(labels_fol, atlas):
     return both_hemi_files_exist(op.join(labels_fol, '{}.{}.annot'.format('{hemi}', atlas))) or \
-        len(glob.glob(op.join(labels_fol, '*.label'))) > 0
+        len(glob.glob(op.join(labels_fol, atlas, '*.label'))) > 0
 
 
 def find_annot_labels(subjects_dir='', atlas='aparc.DKTatlas40'):
@@ -2738,6 +2792,14 @@ def is_float(x):
         return False
 
 
+def is_int(x):
+    try:
+        int(x)
+        return True
+    except:
+        return False
+
+
 def run_mmvt_func(module, func_name='', flags='', add_subject=False):
     if 'preproc' in module.split('.'):
         flags += ' -s {} --ignore_missing 1'.format(get_user())
@@ -2858,6 +2920,26 @@ def fix_normals(parent_name):
         mesh.update()
     bm.free()
 
+
+def prop_exist(prop_name):
+    try:
+        bpy.context.scene.__getattribute__(prop_name)
+        return True
+    except:
+        return False
+
+
+def set_prop(prop_name, prop_val):
+    if prop_exist(prop_name):
+        if is_int(prop_val):
+            prop_val = int(prop_val)
+        elif is_float(prop_val):
+            prop_val = float(prop_val)
+        bpy.context.scene.__setattr__(prop_name, prop_val)
+
+
+def get_cursor_location():
+    return bpy.context.scene.cursor_location
 
 # def mouse_coo_to_3d_loc(event, context):
 #     from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d

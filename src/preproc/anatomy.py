@@ -430,16 +430,20 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
 
     labels_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))
     # If there are only 2 files, most likely it's the unknowns
-    if len(labels_files) > 3:
-        if save_annot_file:
-            annot_was_written = labels_to_annot(subject, atlas, overwrite_annotation, surf_type,
-                                                overwrite_vertices_labels_lookup, n_jobs)
-            if annot_was_written:
-                return True
+    if len(labels_files) <= 3:
+        backup_labels_fol = op.join(SUBJECTS_DIR, subject, 'label', '{}_before_solve_collision'.format(atlas))
+        labels_files = glob.glob(op.join(backup_labels_fol, '*.label')) if \
+            op.isdir(backup_labels_fol) else []
+    if save_annot_file and len(labels_files) > 3:
+        annot_was_written = labels_to_annot(
+            subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup, labels_files,
+            n_jobs=n_jobs)
+        if annot_was_written:
+            return True
     utils.make_dir(op.join(SUBJECTS_DIR, subject, 'label'))
     remote_annotations_exist = np.all([op.isfile(op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(
         hemi, atlas))) for hemi in HEMIS])
-    if remote_annotations_exist:
+    if remote_annotations_exist and not overwrite_annotation:
         for hemi in HEMIS:
             remote_fname = op.join(remote_subject_dir, 'label', '{}.{}.annot'.format(hemi, atlas))
             local_fname = op.join(SUBJECTS_DIR, subject, 'label', '{}.{}.annot'.format(hemi, atlas))
@@ -463,7 +467,8 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
     if do_solve_labels_collisions:
         solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
     if save_annot_file and (overwrite_annotation or not annotations_exist):
-        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup, n_jobs)
+        labels_to_annot(subject, atlas, overwrite_annotation, surf_type, overwrite_vertices_labels_lookup,
+                        n_jobs=n_jobs)
     if save_annot_file:
         return both_annot_files_exist(subject, atlas)
     else:
@@ -477,13 +482,13 @@ def both_annot_files_exist(subject, atlas):
 
 
 def labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type='inflated',
-                    overwrite_vertices_labels_lookup=False, n_jobs=6):
+                    overwrite_vertices_labels_lookup=False, labels=(), n_jobs=6):
     if fu.is_fs_atlas(atlas) and both_annot_files_exist(subject, atlas):
         return True
-    annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, overwrite=overwrite_annotation)
+    annot_was_created = lu.labels_to_annot(subject, SUBJECTS_DIR, atlas, labels=labels, overwrite=overwrite_annotation)
     if not annot_was_created:
         print("Can't write labels to annotation! Trying to solve labels collision")
-        # print(traceback.format_exc())
+        print(traceback.format_exc())
         ret = solve_labels_collisions(subject, atlas, surf_type, overwrite_vertices_labels_lookup, n_jobs)
         if not ret:
             print('An error occurred in solve_labels_collisions!')
@@ -500,6 +505,8 @@ def solve_labels_collisions(subject, atlas, surf_type='inflated', overwrite_vert
     ret = lu.solve_labels_collision(subject, atlas, SUBJECTS_DIR, MMVT_DIR, backup_labels_fol,
                               overwrite_vertices_labels_lookup, surf_type, n_jobs)
     lu.backup_annotation_files(subject, SUBJECTS_DIR, atlas)
+    labels_to_annot(subject, atlas, overwrite_annotation=False, surf_type=surf_type,
+                    overwrite_vertices_labels_lookup=False, n_jobs=n_jobs)
     return ret
 
 
@@ -1133,14 +1140,14 @@ def create_new_subject_blend_file(subject, atlas, overwrite_blend=False, ask_if_
     #     shutil.copy(empty_subject_fname, new_fname)
 
 
-
-def check_bem(subject, remote_subject_dir, args):
+def check_bem(subject, remote_subject_dir, recreate_src_spacing, recreate_bem_solution=False, args={}):
     from src.preproc import meg
     meg_args = meg.read_cmd_args(dict(subject=subject))
     meg_args.update(args)
     meg.init(subject, meg_args, remote_subject_dir=remote_subject_dir)
     # args.remote_subject_dir = remote_subject_dir
-    return meg.check_bem(subject, remote_subject_dir, meg_args)
+    bem_exist, _ = meg.check_bem(subject, recreate_src_spacing, remote_subject_dir, recreate_bem_solution, meg_args)
+    return bem_exist
 
 
 def full_extent(ax, pad=0.0):
@@ -1364,6 +1371,7 @@ def create_pial_volume_mask(subject, overwrite=True):
     pial_output_fname = op.join(MMVT_DIR, subject, 'freeview', 'pial_vol_mask.npy')
     dural_output_fname = op.join(MMVT_DIR, subject, 'freeview', 'dural_vol_mask.npy')
     if op.isfile(pial_output_fname) and op.isfile(dural_output_fname) and not overwrite:
+        print('The files are already exist! Use --overwrite 1 to overwrite')
         return True
     pial_verts = utils.load_surf(subject, MMVT_DIR, SUBJECTS_DIR)
     dural_verts, _ = fu.read_surface(subject, SUBJECTS_DIR, 'dural')
@@ -1536,7 +1544,8 @@ def main(subject, remote_subject_dir, org_args, flags):
             subject, args.atlas)
 
     if 'check_bem' in args.function:
-        flags['check_bem'] = check_bem(subject, remote_subject_dir, args)
+        flags['check_bem'] = check_bem(
+            subject, remote_subject_dir, args.recreate_src_spacing, args.recreate_bem_solution, args)
 
     if 'create_flat_brain' in args.function:
         flags['create_flat_brain'] = create_flat_brain(subject, args.print_only, args.overwrite_flat_surf, args.n_jobs)
@@ -1559,6 +1568,11 @@ def main(subject, remote_subject_dir, org_args, flags):
     if 'morph_labels_from_fsaverage' in args.function:
         flags['morph_labels_from_fsaverage'] = morph_labels_from_fsaverage(
             subject, args.atlas, args.template_subject, args.overwrite_morphing_labels, args.fs_labels_fol,
+            args.n_jobs)
+
+    if 'solve_labels_collisions' in args.function:
+        flags['morph_labels_from_fsaverage'] = solve_labels_collisions(
+            subject, args.atlas, args.solve_labels_collision_surf_type, args.overwrite_vertices_labels_lookup,
             args.n_jobs)
 
     return flags
@@ -1607,6 +1621,9 @@ def read_cmd_args(argv=None):
     parser.add_argument('--slice_xyz', help='', required=False, default='166,118,113', type=au.int_arr_type)
     parser.add_argument('--slices_modality', help='', required=False, default='mri')
     parser.add_argument('--skull_surfaces_fol_name', help='', required=False, default='bem')
+    parser.add_argument('--recreate_bem_solution', help='', required=False, default=0, type=au.is_true)
+    parser.add_argument('--recreate_src_spacing', help='', required=False, default='oct6')
+
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
@@ -1629,6 +1646,10 @@ def read_cmd_args(argv=None):
     if 'labeling' in args.function:
         args.function.extend(['create_annotation', 'save_labels_vertices', 'calc_labeles_contours',
                               'calc_labels_center_of_mass', 'save_labels_coloring'])
+    if 'create_dural' in args.function and len(args.function) == 1:
+        args.function = ['create_surfaces', 'create_pial_volume_mask', 'create_spatial_connectivity']
+        args.surf_name = 'dural'
+    # python -m src.preproc.anatomy -s nmr00479 -f create_surfaces,create_pial_volume_mask,create_spatial_connectivity --surf_name dural
     # print(args)
     return args
 

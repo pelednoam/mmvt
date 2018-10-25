@@ -2,8 +2,10 @@ import bpy
 import os.path as op
 import glob
 import numpy as np
-import mmvt_utils as mu
+from collections import defaultdict
 import importlib
+
+import mmvt_utils as mu
 
 try:
     import mne
@@ -18,6 +20,436 @@ PARENT_OBJ_NAME = 'meg_clusters'
 def _addon():
     return MEGPanel.addon
 
+
+# def eeg_sensors_data_files_update(self, context):
+#     load_eeg_sensors_data()
+#
+#
+# def load_eeg_sensors_data(data_fname='', meta_fname=''):
+#     if data_fname == '':
+#         data_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npy'.format(bpy.context.scene.eeg_sensors_data_files))
+#     if meta_fname == '':
+#         meta_fname = op.join(mu.get_user_fol(), 'eeg', '{}.npz'.format(
+#             bpy.context.scene.eeg_sensors_data_files.replace('data', 'data_meta')))
+#     print('EEG sensros data files were loaded:\n{}\n{}'.format(data_fname, meta_fname))
+#     data = np.load(data_fname, mmap_mode='r')
+#     meta = np.load(meta_fname)
+#     return data, meta
+
+
+# def meg_sensors_data_files_update(self, context):
+#     load_meg_sensors_data()
+#
+#
+# def load_meg_sensors_data(data_fname='', meta_fname=''):
+#     if data_fname == '':
+#         data_fname = op.join(mu.get_user_fol(), 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_data_files))
+#     if meta_fname == '':
+#         meta_fname = op.join(mu.get_user_fol(), 'meg', '{}.npz'.format(
+#             bpy.context.scene.meg_sensors_data_files.replace('data', 'data_meta')))
+#     print('MEG sensros data files were loaded:\n{}\n{}'.format(data_fname, meta_fname))
+#     data = np.load(data_fname, mmap_mode='r')
+#     meta = np.load(meta_fname)
+#     DataMakerPanel.meg_sensors_data, DataMakerPanel.meg_sensors_meta_data = data, meta
+
+########## getters & setters
+
+def get_meg_sensors_data():
+    meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname = get_meg_sensors_files_names()
+    meg_sensors_file_name = get_meg_sensors_file()
+    meg_sensors_data = MEGPanel.meg_sensors_data.get(meg_sensors_file_name, None)
+    meg_sensors_meta_data = MEGPanel.meg_sensors_meta_data.get(meg_sensors_file_name, None)
+    if meg_sensors_data is None:
+        MEGPanel.meg_sensors_data[meg_sensors_file_name] = np.load(meg_sensors_data_fname)
+    if meg_sensors_meta_data is None:
+        meta = mu.Bag(np.load(meg_sensors_meta_data_fname))
+        meta['names'] = [n.replace(' ', '') for n in meta['names']] # ugly patch
+        MEGPanel.meg_sensors_meta_data[meg_sensors_file_name] = meta
+    return MEGPanel.meg_sensors_data[meg_sensors_file_name], MEGPanel.meg_sensors_meta_data[meg_sensors_file_name]
+
+
+def get_eeg_sensors_data():
+    eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname = get_eeg_sensors_files_names()
+    eeg_sensors_file_name = get_eeg_sensors_file()
+    eeg_sensors_data = MEGPanel.eeg_sensors_data.get(eeg_sensors_file_name, None)
+    eeg_sensors_meta_data = MEGPanel.eeg_sensors_meta_data.get(eeg_sensors_file_name, None)
+    if eeg_sensors_data is None:
+        MEGPanel.eeg_sensors_data[eeg_sensors_file_name] = np.load(eeg_sensors_data_fname)
+    if eeg_sensors_meta_data is None:
+        meta = mu.Bag(np.load(eeg_sensors_meta_data_fname))
+        meta['names'] = [n.replace(' ', '') for n in meta['names']] # ugly patch
+        MEGPanel.eeg_sensors_meta_data[eeg_sensors_file_name] = meta
+    return MEGPanel.eeg_sensors_data[eeg_sensors_file_name], MEGPanel.eeg_sensors_meta_data[eeg_sensors_file_name]
+
+
+def get_meg_sensors_file():
+    return bpy.context.scene.meg_sensors_files
+
+
+def set_meg_sensors_file(val):
+    bpy.context.scene.meg_sensors_files = val
+
+
+def get_eeg_sensors_file():
+    return bpy.context.scene.eeg_sensors_files
+
+
+def set_eeg_sensors_file(val):
+    bpy.context.scene.eeg_sensors_files = val
+
+
+def set_meg_sensors_types(val):
+    bpy.context.scene.meg_sensors_types = val
+
+
+def get_meg_sensors_types():
+    return bpy.context.scene.meg_sensors_types
+
+
+def set_meg_sensors_conditions(val):
+    bpy.context.scene.meg_sensors_conditions = val
+
+
+def get_meg_sensors_conditions():
+    return bpy.context.scene.meg_sensors_conditions
+
+
+def eeg_sensors_exist():
+    return MEGPanel.eeg_sensors_exist
+
+
+def meg_sensors_exist():
+    return MEGPanel.meg_sensors_exist
+
+##################
+def init_meg_sensors():
+    user_fol = mu.get_user_fol()
+    meg_data_files = [f for f in glob.glob(op.join(user_fol, 'meg', '*sensors_evoked_data*.npy'))
+                      if 'minmax' not in mu.namebase(f)]
+    if len(meg_data_files) == 0:
+        return False
+    items = [(mu.namebase(f), mu.namebase(f), '', ind + 1) for ind, f in enumerate(meg_data_files)]
+    bpy.types.Scene.meg_sensors_files = bpy.props.EnumProperty(
+        items=items, description='Selects the MEG sensors evoked activity file.', update=meg_sensors_files_update)
+    bpy.context.scene.meg_sensors_files = mu.namebase(meg_data_files[0])
+
+    if bpy.data.objects.get('MEG_sensors') is not None:
+        # for meg_sensor_obj in bpy.data.objects['MEG_sensors'].children:
+        #     for sensor_type, sensor_key in ColoringMakerPanel.meg_sensors_types.items():
+        #         if meg_sensor_obj.name.endswith(str(sensor_key)):
+        #             ColoringMakerPanel.meg_sensors_groups[sensor_key].append(meg_sensor_obj)
+        #             break
+        items = [(sensor_type, sensor_type, '', sensor_key) for sensor_type, sensor_key in
+                 MEGPanel.meg_sensors_types.items()]
+        bpy.types.Scene.meg_sensors_types = bpy.props.EnumProperty(
+            items=items, description='Selects the MEG sensors type.', update=meg_sensors_types_update)
+        bpy.context.scene.meg_sensors_types = 'mag'
+
+    meg_helmet = bpy.data.objects.get('meg_helmet')
+    if meg_helmet is not None:
+        from scipy.spatial.distance import cdist
+        # meg_sensors_loc = np.array(
+        #     [meg_obj.matrix_world.to_translation() * 10 for meg_obj in bpy.data.objects['MEG_sensors'].children])
+        meg_helmet_vets_loc = np.array([v.co for v in meg_helmet.data.vertices])
+        for sensor_type, sensor_key in MEGPanel.meg_sensors_types.items():
+            meg_sensors_loc = np.array(
+                [meg_obj.location * 10 if meg_obj.name.endswith(str(sensor_key)) else (np.inf,np.inf, np.inf)
+                 for meg_obj in bpy.data.objects['MEG_sensors'].children])
+            MEGPanel.meg_helmet_indices[sensor_type] = np.argmin(cdist(meg_helmet_vets_loc, meg_sensors_loc), axis=1)
+    return True
+
+
+def meg_sensors_types_update(self, context):
+    if bpy.data.objects.get('MEG_sensors') is None:
+        return
+    for meg_sensor_obj in bpy.data.objects['MEG_sensors'].children:
+        do_show = meg_sensor_obj.name.endswith(
+            str(MEGPanel.meg_sensors_types[bpy.context.scene.meg_sensors_types]))
+        mu.show_hide_obj(meg_sensor_obj, do_show)
+
+
+def get_meg_sensors_files_names():
+    user_fol = mu.get_user_fol()
+    meg_sensors_data_fname = op.join(user_fol, 'meg', '{}.npy'.format(bpy.context.scene.meg_sensors_files))
+    meg_sensors_meta_data_fname = op.join(user_fol, 'meg', '{}_meta.npz'.format(mu.namebase(meg_sensors_data_fname)))
+    meg_sensors_data_minmax_fname = op.join(user_fol, 'meg', '{}_minmax.npy'.format(mu.namebase(meg_sensors_data_fname)))
+    return meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname
+
+
+def meg_sensors_files_update(self, context):
+    meg_sensors_data_fname, meg_sensors_meta_data_fname, meg_sensors_data_minmax_fname = get_meg_sensors_files_names()
+    if all([op.isfile(f) for f in [
+            meg_sensors_data_fname, meg_sensors_meta_data_fname]]) and \
+            bpy.data.objects.get('MEG_sensors') is not None:
+        MEGPanel.meg_sensors_exist = True
+        # ColoringMakerPanel.meg_sensors_data, ColoringMakerPanel.meg_sensors_meta, = \
+        #     _addon().load_meg_sensors_data(meg_sensors_data_fname, meg_sensors_meta_data_fname)
+        # data_min, data_max = np.load(meg_sensors_data_minmax_fname)
+        # MEGPanel.meg_sensors_colors_ratio = 256 / (data_max - data_min)
+        # MEGPanel.meg_sensors_data_minmax = (data_min, data_max)
+        meg_sensors_meta_data = np.load(meg_sensors_meta_data_fname)
+        if meg_sensors_meta_data is not None:
+            items = [(c, c, '', ind + 1) for ind, c in enumerate(meg_sensors_meta_data['conditions'])]
+            if len(items) == 2:
+                items.append(('diff', 'Conditions difference', '', len(meg_sensors_meta_data['conditions']) +1))
+        else:
+            items = []
+        bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=items,
+            description='Selects the condition to plot the MEG sensors activity.\n\nCurrent condition')
+        if len(items) > 0:
+            bpy.context.scene.meg_sensors_conditions = items[0][0]
+        _addon().coloring.add_activity_type('meg_sensors')
+
+
+def get_eeg_sensors_files_names():
+    user_fol = mu.get_user_fol()
+    eeg_sensors_data_fname = op.join(user_fol, 'eeg', '{}.npy'.format(bpy.context.scene.eeg_sensors_files))
+    eeg_sensors_meta_data_fname = op.join(user_fol, 'eeg', '{}_meta.npz'.format(mu.namebase(eeg_sensors_data_fname)))
+    eeg_sensors_data_minmax_fname = op.join(user_fol, 'eeg', '{}_minmax.npy'.format(mu.namebase(eeg_sensors_data_fname)))
+    return eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname
+
+
+def init_eeg_sensors():
+    user_fol = mu.get_user_fol()
+    eeg_data_files = [f for f in glob.glob(op.join(user_fol, 'eeg', '*sensors_evoked_data*.npy'))
+                      if 'minmax' not in mu.namebase(f)]
+    if len(eeg_data_files) == 0:
+        return False
+    items = [(mu.namebase(f), mu.namebase(f), '', ind + 1) for ind, f in enumerate(eeg_data_files)]
+    bpy.types.Scene.eeg_sensors_files = bpy.props.EnumProperty(
+        items=items, description='Selects the EEG sensors evoked activity file.', update=eeg_sensors_files_update)
+    bpy.context.scene.eeg_sensors_files = mu.namebase(eeg_data_files[0])
+
+    eeg_helmet = bpy.data.objects.get('eeg_helmet')
+    if eeg_helmet is not None:
+        from scipy.spatial.distance import cdist
+        # eeg_sensors_loc = np.array(
+        #     [eeg_obj.matrix_world.to_translation() * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+        eeg_sensors_loc = np.array(
+            [eeg_obj.location * 10 for eeg_obj in bpy.data.objects['EEG_sensors'].children])
+        eeg_helmet_vets_loc = np.array([v.co for v in eeg_helmet.data.vertices])
+        MEGPanel.eeg_helmet_indices = np.argmin(cdist(eeg_helmet_vets_loc, eeg_sensors_loc), axis=1)
+    return True
+
+
+def eeg_sensors_files_update(self, context):
+    eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname= get_eeg_sensors_files_names()
+    if all([op.isfile(f) for f in [
+            eeg_sensors_data_fname, eeg_sensors_meta_data_fname]]) and \
+            bpy.data.objects.get('EEG_sensors') is not None:
+        # data_min, data_max = np.load(eeg_sensors_data_minmax_fname)
+        # MEGPanel.eeg_sensors_colors_ratio = 256 / (data_max - data_min)
+        # MEGPanel.eeg_sensors_data_minmax = (data_min, data_max)
+        eeg_sensors_meta_data = np.load(eeg_sensors_meta_data_fname)
+        if eeg_sensors_meta_data is not None:
+            items = [(c, c, '', ind + 1) for ind, c in enumerate(eeg_sensors_meta_data['conditions'])]
+            if len(items) == 2:
+                items.append(('diff', 'Conditions difference', '', len(eeg_sensors_meta_data['conditions']) +1))
+        else:
+            items = []
+        bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items,
+            description='Selects the condition to plot the EEG sensors activity.\n\nCurrent condition')
+        if len(items) > 0:
+            bpy.context.scene.eeg_sensors_conditions = items[0][0]
+        _addon().coloring.add_activity_type('eeg_sensors')
+
+
+    # eeg_data_file_name = mu.namebase(eeg_data_files[0])
+    # eeg_sensors_data_fname = op.join(user_fol, 'eeg', '{}.npy'.format(eeg_data_file_name))
+    # eeg_sensors_meta_data_fname = op.join(user_fol, 'eeg', '{}_meta.npz'.format(eeg_data_file_name))
+    # eeg_sensors_data_minmax_fname = op.join(user_fol, 'eeg', '{}_minmax.npy'.format(eeg_data_file_name[:-5]))
+    # if all([op.isfile(f) for f in
+    #         [eeg_sensors_data_fname, eeg_sensors_meta_data_fname, eeg_sensors_data_minmax_fname]]) and \
+    #         bpy.data.objects.get('EEG_sensors', None) is  not None:
+    #     MEGPanel.eeg_sensors_exist = True
+    #     MEGPanel.eeg_sensors_data, MEGPanel.eeg_sensors_meta, = \
+    #         load_eeg_sensors_data(eeg_sensors_data_fname, eeg_sensors_meta_data_fname)
+    #     data_min, data_max = np.load(eeg_sensors_data_minmax_fname)
+    #     MEGPanel.eeg_sensors_colors_ratio = 256 / (data_max - data_min)
+    #     MEGPanel.eeg_sensors_data_minmax = (data_min, data_max)
+    #     items = [(c, c, '', ind + 1) for ind, c in enumerate(MEGPanel.eeg_sensors_meta['conditions'])]
+    #     items.append(('diff', 'Conditions difference', '', len(MEGPanel.eeg_sensors_meta['conditions']) +1))
+    #     bpy.types.Scene.eeg_sensors_conditions = bpy.props.EnumProperty(items=items,
+    #         description='Selects the condition to plot the EEG sensors activity.\n\nCurrent condition')
+    #     bpy.context.scene.eeg_sensors_conditions = 'diff'
+    #     _addon.coloring.add_activity_type('eeg_sensors')
+
+
+
+# ************** Coloring function
+
+def color_eeg_helmet(use_abs=None):
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
+    fol = mu.get_user_fol()
+    data, meta = get_eeg_sensors_data()
+    if bpy.context.scene.eeg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        data = np.diff(data, axis=2).squeeze()
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors conditions difference')
+    lookup = np.load(op.join(fol, 'eeg', 'eeg_faces_verts.npy'))
+    threshold = 0
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        data_max, data_min = mu.get_data_max_min(data, True, (1, 99))
+        # data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+        # data_maxmin = max([abs(data_min), abs(data_max)])
+        # data_min, data_max = -data_maxmin, data_maxmin
+        _addon().set_colorbar_max_min(data_max, data_min, True)
+    colors_ratio = 256 / (data_max - data_min)
+
+    cur_obj = bpy.data.objects['eeg_helmet']
+    data_t = data[MEGPanel.eeg_helmet_indices, bpy.context.scene.frame_current]
+    _addon().coloring.activity_map_obj_coloring(
+        cur_obj, data_t, lookup, threshold, True, data_min=data_min,
+        colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
+
+
+def color_meg_helmet(use_abs=None, threshold=None):
+    if threshold is None:
+        threshold = bpy.context.scene.coloring_lower_threshold
+    if use_abs is None:
+        use_abs = bpy.context.scene.coloring_use_abs
+    fol = mu.get_user_fol()
+    data, meta = get_meg_sensors_data()
+    data = data[MEGPanel.meg_helmet_indices[bpy.context.scene.meg_sensors_types], :, :]
+    if bpy.context.scene.meg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.meg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        C = data.shape[2]
+        data = data.squeeze() if C == 1 else np.diff(data, axis=2).squeeze() if C == 2 else \
+            np.mean(data, axis=2).squeeze()
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('MEG sensors conditions difference')
+    lookup = np.load(op.join(fol, 'meg', 'meg_faces_verts.npy'))
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        data_max, data_min = mu.get_data_max_min(data, True, (1, 99))
+        # data_min, data_max = np.percentile(data, 3), np.percentile(data, 97)
+        # data_maxmin = max([abs(data_min), abs(data_max)])
+        # data_min, data_max = -data_maxmin, data_maxmin
+        _addon().set_colorbar_max_min(data_max, data_min, True)
+    colors_ratio = 256 / (data_max - data_min)
+
+    cur_obj = bpy.data.objects['meg_helmet']
+    data_t = data[:, bpy.context.scene.frame_current]
+    _addon().coloring.activity_map_obj_coloring(
+        cur_obj, data_t, lookup, threshold, True, data_min=data_min,
+        colors_ratio=colors_ratio, bigger_or_equall=False, use_abs=use_abs)
+
+
+def color_meg_sensors(threshold=None):
+    _addon().show_hide_meg_sensors()
+    _addon().coloring.add_to_what_is_colored(_addon().coloring.WIC_MEG_SENSORS)
+    if threshold is None:
+        threshold = _addon().coloring.get_lower_threshold()
+    # threshold = bpy.context.scene.coloring_lower_threshold
+    data, meta = get_meg_sensors_data()
+    inds = np.unique(MEGPanel.meg_helmet_indices[bpy.context.scene.meg_sensors_types])
+    data = data[inds, :, :]
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        # data_min_org, data_max_org = ColoringMakerPanel.meg_sensors_data_minmax
+        data_max, data_min = mu.get_data_max_min(data, True, (1, 99))
+        _addon().set_colorbar_max_min(data_max, data_min)
+    colors_ratio = 256 / (data_max - data_min)
+    if bpy.context.scene.meg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.meg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        _addon().set_colorbar_title('MEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        C = data.shape[2]
+        data = data.squeeze() if C == 1 else np.diff(data, axis=2).squeeze() if C == 2 else \
+            np.mean(data, axis=2).squeeze()
+        _addon().set_colorbar_title('MEG sensors conditions difference')
+    names = np.array([obj.name for obj in bpy.data.objects['MEG_sensors'].children])[inds]
+    _addon().coloring.color_objects_homogeneously(data, names, meta['conditions'], data_min, colors_ratio, threshold)
+
+
+def color_eeg_sensors(threshold=None):
+    _addon().show_hide_eeg_sensors()
+    _addon().coloring.add_to_what_is_colored(_addon().coloring.WIC_EEG)
+    if threshold is None:
+        threshold = bpy.context.scene.coloring_lower_threshold
+    data, meta = get_eeg_sensors_data()
+    if _addon().colorbar_values_are_locked():
+        data_max, data_min = _addon().get_colorbar_max_min()
+    else:
+        # data_min, data_max = ColoringMakerPanel.eeg_sensors_data_minmax
+        data_max, data_min = mu.get_data_max_min(data, True, (1, 99))
+        _addon().set_colorbar_max_min(data_max, data_min)
+    colors_ratio = 256 / (data_max - data_min)
+    if bpy.context.scene.eeg_sensors_conditions != 'diff':
+        cond_ind = np.where(meta['conditions'] == bpy.context.scene.eeg_sensors_conditions)[0][0]
+        data = data[:, :, cond_ind]
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors {} condition'.format(meta['conditions'][cond_ind]))
+    else:
+        if not _addon().colorbar_values_are_locked():
+            _addon().set_colorbar_title('EEG sensors conditions difference')
+    _addon().coloring.color_objects_homogeneously(
+        data, meta['names'], meta['conditions'], data_min, colors_ratio, threshold)
+
+
+# *************** Coloring classes
+
+class ColorMEGSensors(bpy.types.Operator):
+    bl_idname = "mmvt.color_meg_sensors"
+    bl_label = "mmvt color_meg_sensors"
+    bl_description = 'Plots the MEG sensors activity according the selected condition.\n\nScript: mmvt.coloring.color_meg_sensors()'
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_meg_sensors()
+        return {"FINISHED"}
+
+
+class ColorEEGSensors(bpy.types.Operator):
+    bl_idname = "mmvt.color_eeg_sensors"
+    bl_label = "mmvt color_eeg_sensors"
+    bl_description = 'Plots the EEG sensors activity according the selected condition.\n\nScript: mmvt.coloring.color_eeg_sensors()'
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_eeg_sensors()
+        return {"FINISHED"}
+
+
+class ColorEEGHelmet(bpy.types.Operator):
+    bl_idname = "mmvt.eeg_helmet"
+    bl_label = "mmvt eeg helmet"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_eeg_helmet()
+        return {"FINISHED"}
+
+
+class ColorMEGHelmet(bpy.types.Operator):
+    bl_idname = "mmvt.meg_helmet"
+    bl_label = "mmvt meg helmet"
+    bl_options = {"UNDO"}
+
+    @staticmethod
+    def invoke(self, context, event=None):
+        color_meg_helmet()
+        return {"FINISHED"}
+
+# ***************************8
 
 def clusters_update(self, context):
     if MEGPanel.addon is not None and MEGPanel.init:
@@ -400,54 +832,82 @@ def clear_all_clusters():
 
 def meg_draw(self, context):
     layout = self.layout
-    layout.prop(context.scene, 'meg_clusters_labels_files', text='')
-    if MNE_EXIST:
-        layout.operator(PlotMEGClusters.bl_idname, text='Plot STC', icon='POTATO')
-    row = layout.row(align=True)
-    row.operator(PrevMEGCluster.bl_idname, text="", icon='PREV_KEYFRAME')
-    row.prop(context.scene, 'meg_clusters', text='')
-    row.operator(NextMEGCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
-    row = layout.row(align=True)
-    row.label(text='Sort: ')
-    row.prop(context.scene, 'meg_how_to_sort', expand=True)
-    layout.prop(context.scene, 'meg_show_filtering', text='Refine clusters')
-    if bpy.context.scene.meg_show_filtering:
-        layout.prop(context.scene, 'meg_clusters_val_threshold', text='Val threshold')
-        layout.prop(context.scene, 'meg_clusters_size_threshold', text='Size threshold')
-        layout.prop(context.scene, 'meg_clusters_label', text='Label filter')
-        layout.operator(FilterMEGClusters.bl_idname, text="Filter clusters", icon='FILTER')
-    layout.prop(context.scene, 'plot_current_meg_cluster', text="Plot current cluster's contour")
-    layout.prop(context.scene, 'cumulate_meg_cluster', text="Cumulate contours")
-    if not MEGPanel.current_cluster is None and len(MEGPanel.current_cluster) > 0: # and not MEGPanel.dont_show_clusters_info:
-        cluster_size = MEGPanel.current_cluster['size']
+
+    if MEGPanel.meg_sensors_exist:
         col = layout.box().column()
-        mu.add_box_line(col, 'Max val', '{:.2f}'.format(MEGPanel.current_cluster['max']), 0.7)
-        mu.add_box_line(col, 'Size', str(cluster_size), 0.7)
+        col.prop(context.scene, 'meg_sensors_files', text='')
+        col.prop(context.scene, 'meg_sensors_types', text='')
+        col.prop(context.scene, "meg_sensors_conditions", text="")
+        col.operator(ColorMEGSensors.bl_idname, text="Plot MEG sensors", icon='POTATO')
+        if not bpy.data.objects.get('meg_helmet', None) is None:
+            col.operator(ColorMEGHelmet.bl_idname, text="Plot MEG Helmet", icon='POTATO')
+
+    if MEGPanel.eeg_sensors_exist:
         col = layout.box().column()
-        labels_num_to_show = min(7, len(MEGPanel.current_cluster['intersects']))
-        for inter_labels in MEGPanel.current_cluster['intersects'][:labels_num_to_show]:
-            mu.add_box_line(col, inter_labels['name'], '{:.0%}'.format(inter_labels['num'] / float(cluster_size)), 0.8)
-        if labels_num_to_show < len(MEGPanel.current_cluster['intersects']):
-            layout.label(text='Out of {} labels'.format(len(MEGPanel.current_cluster['intersects'])))
-    layout.operator(SelectAllClusters.bl_idname, text="Select all", icon='BORDER_RECT')
-    text = 'Flip time series' if not MEGPanel.data_is_flipped else 'Unflip time series'
-    layout.operator(FlipMEGClustersTS.bl_idname, text=text, icon='FORCE_MAGNETIC')
-    layout.operator(DeselecAllClusters.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
-    layout.operator(ClearClusters.bl_idname, text="Clear all clusters", icon='PANEL_CLOSE')
-    layout.operator(_addon().ClearColors.bl_idname, text="Clear activity", icon='PANEL_CLOSE')
-    layout.prop(context.scene, 'calc_meg_dipole_fit', text='Show dipole fit info')
-    if bpy.context.scene.calc_meg_dipole_fit:
-        col = layout.box().column()
-        col.prop(context.scene, 'meg_evoked_fname', text='evoked')
-        col.prop(context.scene, 'meg_noise_cov_fname', text='noise cov')
-        col.prop(context.scene, 'head_to_mri_trans_mat_fname', text='trans mat')
-        row = col.row(align=True)
-        row.prop(context.scene, 'meg_dipole_fit_tmin', text='from t(s)')
-        row.prop(context.scene, 'meg_dipole_fit_tmax', text='to t(s)')
-        row = col.row(align=True)
-        row.prop(context.scene, 'meg_dipole_fit_use_meg', text='use MEG')
-        row.prop(context.scene, 'meg_dipole_fit_use_eeg', text='use EEG')
-        col.operator(DipoleFit.bl_idname, text='Dipole fit', icon='OOPS')
+        col.prop(context.scene, 'eeg_sensors_files', text='')
+        col.prop(context.scene, "eeg_sensors_conditions", text="")
+        col.operator(ColorEEGSensors.bl_idname, text="Plot EEG sensors", icon='POTATO')
+        if not bpy.data.objects.get('eeg_helmet', None) is None:
+            col.operator(ColorEEGHelmet.bl_idname, text="Plot EEG Helmet", icon='POTATO')
+
+    if MEGPanel.meg_clusters_files_exist:
+        layout.prop(context.scene, 'meg_clusters_labels_files', text='')
+        if MNE_EXIST:
+            layout.operator(PlotMEGClusters.bl_idname, text='Plot STC', icon='POTATO')
+        row = layout.row(align=True)
+        row.operator(PrevMEGCluster.bl_idname, text="", icon='PREV_KEYFRAME')
+        row.prop(context.scene, 'meg_clusters', text='')
+        row.operator(NextMEGCluster.bl_idname, text="", icon='NEXT_KEYFRAME')
+        row = layout.row(align=True)
+        row.label(text='Sort: ')
+        row.prop(context.scene, 'meg_how_to_sort', expand=True)
+        layout.prop(context.scene, 'meg_show_filtering', text='Refine clusters')
+        if bpy.context.scene.meg_show_filtering:
+            layout.prop(context.scene, 'meg_clusters_val_threshold', text='Val threshold')
+            layout.prop(context.scene, 'meg_clusters_size_threshold', text='Size threshold')
+            layout.prop(context.scene, 'meg_clusters_label', text='Label filter')
+            layout.operator(FilterMEGClusters.bl_idname, text="Filter clusters", icon='FILTER')
+        layout.prop(context.scene, 'plot_current_meg_cluster', text="Plot current cluster's contour")
+        layout.prop(context.scene, 'cumulate_meg_cluster', text="Cumulate contours")
+        if not MEGPanel.current_cluster is None and len(MEGPanel.current_cluster) > 0: # and not MEGPanel.dont_show_clusters_info:
+            cluster_size = MEGPanel.current_cluster['size']
+            col = layout.box().column()
+            mu.add_box_line(col, 'Max val', '{:.2f}'.format(MEGPanel.current_cluster['max']), 0.7)
+            mu.add_box_line(col, 'Size', str(cluster_size), 0.7)
+            col = layout.box().column()
+            labels_num_to_show = min(7, len(MEGPanel.current_cluster['intersects']))
+            for inter_labels in MEGPanel.current_cluster['intersects'][:labels_num_to_show]:
+                mu.add_box_line(col, inter_labels['name'], '{:.0%}'.format(inter_labels['num'] / float(cluster_size)), 0.8)
+            if labels_num_to_show < len(MEGPanel.current_cluster['intersects']):
+                layout.label(text='Out of {} labels'.format(len(MEGPanel.current_cluster['intersects'])))
+        layout.operator(SelectAllClusters.bl_idname, text="Select all", icon='BORDER_RECT')
+        text = 'Flip time series' if not MEGPanel.data_is_flipped else 'Unflip time series'
+        layout.operator(FlipMEGClustersTS.bl_idname, text=text, icon='FORCE_MAGNETIC')
+        layout.operator(DeselecAllClusters.bl_idname, text="Deselect all", icon='PANEL_CLOSE')
+        layout.operator(ClearClusters.bl_idname, text="Clear all clusters", icon='PANEL_CLOSE')
+        layout.operator(_addon().ClearColors.bl_idname, text="Clear activity", icon='PANEL_CLOSE')
+        layout.prop(context.scene, 'calc_meg_dipole_fit', text='Show dipole fit info')
+        if bpy.context.scene.calc_meg_dipole_fit:
+            col = layout.box().column()
+            col.prop(context.scene, 'meg_evoked_fname', text='evoked')
+            col.prop(context.scene, 'meg_noise_cov_fname', text='noise cov')
+            col.prop(context.scene, 'head_to_mri_trans_mat_fname', text='trans mat')
+            row = col.row(align=True)
+            row.prop(context.scene, 'meg_dipole_fit_tmin', text='from t(s)')
+            row.prop(context.scene, 'meg_dipole_fit_tmax', text='to t(s)')
+            row = col.row(align=True)
+            row.prop(context.scene, 'meg_dipole_fit_use_meg', text='use MEG')
+            row.prop(context.scene, 'meg_dipole_fit_use_eeg', text='use EEG')
+            col.operator(DipoleFit.bl_idname, text='Dipole fit', icon='OOPS')
+
+
+bpy.types.Scene.meg_sensors_conditions = bpy.props.EnumProperty(items=[],
+    description='Selects the condition to plot the MEG sensors activity.\n\nCurrent condition')
+bpy.types.Scene.eeg_sensors_conditions= bpy.props.EnumProperty(items=[],
+    description='Selects the condition to plot the EEG sensors activity.\n\nCurrent condition')
+bpy.types.Scene.meg_sensors_files = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.meg_sensors_types = bpy.props.EnumProperty(items=[])
+bpy.types.Scene.eeg_sensors_files = bpy.props.EnumProperty(items=[])
 
 
 bpy.types.Scene.meg_clusters_labels_files = bpy.props.EnumProperty(
@@ -580,6 +1040,16 @@ class MEGPanel(bpy.types.Panel):
     current_cluster = {}
     should_load_clusters_file = True
     data_is_flipped = False
+    eeg_helmet_indices = []
+    meg_helmet_indices = {}
+    meg_sensors_groups = defaultdict(list)
+    eeg_sensors_exist = False
+    meg_sensors_exist = False
+    meg_sensors_types = {'grad1': 1, 'grad2': 2, 'mag': 3} # default for Electa
+    eeg_sensors_data_minmax, eeg_sensors_colors_ratio = None, None
+    meg_sensors_data_minmax, meg_sensors_colors_ratio = None, None
+    eeg_sensors_data, eeg_sensors_meta, eeg_sensors_data_minmax = {}, {}, None
+    meg_sensors_data, meg_sensors_meta_data, meg_sensors_data_minmax = {}, {}, None
 
     def draw(self, context):
         if MEGPanel.init:
@@ -589,31 +1059,35 @@ class MEGPanel(bpy.types.Panel):
 def init(addon):
     MEGPanel.addon = addon
     user_fol = mu.get_user_fol()
+
+    MEGPanel.eeg_sensors_exist = init_eeg_sensors()
+    MEGPanel.meg_sensors_exist = init_meg_sensors()
+
     meg_files = glob.glob(op.join(user_fol, 'meg', 'meg*.npz'))
     if len(meg_files) == 0:
         print('No MEG clusters files')
-        return None
+        # return None
 
     files_names, clusters_labels_files, clusters_labels_items = get_clusters_files(user_fol)
-    MEGPanel.meg_clusters_files_exist = len(files_names) > 0 
+    MEGPanel.meg_clusters_files_exist = len(files_names) > 0
     if not MEGPanel.meg_clusters_files_exist:
         print('No MEG_clusters_files_exist')
-        return None
-    for fname, name in zip(clusters_labels_files, files_names):
-        MEGPanel.clusters_labels_fnames[name] = fname
+    else:
+        bpy.types.Scene.meg_clusters_labels_files = bpy.props.EnumProperty(
+            items=clusters_labels_items, description="meg files", update=meg_clusters_labels_files_update)
+        bpy.context.scene.meg_clusters_labels_files = files_names[0]
+        bpy.context.scene.meg_clusters_val_threshold = MEGPanel.clusters_labels.min_cluster_max
+        bpy.context.scene.meg_clusters_size_threshold = MEGPanel.clusters_labels.min_cluster_size
+        bpy.context.scene.meg_clusters_label = MEGPanel.clusters_labels.clusters_label
+        bpy.context.scene.meg_how_to_sort = 'val'
+        bpy.context.scene.meg_show_filtering = False
+        bpy.context.scene.cumulate_meg_cluster = False
+
+        for fname, name in zip(clusters_labels_files, files_names):
+            MEGPanel.clusters_labels_fnames[name] = fname
 
     register()
     MEGPanel.init = True
-
-    bpy.types.Scene.meg_clusters_labels_files = bpy.props.EnumProperty(
-        items=clusters_labels_items, description="meg files", update=meg_clusters_labels_files_update)
-    bpy.context.scene.meg_clusters_labels_files = files_names[0]
-    bpy.context.scene.meg_clusters_val_threshold = MEGPanel.clusters_labels.min_cluster_max
-    bpy.context.scene.meg_clusters_size_threshold = MEGPanel.clusters_labels.min_cluster_size
-    bpy.context.scene.meg_clusters_label = MEGPanel.clusters_labels.clusters_label
-    bpy.context.scene.meg_how_to_sort = 'val'
-    bpy.context.scene.meg_show_filtering = False
-    bpy.context.scene.cumulate_meg_cluster = False
 
 
 def register():
@@ -629,6 +1103,10 @@ def register():
         bpy.utils.register_class(DipoleFit)
         bpy.utils.register_class(DeselecAllClusters)
         bpy.utils.register_class(ClearClusters)
+        bpy.utils.register_class(ColorMEGSensors)
+        bpy.utils.register_class(ColorEEGSensors)
+        bpy.utils.register_class(ColorEEGHelmet)
+        bpy.utils.register_class(ColorMEGHelmet)
     except:
         print("Can't register MEG Panel!")
 
@@ -645,5 +1123,9 @@ def unregister():
         bpy.utils.unregister_class(DipoleFit)
         bpy.utils.unregister_class(DeselecAllClusters)
         bpy.utils.unregister_class(ClearClusters)
+        bpy.utils.unregister_class(ColorMEGSensors)
+        bpy.utils.unregister_class(ColorEEGSensors)
+        bpy.utils.unregister_class(ColorEEGHelmet)
+        bpy.utils.unregister_class(ColorMEGHelmet)
     except:
         pass

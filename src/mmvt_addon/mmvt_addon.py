@@ -140,8 +140,6 @@ eeg_data_and_meta = data_panel.eeg_data_and_meta
 load_meg_labels_data = data_panel.load_meg_labels_data
 load_electrodes_data = data_panel.load_electrodes_data
 load_electrodes_dists = data_panel.load_electrodes_dists
-load_eeg_sensors_data = data_panel.load_eeg_sensors_data
-load_meg_sensors_data = data_panel.load_meg_sensors_data
 import_meg_sensors = data_panel.import_meg_sensors
 import_eeg_sensors = data_panel.import_eeg_sensors
 add_data_to_meg_sensors = data_panel.add_data_to_meg_sensors
@@ -207,7 +205,6 @@ clear_and_recolor = coloring_panel.clear_and_recolor
 set_lower_threshold = coloring_panel.set_lower_threshold
 get_lower_threshold = coloring_panel.get_lower_threshold
 create_inflated_curv_coloring = coloring_panel.create_inflated_curv_coloring
-color_eeg_helmet = coloring_panel.color_eeg_helmet
 calc_colors = coloring_panel.calc_colors
 init_meg_labels_coloring_type = coloring_panel.init_meg_labels_coloring_type
 color_connections = coloring_panel.color_connections
@@ -225,11 +222,8 @@ get_activity_colors = coloring_panel.get_activity_colors
 recreate_coloring_layers = coloring_panel.recreate_coloring_layers
 ClearColors = coloring_panel.ClearColors
 what_is_colored = coloring_panel.what_is_colored
+add_to_what_is_colored = coloring_panel.add_to_what_is_colored
 set_use_abs_threshold = coloring_panel.set_use_abs_threshold
-color_eeg_sensors = coloring_panel.color_eeg_sensors
-color_meg_sensors = coloring_panel.color_meg_sensors
-get_meg_sensors_data = coloring_panel.get_meg_sensors_data
-get_eeg_sensors_data = coloring_panel.get_eeg_sensors_data
 color_labels_data = coloring_panel.color_labels_data
 color_hemi_data = coloring_panel.color_hemi_data
 coloring_panel_initialized = coloring_panel.panel_initialized
@@ -238,6 +232,10 @@ set_no_plotting = coloring_panel.set_no_plotting
 plot_fmri = coloring_panel.plot_fmri
 init_labels_colorbar = coloring_panel.init_labels_colorbar
 get_meg_data_minmax = coloring_panel.get_meg_data_minmax
+get_meg_files = coloring_panel.get_meg_files
+set_meg_files = coloring_panel.set_meg_files
+get_activity_types = coloring_panel.get_activity_types
+add_activity_type = coloring_panel.add_activity_type
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Filtering links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 filter = filter_panel
 find_obj_with_val = filter_panel.find_obj_with_val
@@ -304,9 +302,14 @@ view_all = show_hide_panel.view_all
 rotate_view = show_hide_panel.rotate_view
 view_name = show_hide_panel.view_name
 show_hemis = show_hide_panel.show_hemis
+hide_hemis = show_hide_panel.hide_hemis
+show_head = show_hide_panel.show_head
+hide_head = show_hide_panel.hide_head
 set_normal_view = show_hide_panel.set_normal_view
 hide_hemi = show_hide_panel.hide_hemi
 show_hemi = show_hide_panel.show_hemi
+hide_cerebellum = show_hide_panel.hide_cerebellum
+show_cerebellum = show_hide_panel.show_cerebellum
 subcorticals_are_hiding = show_hide_panel.subcorticals_are_hiding
 show_meg_sensors = appearance_panel.show_meg_sensors
 hide_meg_sensors = appearance_panel.hide_meg_sensors
@@ -318,7 +321,7 @@ show_rois = appearance_panel.show_rois
 show_activity = appearance_panel.show_activity
 show_electrodes = appearance_panel.show_electrodes
 show_hide_electrodes = appearance_panel.show_electrodes
-show_hide_eeg = appearance_panel.show_hide_eeg
+show_hide_eeg_sensors = appearance_panel.show_hide_eeg_sensors
 show_hide_meg_sensors = appearance_panel.show_hide_meg_sensors
 show_hide_connections = appearance_panel.show_hide_connections
 change_to_rendered_brain = appearance_panel.change_to_rendered_brain
@@ -361,6 +364,7 @@ capture_graph = play_panel.capture_graph
 render_movie = play_panel.render_movie
 get_current_t = play_panel.get_current_t
 set_current_t = play_panel.set_current_t
+plot_something = play_panel.plot_something
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ electrodes links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 electrodes = electrodes_panel
 color_the_relevant_lables = electrodes_panel.color_the_relevant_lables
@@ -417,17 +421,20 @@ load_fmri_cluster = fMRI_panel.load_fmri_cluster
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ connections links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 connections = connections_panel
 connections_exist = connections_panel.connections_exist
-connections_data = connections_panel.connections_data
+get_connections_data = connections_panel.get_connections_data
 plot_connections = connections_panel.plot_connections
 vertices_selected = connections_panel.vertices_selected
 create_connections = connections_panel.create_connections
 filter_nodes = connections_panel.filter_nodes
 get_connections_parent_name = connections_panel.get_connections_parent_name
 select_connection = connections_panel.select_connection
+get_connections_width = connections_panel.get_connections_width
+set_connections_width = connections_panel.set_connections_width
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ transparency links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 transparency = transparency_panel
 set_brain_transparency = transparency_panel.set_brain_transparency
 set_light_layers_depth = transparency_panel.set_light_layers_depth
+set_head_transparency = transparency_panel.set_head_transparency
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where_am_i_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 where_am_i = where_am_i_panel
 set_mni = where_am_i_panel.set_mni
@@ -475,6 +482,25 @@ find_point_thickness = skull_panel.find_point_thickness
 meg = meg_panel
 select_meg_cluster = meg_panel.select_meg_cluster
 get_selected_clusters_data = meg_panel.get_selected_clusters_data
+
+eeg_sensors_exist = meg_panel.eeg_sensors_exist
+meg_sensors_exist = meg_panel.meg_sensors_exist
+
+get_meg_sensors_data = meg_panel.get_meg_sensors_data
+get_meg_sensors_file = meg_panel.get_meg_sensors_file
+set_meg_sensors_file = meg_panel.set_meg_sensors_file
+get_meg_sensors_types = meg_panel.get_meg_sensors_types
+set_meg_sensors_types = meg_panel.set_meg_sensors_types
+get_meg_sensors_conditions = meg_panel.get_meg_sensors_conditions
+set_meg_sensors_conditions = meg_panel.set_meg_sensors_conditions
+
+color_meg_sensors = meg_panel.color_meg_sensors
+
+get_eeg_sensors_data = meg_panel.get_eeg_sensors_data
+color_eeg_sensors = meg_panel.color_eeg_sensors
+
+color_eeg_helmet = meg_panel.color_eeg_helmet
+color_meg_helmet = meg_panel.color_meg_helmet
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ dell_panel links ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # dell = dell_panel
 # dell_ct_electrode_was_selected = dell_panel.dell_ct_electrode_was_selected
@@ -493,8 +519,12 @@ get_report_name = reports_panel.get_report_name
 get_report_files = reports_panel.get_report_files
 get_report_fields = reports_panel.get_report_fields
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ scripts_panel ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scripts = scripts_panel
 get_scripts_names = scripts_panel.get_scripts_names
 run_script = scripts_panel.run_script
+set_script = scripts_panel.set_script
+set_param = scripts_panel.set_param
+get_param = scripts_panel.get_param
 
 
 def get_max_time_steps(default_val=2500):
@@ -609,6 +639,7 @@ def init(addon_prefs):
     settings = mmvt_utils.read_config_ini()
     os.chdir(code_fol)
     bpy.context.scene.mmvt_initialized = True
+    init_freesurfer_env()
 
 
 def run_faulthandler():
@@ -647,7 +678,7 @@ def fix_scale():
     for sub_obj in bpy.data.objects['Subcortical_fmri_activity_map'].children:
         _fix_scale(sub_obj.name)
 
-    for obj_name in ['inner_skull', 'outer_skull', 'eeg_helmet', 'seghead']:
+    for obj_name in ['inner_skull', 'outer_skull', 'eeg_helmet', 'meg_helmet', 'seghead']:
         _fix_scale(obj_name)
     # _fix_scale('skull_plane')
 
@@ -710,6 +741,11 @@ def load_all_panels(addon_prefs=None, first_time=False):
     set_colorbar_defaults()
     mmvt_utils.center_view()
     mmvt_utils.select_time_range(0, bpy.context.scene.maximal_time_steps)
+
+
+def init_freesurfer_env():
+    if os.environ.get('FREESURFER_HOME', '') != '':
+        os.environ['SUBJECTS_DIR'] = mmvt_utils.get_subjects_dir()
 
 
 # @mmvt_utils.profileit('cumtime', op.join(mmvt_utils.get_user_fol()))

@@ -2,6 +2,13 @@ import bpy
 import os.path as op
 import mmvt_utils as mu
 import traceback
+import glob
+
+
+CUT_AXIAL = 'axial'
+CUT_CORONAL = 'coronal'
+CUT_SAGITAL = 'sagital'
+CUTS = [CUT_AXIAL, CUT_CORONAL, CUT_SAGITAL]
 
 
 def _addon():
@@ -139,12 +146,24 @@ def export_electrodes():
     electrodes = [e for e in bpy.data.objects[_addon().electrodes_panel_parent].children]
     with open(csv_fname, 'w') as csv_file:
         wr = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
-        wr.writerow(['Electrode Name','R','A','S'])
+        wr.writerow(['Electrode Name', 'R', 'A', 'S'])
         for elc in electrodes:
             wr.writerow([elc.name, *['{:.2f}'.format(loc * 10) for loc in elc.location]])
 
 
-def slice_brain(cut_pos=None, save_image=False):
+def set_slicer_cut_type(cut_type):
+    cuts = ['axial', 'coronal', 'sagital']
+    if cut_type in cuts:
+        bpy.context.scene.slicer_cut_type = cut_type
+    else:
+        print('Can be one of this values:'.format(','.join(cuts)))
+
+
+def get_slicer_cut_type():
+    return bpy.context.scene.slicer_cut_type
+
+
+def slice_brain(cut_pos=None, save_image=False, render_image=False):
     coordinate = bpy.context.scene.cursor_location
     cut_type = bpy.context.scene.slicer_cut_type
     create_joint_brain_obj()
@@ -163,6 +182,10 @@ def slice_brain(cut_pos=None, save_image=False):
         bpy.ops.mesh.primitive_plane_add(radius=25.7 / 2.0, location=tuple(cut_pos))
         bpy.context.object.name = '{}_plane'.format(cut_type)
         bpy.context.object.rotation_euler = optional_rots[option_ind]
+        # if cut_type == 'axial':
+        #     bpy.ops.object.mode_set(mode='EDIT')
+        #     bpy.ops.mesh.flip_normals()
+        #     bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.mesh.uv_texture_add()
         try:
             bpy.context.object.active_material = bpy.data.materials['{}_plane_mat'.format(cut_type)]
@@ -197,10 +220,14 @@ def slice_brain(cut_pos=None, save_image=False):
         bpy.ops.mesh.primitive_cube_add(radius=10)
         bpy.context.object.name = 'masking_cube'
     cube_location = [0, 0, 0]
-    if cut_pos[option_ind] > 0 or cut_type == 'axial':
+    # if cut_pos[option_ind] > 0 or cut_type in ['axial','coronal']:
+    if bpy.context.scene.what_to_cut == '1':
         cube_location[option_ind] = cut_pos[option_ind] + 9.98
-    elif cut_pos[option_ind] < 0:
+        is_coordinate_positive = True
+    # elif cut_pos[option_ind] < 0:
+    elif bpy.context.scene.what_to_cut == '2':
         cube_location[option_ind] = cut_pos[option_ind] - 9.98
+        is_coordinate_positive = False
     bpy.data.objects['masking_cube'].location = tuple(cube_location)
     bpy.data.objects['masking_cube'].hide = True
     bpy.data.objects['masking_cube'].hide_render = True
@@ -216,9 +243,30 @@ def slice_brain(cut_pos=None, save_image=False):
         cur_plane_obj.modifiers.new('Boolean', type='BOOLEAN')
         cur_plane_obj.modifiers['Boolean'].object = bpy.data.objects['joint_brain']
         cur_plane_obj.modifiers['Boolean'].operation = 'INTERSECT'
+    flip_slice_plane_if_needed(is_coordinate_positive)
     cur_plane_obj.hide_select = True
     if save_image:
         _addon().save_image('slicing', bpy.context.scene.save_selected_view)
+    if render_image:
+        _addon().render_image(set_to_camera_mode=True)
+
+
+def flip_slice_plane_if_needed(is_coordinate_positive):
+    if bpy.context.active_object.get('is_flipped') is None:
+        bpy.context.active_object['is_flipped'] = False
+    slice_is_flipped = bpy.context.active_object['is_flipped']
+    # print('is_positive =={}'.format(is_coordinate_positive))
+    # print('slice_plane_flipped[cut_type] == {}'.format(slice_is_flipped))
+    if slice_is_flipped != is_coordinate_positive:
+        # print('in check_to_flip_slice_plane, return False')
+        return False
+    else:
+        # print('in check_to_flip_slice_plane, return True')
+        bpy.context.active_object['is_flipped'] = not bpy.context.active_object['is_flipped']
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.flip_normals()
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return True
 
 
 def clear_slice():
@@ -499,9 +547,24 @@ class ExportElectrodes(bpy.types.Operator):
         return {'FINISHED'}
 
 
-items_names = [("axial", "Axial"), ("coronal", "Coronal"), ("sagital", 'Sagital')]
-items = [(n[0], n[1], '', ind) for ind, n in enumerate(items_names)]
-bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(items=items, description='Sets the slicing axis.\n\nCurrent axis')
+def what_to_cut_update(self, context):
+    if bpy.context.scene.slicer_cut_type == 'coronal':
+        bpy.types.Scene.what_to_cut = bpy.props.EnumProperty(
+            items=[('1', 'Anterior', '', 1), ('2', 'Posterior', '', 2)],
+            description='')
+    elif bpy.context.scene.slicer_cut_type == 'sagital':
+        bpy.types.Scene.what_to_cut = bpy.props.EnumProperty(
+            items=[('1', 'Right', '', 1), ('2', 'Left', '', 2)],
+            description='')
+    elif bpy.context.scene.slicer_cut_type == 'axial':
+        bpy.types.Scene.what_to_cut = bpy.props.EnumProperty(
+            items=[('1', 'Superior', '', 1), ('2', 'Inferior', '', 2)],
+            description='')
+
+
+bpy.types.Scene.slicer_cut_type = bpy.props.EnumProperty(
+    items=[(cut_type, cut_type.capitalize(), '', ind) for ind, cut_type in enumerate(CUTS)],
+    description='Sets the slicing axis.\n\nCurrent axis',update=what_to_cut_update)
 # bpy.types.Scene.slice_using_left_click = bpy.props.BoolProperty(
 #     default=True, description="slice_using_left_click", update=show_cb_in_render_update)
 bpy.types.Scene.show_full_slice = bpy.props.BoolProperty(default=False, update=show_full_slice_update,
@@ -540,13 +603,18 @@ bpy.types.Scene.slices_show_pial_color = bpy.props.FloatVectorProperty(
 bpy.types.Scene.slices_show_dural = bpy.props.BoolProperty(default=False, update=slices_update)
 bpy.types.Scene.slices_show_dural_color = bpy.props.FloatVectorProperty(
     name="object_color", subtype='COLOR', default=(1, 0, 0), min=0.0, max=1.0, description="color picker")
-
+bpy.types.Scene.slices_rotate_view_on_click = bpy.props.BoolProperty(
+    default=True, description='Rotate the brain for best view')
+bpy.types.Scene.what_to_cut = bpy.props.EnumProperty(
+        items=[('tval', 't-val', '', 1), ('size', 'size', '', 2)],
+        update=what_to_cut_update, description='Sorts the clusters list by t-value, size or name.\n\nCurrent sorting')
 
 
 def slicer_draw(self, context):
     layout = self.layout
     col = layout.box().column()
     col.prop(context.scene, "slicer_cut_type", text="")
+    col.prop(context.scene, "what_to_cut", text="")
     col.operator(SliceBrainButton.bl_idname, text="Slice brain", icon='FACESEL_HLT')
     col.operator(SliceBrainClearButton.bl_idname, text="Clear slice", icon='MESH_CUBE')
     col.prop(context.scene, 'show_full_slice', text='Show full slice')
@@ -584,6 +652,8 @@ def slicer_draw(self, context):
         row.prop(context.scene, 'slices_show_dural', text='Plot dural')
         if context.scene.slices_show_dural:
             row.prop(context.scene, 'slices_show_dural_color', text='')
+    col.prop(context.scene, "slices_rotate_view_on_click", text='Rotate the brain on click')
+
 
     # col = layout.box().column()
     # col.prop(context.scene, 'new_electrode_lead', text='Lead')
@@ -620,6 +690,7 @@ def init(addon):
     bpy.types.Scene.is_sliced_ind = bpy.props.IntProperty(default=-1)
     bpy.context.scene.last_cursor_location = (0.0, 0.0, 0.0)
     bpy.context.scene.is_sliced_ind = -1
+    bpy.context.scene.slicer_cut_type = 'coronal'
     ct_trans_fname = op.join(mu.get_user_fol(), 'ct', 'ct_trans.npz')
     t2_trans_fname = op.join(mu.get_user_fol(), 't2_trans.npz')
     if op.isfile(ct_trans_fname) or op.isfile(t2_trans_fname):
@@ -653,6 +724,13 @@ def init(addon):
     bpy.context.scene.slices_plot_cross = True
     bpy.context.scene.slices_mark_voxel = True
     bpy.context.scene.slices_modality = 'mri'
+    empty_brain_path = op.join(mu.get_mmvt_code_root(), 'resources', 'empty_subject.blend', 'Material')
+    for slice_str in ['coronal', 'sagital', 'axial']:
+        cur_mat_name = '{}_plane_mat'.format(slice_str)
+        if bpy.data.materials.get(cur_mat_name) is None:
+            print('Importing {} from empty_brain file'.format(cur_mat_name))
+            bpy.ops.wm.append(filename=cur_mat_name, directory=empty_brain_path)
+    # bpy.context.scene['slice_plane_flipped'] = {'coronal': False, 'axial': False, 'sagital': False}
     SlicerPanel.init = True
     register()
 

@@ -29,28 +29,70 @@ ROIS_TYPE, ELECTRODES_TYPE = range(2)
 
 #todo: Add the necessary parameters
 # args.conditions, args.mat_fname, args.t_max, args.stat, args.threshold)
-def calc_electrodes_coh(subject, args):
-    output_fname = op.join(MMVT_DIR, subject, 'connectivity', 'electrodes.npz')
-    utils.remove_file(output_fname)
-    try:
-        d = dict()
-        d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
-        d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
-        coh_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_coh.npy')
-        if not op.isfile(coh_fname):
-            coh = calc_electrodes_coh(
-                subject, args.conditions, args.mat_fname, args.t_max, from_t_ind=0, to_t_ind=-1, sfreq=1000, fmin=55, fmax=110, bw=15,
-                dt=0.1, window_len=0.1, n_jobs=6)
-        else:
-            coh = np.load(coh_fname)
-        (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
-         d['data_max'], d['data_min']) = calc_connectivity(coh, d['labels'], d['hemis'], args)
-        d['conditions'] = args.conditions # ['interference', 'neutral']
-        np.savez(output_fname, **d)
-        print('Electodes coh was saved to {}'.format(output_fname))
-    except:
-        print(traceback.format_exc())
+def calc_electrodes_connectivity(subject, args, overwrite=True):
+    data_fname = op.join(MMVT_DIR, subject, 'electrodes', 'electrodes_data.npz')
+    if op.isfile(data_fname):
+        data_dict = utils.Bag(np.load(data_fname))
+    else:
+        print('No data file!')
         return False
+
+    calc_avg_electrodes_data(
+        subject, data_dict, args.windows_length, args.windows_shift, args.max_windows_num, overwrite)
+    fol = utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
+    output_fname = op.join(fol, 'electrodes.npz')
+    args.conditions = [utils.to_str(c) for c in data_dict['conditions']]
+    if op.isfile(output_fname) and not overwrite:
+        return True
+    # utils.remove_file(output_fname)
+    con_vertices_fname = op.join(fol, 'electrodes_vertices.pkl')
+    d = dict()
+    d['connectivity_method'] = 'coh'
+    d['labels'], d['locations'] = get_electrodes_info(subject, args.bipolar)
+    d['hemis'] = ['rh' if elc[0] == 'R' else 'lh' for elc in d['labels']]
+    coh_fname = op.join(fol, 'electrodes_coh.npy')
+    # elif op.isfile(args.mat_fname):
+    #     data_dict = sio.loadmat(args.mat_fname)
+    if not op.isfile(coh_fname) or overwrite:
+        coh = calc_electrodes_coh(
+            subject, data_dict, args.windows_length, args.windows_shift, sfreq=1000, fmin=55, fmax=110, bw=15,
+            max_windows_num=args.max_windows_num, n_jobs=6)
+    else:
+        coh = np.load(coh_fname)
+    (d['con_colors'], d['con_indices'], d['con_names'],  d['con_values'], d['con_types'],
+     d['data_max'], d['data_min']) = calc_connectivity(coh, d['labels'], d['hemis'], args)
+    d['conditions'] = data_dict['conditions']
+    vertices, vertices_lookup = create_vertices_lookup(d['con_indices'], d['con_names'], d['labels'])
+    utils.save((vertices, vertices_lookup), con_vertices_fname)
+
+    # 'conditions', 'labels', 'locations', 'hemis', 'con_indices', 'con_names', 'con_values',
+    # 'con_types', 'data_max', 'data_min', 'connectivity_method'
+    np.savez(output_fname, **d)
+    print('Electodes coh was saved to {}'.format(output_fname))
+    return op.isfile(output_fname)
+
+
+def calc_avg_electrodes_data(subject, data_dict, windows_length, windows_shift, max_windows_num, overwrite=False):
+    elecs_fol = utils.make_dir(op.join(MMVT_DIR, subject, 'electrodes'))
+    output_fname = op.join(elecs_fol, 'electrodes_data_for_connectivity.npz')
+    # if op.isfile(output_fname) and not overwrite:
+    #     return True
+
+    # data_diff = np.diff(data_dict.data, axis=2).squeeze()
+    data = data_dict.data
+    names = [utils.to_str(n) for n in data_dict.names]
+    conditions = [utils.to_str(c) for c in data_dict['conditions']]
+    CH, T, CN = data.shape
+    windows = calc_windows(windows_length, windows_shift, T)
+    if max_windows_num is not None and max_windows_num != np.inf:
+        windows = windows[:max_windows_num]
+    for cond_ind in range(CN):
+        for w in range(max_windows_num):
+            if cond_ind == 0 and w == 0:
+                data_avg = np.zeros((CH, len(windows), CN))
+            w1, w2 = int(windows[w, 0]), int(windows[w, 1])
+            data_avg[:, w, cond_ind] = np.mean(data[:, w1:w2, cond_ind], axis=1).squeeze()
+    np.savez(output_fname, data=data_avg, names=names, conditions=conditions)
     return op.isfile(output_fname)
 
 
@@ -64,33 +106,40 @@ def get_electrodes_info(subject, bipolar=False):
     return names, d['pos']
 
 
-def calc_electrodes_coh(subject, conditions, mat_fname, t_max, from_t_ind, to_t_ind, sfreq=1000, fmin=55, fmax=110, bw=15,
-                        dt=0.1, window_len=0.1, n_jobs=6):
+def calc_electrodes_coh(subject, data_dict, windows_length, windows_shift, sfreq=1000, fmin=55, fmax=110, bw=15,
+                        max_windows_num=None, n_jobs=6):
 
     from mne.connectivity import spectral_connectivity
     import time
 
-    input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', mat_fname)
-    d = sio.loadmat(input_file)
-    output_file = op.join(MMVT_DIR, subject, 'electrodes_coh.npy')
-    windows = np.linspace(0, t_max - dt, t_max / dt)
-    for cond, data in enumerate([d[cond] for cond in conditions]):
-        if cond == 0:
-            coh_mat = np.zeros((data.shape[1], data.shape[1], len(windows), 2))
+    # input_file = op.join(SUBJECTS_DIR, subject, 'electrodes', mat_fname)
+    output_file = op.join(MMVT_DIR, subject, 'connectivity', 'electrodes_coh.npy')
+    T = data_dict.data.shape[1]
+    windows = calc_windows(windows_length, windows_shift, T)
+    if max_windows_num is None or max_windows_num is np.inf:
+        max_windows_num = len(windows)
+    # windows = np.linspace(0, t_max - dt, t_max / dt)
+    # for cond, data in enumerate([d[cond] for cond in conditions]):
+    for cond_ind, cond_name in enumerate(data_dict.conditions):
+        data = data_dict.data[:, :, cond_ind]
+        cond_name = utils.to_str(cond_name)
+        if cond_ind == 0:
+            coh_mat = np.zeros((data.shape[0], data.shape[0], max_windows_num, 2))
             # coh_mat = np.load(output_file)
             # continue
-        ds_data = downsample_data(data)
-        ds_data = ds_data[:, :, from_t_ind:to_t_ind]
+        # ds_data = downsample_data(data)
+        # ds_data = ds_data[:, :, from_t_ind:to_t_ind]
         now = time.time()
-        for win, tmin in enumerate(windows):
-            print('cond {}, tmin {}'.format(cond, tmin))
-            utils.time_to_go(now, win + 1, len(windows))
+        # for win, tmin in enumerate(windows):
+        for w in range(max_windows_num):
+            w1, w2 = int(windows[w, 0]), int(windows[w, 1])
+            utils.time_to_go(now, w, max_windows_num)
+            # data : array-like, shape=(n_epochs, n_signals, n_times)
             con_cnd, _, _, _, _ = spectral_connectivity(
-                ds_data, method='coh', mode='multitaper', sfreq=sfreq,
-                fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True,
-                tmin=tmin, tmax=tmin + window_len)
-            con_cnd = np.mean(con_cnd, axis=2)
-            coh_mat[:, :, win, cond] = con_cnd
+                data[np.newaxis, :, w1:w2], method='coh', mode='multitaper', sfreq=sfreq,
+                fmin=fmin, fmax=fmax, mt_adaptive=True, n_jobs=n_jobs, mt_bandwidth=bw, mt_low_bias=True)
+            con_cnd = np.mean(con_cnd, axis=2).squeeze()
+            coh_mat[:, :, w, cond_ind] = con_cnd
             # plt.matshow(con_cnd)
             # plt.show()
         np.save(output_file[:-4], coh_mat)
@@ -132,6 +181,17 @@ def calc_rois_matlab_connectivity(subject, args):
     return op.isfile(output_fname) and con_vertices_fname
 
 
+def calc_windows(windows_length, windows_shift, T, windows_num=0):
+    import math
+    if windows_num == 0:
+        windows_num = math.floor((T - windows_length) / windows_shift + 1)
+    windows = np.zeros((windows_num, 2))
+    for win_ind in range(windows_num):
+        windows[win_ind] = [win_ind * args.windows_shift, win_ind * args.windows_shift + args.windows_length]
+    windows = windows.astype(np.int)
+    return windows
+
+
 def calc_lables_connectivity(subject, labels_extract_mode, args):
 
     def get_output_fname(connectivity_method, labels_extract_mode='', identifier=''):
@@ -165,6 +225,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     con_vertices_fname = op.join(
         MMVT_DIR, subject, 'connectivity', '{}_vertices.pkl'.format(args.connectivity_modality))
     utils.make_dir(op.join(MMVT_DIR, subject, 'connectivity'))
+
     conn_fol = op.join(MMVT_DIR, subject, args.connectivity_modality)
     if args.labels_data_name != '':
         labels_data_fname = op.join(conn_fol, args.labels_data_name.format(subject=subject, hemi='{hemi}'))
@@ -217,6 +278,9 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         data = data[labels_indices]
 
     conditions = f['conditions'] if 'conditions' in f else ['rest']
+    args.conditions = conditions
+    if len(conditions) == 2:
+        args.stat = STAT_DIFF
     labels_hemi_indices = {}
     for hemi in utils.HEMIS:
         labels_hemi_indices[hemi] = np.array([ind for ind,l in enumerate(labels_names) if l in names[hemi]])
@@ -236,13 +300,14 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
     else:
         labels_subs_indices = []
 
-    if args.windows_num == 1 and data.ndim == 3:
+    if args.windows_num == 1 and data.ndim == 3 and len(conditions) == 1:
         data = np.mean(data, axis=2)
 
     # Check this code!!!
-    if data.ndim == 3 and data.shape[2] == len(conditions):
-        data = np.diff(data, axis=2).squeeze()
-    if data.ndim == 2 or labels_extract_mode.startswith('pca_') and data.ndim == 3:
+    # if data.ndim == 3 and data.shape[2] == len(conditions):
+    #     data = np.diff(data, axis=2).squeeze()
+    if data.ndim == 2 or (labels_extract_mode.startswith('pca_') and data.ndim == 3) or \
+            (data.ndim == 3 and len(conditions) == data.shape[2]):
         # No windows yet
         import math
         T = data.shape[1] # If this is fMRI data, the real T is T*tr
@@ -315,23 +380,28 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
             connectivity_method = 'Pearson corr'
 
         elif 'pli' in args.connectivity_method:
-            conn = np.zeros((data.shape[0], data.shape[0], windows_num))
-            if data.ndim == 3:
-                conn_data = np.transpose(data, [2, 1, 0])
-            elif data.ndim == 2:
-                conn_data = np.zeros((windows_num, data.shape[0], args.windows_length))
-                for w in range(windows_num):
-                    conn_data[w] = data[:, windows[w, 0]:windows[w, 1]]
-            indices = np.array_split(np.arange(windows_num), args.n_jobs)
-            # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
-            chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length)
-                  for chunk_indices in indices]
-            results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
-            for chunk in results:
-                for w, con in chunk.items():
-                    conn[:, :, w] = con
-            backup(output_mat_fname)
-            np.save(output_mat_fname, conn)
+            conn = np.zeros((data.shape[0], data.shape[0], windows_num, len(conditions)))
+            for cond_ind, cond_name in enumerate(conditions):
+                if data.ndim == 4:
+                    cond_data = data[:, :, : cond_ind]
+                    conn_data = np.transpose(cond_data, [2, 1, 0])
+                elif data.ndim == 3:
+                    cond_data = data[:, :, cond_ind]
+                    conn_data = np.zeros((windows_num, cond_data.shape[0], args.windows_length))
+                    for w in range(windows_num):
+                        conn_data[w] = cond_data[:, windows[w, 0]:windows[w, 1]]
+                indices = np.array_split(np.arange(windows_num), args.n_jobs)
+                # chunks = utils.chunks(list(enumerate(conn_data)), windows_num / args.n_jobs)
+                chunks = [(conn_data[chunk_indices], chunk_indices, len(labels_names), args.windows_length)
+                      for chunk_indices in indices]
+                results = utils.run_parallel(_pli_parallel, chunks, args.n_jobs)
+                for chunk in results:
+                    for w, con in chunk.items():
+                        conn[:, :, w, cond_ind] = con
+                # output_mat_fname = op.join(utils.get_parent_fol(output_fname), '{}_{}.npy'.format(
+                #     utils.namebase(output_mat_fname), cond_name))
+                backup(output_mat_fname)
+                np.save(output_mat_fname, conn)
             connectivity_method = 'PLI'
 
         elif 'coherence' in args.connectivity_method:
@@ -458,7 +528,7 @@ def calc_lables_connectivity(subject, labels_extract_mode, args):
         conn = conn[:, :, :, np.newaxis]
     elif conn.ndim == 2:
         conn = conn[:, :, np.newaxis]
-    else:
+    elif 4 < conn.ndim < 2:
         raise Exception('Wrong number of dims!')
     d = save_connectivity(subject, conn, args.connectivity_method, ROIS_TYPE, labels_names, conditions, output_fname, args,
                           con_vertices_fname)
@@ -736,6 +806,7 @@ def calc_connectivity(data, labels, hemis, args):
         stat_data = stat_data[indices]
 
     con_values = np.squeeze(con_values)
+    # con_values = np.squeeze(stat_data)
     if 'data_max' not in args and 'data_min' not in args or args.data_max == 0 and args.data_min == 0:
         if args.symetric_colors and np.sign(data_max) != np.sign(data_min) and data_min != 0 and data_max != 0:
             data_max, data_min = data_minmax, -data_minmax
@@ -949,9 +1020,9 @@ def main(subject, remote_subject_dir, args, flags):
     if utils.should_run(args, 'calc_rois_matlab_connectivity'):
         flags['calc_rois_matlab_connectivity'] = calc_rois_matlab_connectivity(subject, args)
 
-    if utils.should_run(args, 'calc_electrodes_coh'):
+    if utils.should_run(args, 'calc_electrodes_connectivity'):
         # todo: Add the necessary parameters
-        flags['calc_electrodes_coh'] = calc_electrodes_coh(subject, args)
+        flags['calc_electrodes_connectivity'] = calc_electrodes_connectivity(subject, args)
 
     if utils.should_run(args, 'calc_electrodes_rest_connectivity'):
         # todo: Add the necessary parameters
@@ -1001,7 +1072,7 @@ def read_cmd_args(argv=None):
     parser.add_argument('--symetric_colors', help='', required=False, default=1, type=au.is_true)
     parser.add_argument('--data_max', help='', required=False, default=0, type=float)
     parser.add_argument('--data_min', help='', required=False, default=0, type=float)
-    parser.add_argument('--windows_length', help='', required=False, default=0, type=int)
+    parser.add_argument('--windows_length', help='', required=False, default=1000, type=int)
     parser.add_argument('--windows_shift', help='', required=False, default=500, type=int)
     parser.add_argument('--windows_num', help='', required=False, default=1, type=int)
     parser.add_argument('--max_windows_num', help='', required=False, default=None, type=au.int_or_none)
