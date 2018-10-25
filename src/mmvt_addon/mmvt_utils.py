@@ -1385,6 +1385,8 @@ def change_fcurves_colors(objs=[], exclude=[], fcurves=[]):
             objs = [objs]
         for obj in objs:
             if obj.animation_data is None:
+                obj.select = True
+                obj.hide = False
                 continue
             if obj.name in exclude:
                 continue

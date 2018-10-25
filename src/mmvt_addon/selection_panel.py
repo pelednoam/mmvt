@@ -164,6 +164,14 @@ def fmri_data_loaded():
     return mu.count_fcurves(fmri_parent_obj) > 0
 
 
+def electrodes_exist():
+    try:
+        electrodes_obj = bpy.data.objects.get(_addon().electrodes_panel_parent)
+        return electrodes_obj is not None and len(electrodes_obj.children) > 0
+    except:
+        return False
+
+
 def electrodes_data_loaded():
     try:
         electrodes_obj = bpy.data.objects.get(_addon().electrodes_panel_parent)
@@ -682,7 +690,7 @@ class SelectionMakerPanel(bpy.types.Panel):
             layout.operator(SelectAllRois.bl_idname, text="Cortical labels ({})".format(sm), icon='BORDER_RECT')
         if meg_sub_data_loaded() or fmri_data_loaded():
             layout.operator(SelectAllSubcorticals.bl_idname, text="Subcorticals ({})".format(sm), icon = 'BORDER_RECT')
-        if electrodes_data_loaded():
+        if electrodes_data_loaded() or electrodes_exist():
             layout.operator(SelectAllElectrodes.bl_idname, text="Electrodes", icon='BORDER_RECT')
         if bpy.data.objects.get('MEG_sensors'):
             layout.operator(SelectAllMEGSensors.bl_idname, text="MEG sensors", icon='BORDER_RECT')
