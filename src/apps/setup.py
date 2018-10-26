@@ -1,5 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QWidget, QMessageBox, QApplication, QDesktopWidget, QCheckBox
+from PyQt5.QtWidgets import QWidget, QMessageBox, QApplication, QDesktopWidget, QCheckBox, QPushButton, QLabel
+from PyQt5.QtGui import QPixmap
 
 
 class Example(QWidget):
@@ -14,12 +15,33 @@ class Example(QWidget):
         The creation of the GUI
         '''
 
-        cb = QCheckBox('Check Box', self)
-        cb.move(20, 20)
+        label = QLabel(self)
+        pixmap = QPixmap('logo.png')
+        label.setPixmap(pixmap)
+        label.move(140, 10)
+
+        cb = QCheckBox('Check Box 1', self)
+        cb.move(20, 30)
+        cb.toggle()
+
+        cb = QCheckBox('Check Box 2', self)
+        cb.move(20, 50)
         cb.toggle()
 
 
-        self.resize(250, 150)
+        cb = QCheckBox('Check Box 3', self)
+        cb.move(20, 70)
+        cb.toggle()
+
+        cb = QCheckBox('Check Box 4', self)
+        cb.move(20, 90)
+        cb.toggle()
+
+        btn = QPushButton('Install', self)
+        btn.move(20, 140)
+
+
+        self.resize(300, 190)
         self.setWindowTitle('Setup')
         self.center()
         self.show()
