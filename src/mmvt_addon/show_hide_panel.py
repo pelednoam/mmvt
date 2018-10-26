@@ -756,7 +756,7 @@ bpy.types.Scene.rotate_and_save = bpy.props.BoolProperty(default=False, name='Sa
                 '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '
                 '\nExample:  ..\ mmvt\mmvt_root\mmvt_blend\colin27\\figures')
 bpy.types.Scene.rotate_360 = bpy.props.BoolProperty(default=False, name='Rotate full 360 deg',
-    description='Rotate a full 360 degrees ')
+    description='Rotates the brain 360 deg and stops when done')
 bpy.types.Scene.rotate_and_render = bpy.props.BoolProperty(default=False, name='Render an image each rotation',
     description='Renders an image each rotation according the values that were set to the x,y,x axis below the check box. '
                 '\nThe pictures are saved inside the ‘figures’ folder under the subjects’ name folder. '

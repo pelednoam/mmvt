@@ -21,7 +21,7 @@ class Example(QWidget):
 
     def center(self):
         '''
-        Figures out the screen resolution of our monitor and centeres the window
+        Figures out the monitors screen resolution and centeres the window
         '''
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
