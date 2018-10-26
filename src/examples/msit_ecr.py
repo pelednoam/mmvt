@@ -433,19 +433,21 @@ def post_meg_preproc(args):
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
                 # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
+                label_power = label_power[:, :, 100:-100]
                 # for band_ind in range(len(bands)):
                 #     label_power[band_ind] /= label_power[band_ind][:, norm_times[0]:norm_times[1]].mean()
                 label_ind = labels_names.index(label_name)
                 hemi = labels[label_ind].hemi
+                # print(input_fname, hemi)
                 for band_ind, band in enumerate(bands.keys()):
-                    label_power_norm = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
+                    label_power_norm = label_power[band_ind].mean(axis=1)[:epochs_max_num] # norm_times[0]:norm_times[1]
                     if len(label_power_norm) != epochs_max_num:
                         print('{} does have {} epochs!'.format(input_fname, len(label_power_norm)))
                         break
                     bands_power[band_ind, label_ind] = label_power_norm
                     if band not in bands_power_mmvt[hemi]:
-                        bands_power_mmvt[hemi][band] = np.empty((len(labels_names), label_power[band_ind].shape[1], 1, len(args.tasks)))
-                    bands_power_mmvt[hemi][band][label_ind, :, 0, task_ind] = label_power[band_ind].mean(axis=0)
+                        bands_power_mmvt[hemi][band] = np.empty((len(labels_names), label_power[band_ind].shape[1], len(args.tasks)))
+                    bands_power_mmvt[hemi][band][label_ind, :, task_ind] = label_power[band_ind].mean(axis=0)
                 fig_fname = op.join(plots_fol, 'power_{}_{}.jpg'.format(label_name, task))
                 if do_plot: # not op.isfile(fig_fname) and
                     times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
@@ -455,7 +457,6 @@ def post_meg_preproc(args):
                     res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
                 np.savez(power_fname, data=np.array(bands_power[band_ind]), names=labels_names)
             subjects_with_results[subject][task] = True
-
 
         if all(subjects_with_results[subject].values()):
             bands_power_mmvt_all.append(bands_power_mmvt)
