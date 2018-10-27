@@ -509,7 +509,7 @@ def build_label_name(delim, pos, label, hemi):
 
 
 def get_hemi_from_name(label_name):
-    _, _, _, hemi = get_hemi_delim_and_pos(label_name)
+    _, _, _, hemi = get_hemi_delim_and_pos(str(label_name))
     return hemi
 
 
