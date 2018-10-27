@@ -246,6 +246,16 @@ def unselect_prev_label(prev_labels):
             de_select_object(prev_elc)
 
 
+def clear_selection():
+    for sub_hierchy in bpy.data.objects['Brain'].children:
+        for obj in sub_hierchy.children:
+            de_select_object(obj)
+
+    if bpy.data.objects.get('Deep_electrodes'):
+        for obj in bpy.data.objects['Deep_electrodes'].children:
+            obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
+
+
 def de_select_object(obj):
     if isinstance(obj, str):
         obj = bpy.data.objects[obj]

@@ -42,18 +42,7 @@ class SearchClear(bpy.types.Operator):
 
     def invoke(self, context, event=None):
         # Copy from where am I clear
-        for subHierchy in bpy.data.objects['Brain'].children:
-            # new_mat = bpy.data.materials['unselected_label_Mat_cortex']
-            # if subHierchy.name == 'Subcortical_structures':
-            #     new_mat = bpy.data.materials['unselected_label_Mat_subcortical']
-            for obj in subHierchy.children:
-                _addon().de_select_object(obj)
-                # obj.active_material = new_mat
-
-        if bpy.data.objects.get('Deep_electrodes'):
-            for obj in bpy.data.objects['Deep_electrodes'].children:
-                obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
-
+        _addon.selection.clear_selection()
         for obj_name, h in SearchMark.marked_objects_hide.items():
             bpy.data.objects[obj_name].hide = bool(h)
         for obj_name, h in SearchFilter.marked_objects_select.items():

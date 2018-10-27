@@ -322,6 +322,7 @@ def clear_cortex(hemis=HEMIS):
             clear_object_vertex_colors(cur_obj)
         for label_obj in bpy.data.objects['Cortex-{}'.format(hemi)].children:
             object_coloring(label_obj, (1, 1, 1))
+    # _addon().selection.clear_selection()
 
 
 #todo: call this code from the coloring
