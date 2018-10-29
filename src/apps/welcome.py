@@ -1,5 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QWidget, QMessageBox, QApplication, QDesktopWidget,
+from PyQt5.QtWidgets import QWidget, QMessageBox, QApplication, QDesktopWidget, QCheckBox, QPushButton, QLabel
+from PyQt5.QtGui import QPixmap
 
 
 class Example(QWidget):
@@ -14,14 +15,24 @@ class Example(QWidget):
         The creation of the GUI
         '''
 
-        self.resize(250, 150)
+        label = QLabel(self)
+        pixmap = QPixmap('logo.png')
+        label.setPixmap(pixmap)
+        label.move(140, 10)
+
+
+        btn = QPushButton('Open', self)
+        btn.move(20, 140)
+
+
+        self.resize(300, 190)
         self.setWindowTitle('Welcome')
         self.center()
         self.show()
 
     def center(self):
         '''
-        Figures out the monitors screen resolution and centeres the window
+        Figures out the screen resolution of our monitor and centeres the window
         '''
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
