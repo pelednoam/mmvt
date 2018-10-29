@@ -75,6 +75,7 @@ def _curves_sep_update(force=False):
     fcurves, data = get_selected_fcurves_and_data()
     if len(fcurves) == 0:
         return
+    data = data.squeeze()
     if data.ndim == 3:
         N, T, C = data.shape
     else:
@@ -82,8 +83,8 @@ def _curves_sep_update(force=False):
         C = 1
     get_data = lambda ind, t, c : data[data_ind, t, c] if data.ndim == 3 else data[data_ind, t]
     sep_inds = np.tile(np.arange(0, N), (C, 1)).T.ravel()
-    fcurve_ind = 0
     for data_ind in range(N):
+        fcurve_ind = 0
         data_mean = np.median(data[data_ind]) if bpy.context.scene.curves_sep > 0 else 0
         for c in range(C):
             fcurve = fcurves[fcurve_ind]
@@ -243,6 +244,16 @@ def unselect_prev_label(prev_labels):
         prev_elc = bpy.data.objects.get(prev_label)
         if not prev_elc is None:
             de_select_object(prev_elc)
+
+
+def clear_selection():
+    for sub_hierchy in bpy.data.objects['Brain'].children:
+        for obj in sub_hierchy.children:
+            de_select_object(obj)
+
+    if bpy.data.objects.get('Deep_electrodes'):
+        for obj in bpy.data.objects['Deep_electrodes'].children:
+            obj.active_material.node_tree.nodes["Layer Weight"].inputs[0].default_value = 1
 
 
 def de_select_object(obj):

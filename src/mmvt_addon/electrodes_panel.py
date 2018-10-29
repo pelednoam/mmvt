@@ -869,7 +869,7 @@ bpy.types.Scene.electrode_rotate = bpy.props.BoolProperty(default=False,
 bpy.types.Scene.electrodes_more_settings = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_create_curved_leads = bpy.props.BoolProperty(default=False)
 bpy.types.Scene.electrodes_color_only_selected = bpy.props.BoolProperty(default=False)
-bpy.types.Scene.show_electrodes_labels = bpy.props.BoolProperty(default=False, update=show_electrodes_labels_update
+bpy.types.Scene.show_electrodes_labels = bpy.props.BoolProperty(default=False, update=show_electrodes_labels_update,
     description ='Shows the label of each electrode')
 
 
