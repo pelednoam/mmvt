@@ -46,6 +46,12 @@ def get_selected_fcurves_and_data():
         if fcurves is None or len(fcurves) == 0:
             continue
         data, names, conditions = SelectionMakerPanel.get_data[selction_type]()
+        # try:
+        #     conditions = mu.get_animation_conditions(bpy.data.objects[names[0]])
+        # except:
+        #     conditions = None
+        # if conditions is None:
+        #     conditions = _conditions
         if data is None:
             continue
         fcurves_names = set([mu.get_fcurve_name(f) for f in fcurves])
@@ -72,8 +78,8 @@ def curves_sep_update(self=None, context=None):
 
 
 def _curves_sep_update(force=False):
-    if len(bpy.context.selected_objects) == 1:
-        return
+    # if len(bpy.context.selected_objects) == 1:
+    #     return
     fcurves, data = get_selected_fcurves_and_data()
     if len(fcurves) == 0:
         return

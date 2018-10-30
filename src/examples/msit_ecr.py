@@ -12,6 +12,7 @@ from src.preproc import anatomy as anat
 from src.preproc import meg as meg
 from src.preproc import connectivity
 from collections import defaultdict
+from tqdm import tqdm
 import warnings
 import matplotlib.pyplot as plt
 
@@ -393,6 +394,7 @@ def meg_preproc_power(args):
 #     print(subjects_with_error)
 
 
+@utils.profileit(root_folder=op.join(MMVT_DIR, 'profileit'))
 def post_meg_preproc(args):
     inv_method, em, atlas = 'dSPM', 'mean_flip', args.atlas
     bands = dict(theta=[4, 8], alpha=[8, 15], beta=[15, 30], gamma=[30, 55], high_gamma=[65, 200])
@@ -412,7 +414,7 @@ def post_meg_preproc(args):
     now = time.time()
     bands_power_mmvt_all = []
     for subject_ind, subject in enumerate(subjects):
-        # utils.time_to_go(now, subject_ind, len(subjects), runs_num_to_print=1)
+        utils.time_to_go(now, subject_ind, len(subjects), runs_num_to_print=1)
         subjects_with_results[subject] = {}
         input_fol = utils.make_dir(op.join(MEG_DIR, subject, 'labels_induced_power'))
         plots_fol = utils.make_dir(op.join(input_fol, 'plots'))
@@ -430,21 +432,28 @@ def post_meg_preproc(args):
             # if not do_plot:
             #     continue
             bands_power = np.empty((len(bands), labels_num, epochs_max_num))
-            for input_fname in input_fnames:
+            for input_fname in tqdm(input_fnames):
+                if not subjects_with_results[subject].get(task, True):
+                    break
                 d = utils.Bag(np.load(input_fname)) # label_name, atlas, data
                 # label_power = np.empty((len(bands), epochs_num, T)) (5, 50, 3501)
                 label_power, label_name = d.data, d.label_name
-                label_power = label_power[:, :, 100: -100]
+                # label_power = label_power[:, :, 100: -100]
                 # for band_ind in range(len(bands)):
                 #     label_power[band_ind] /= label_power[band_ind][:, norm_times[0]:norm_times[1]].mean()
                 hemi = lu.get_hemi_from_name(label_name)
-                label_ind = hemi_labels_names[hemi].index(label_name)
+                if label_name in hemi_labels_names[hemi]:
+                    label_ind = hemi_labels_names[hemi].index(label_name)
+                else:
+                    print('label {} not in atlas!'.format(label_name))
+                    subjects_with_results[subject][task] = False
+                    break
                 for band_ind, band in enumerate(bands.keys()):
-                    # label_power_norm = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
-                    # if len(label_power_norm) != epochs_max_num:
-                    #     print('{} does have {} epochs!'.format(input_fname, len(label_power_norm)))
-                    #     break
-                    # bands_power[band_ind, label_ind] = label_power_norm
+                    label_power_norm = label_power[band_ind][:, norm_times[0]:norm_times[1]].mean(axis=1)[:epochs_max_num]
+                    if len(label_power_norm) != epochs_max_num:
+                        print('{} does have {} epochs!'.format(input_fname, len(label_power_norm)))
+                        break
+                    bands_power[band_ind, label_ind] = label_power_norm
                     if band not in bands_power_mmvt[hemi]:
                         bands_power_mmvt[hemi][band] = np.empty(
                             (len(hemi_labels_names[hemi]), label_power[band_ind].shape[1], len(args.tasks)))
@@ -453,12 +462,13 @@ def post_meg_preproc(args):
                 # if do_plot: # not op.isfile(fig_fname) and
                 #     times = np.arange(0, label_power.shape[2]) if 'times' not in d else d.times
                 #     plot_label_power(label_power, times, label_name, bands, task, fig_fname)
-            # for band_ind, band in enumerate(bands.keys()):
-            #     power_fname = op.join(
-            #         res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
-            #     np.savez(power_fname, data=np.array(bands_power[band_ind]), names=labels_names)
+            if not subjects_with_results[subject].get(task, True):
+                break
+            for band_ind, band in enumerate(bands.keys()):
+                power_fname = op.join(
+                    res_fol, subject, '{}_labels_{}_{}_{}_power.npz'.format(task.lower(), inv_method, em, band))
+                np.savez(power_fname, data=np.array(bands_power[band_ind]), names=labels_names)
             subjects_with_results[subject][task] = True
-
 
         if all(subjects_with_results[subject].values()):
             bands_power_mmvt_all.append(bands_power_mmvt)
