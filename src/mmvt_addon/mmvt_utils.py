@@ -1410,6 +1410,7 @@ def get_animation_conditions(obj, take_my_first_child=False):
     else:
         return [get_fcurve_name(f).split('_')[-1] for f in obj.animation_data.action.fcurves]
 
+
 def count_fcurves(objs, recursive=False):
     if not isinstance(objs, Iterable):
         objs = [objs]

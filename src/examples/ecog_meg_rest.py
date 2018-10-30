@@ -3,6 +3,7 @@ import glob
 import numpy as np
 import scipy.interpolate
 import matplotlib.pyplot as plt
+import shutil
 import warnings
 
 from src.utils import utils
@@ -37,32 +38,61 @@ def meg_remove_artifcats(subject, raw_fname):
 
 
 def meg_calc_labels_ts(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
-                meg_remote_dir='', empty_fname='', cor_fname='', use_demi_events=True, n_jobs=-1):
-    functions = 'calc_epochs,calc_evokes,make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition'
-    meg_args = meg.read_cmd_args(dict(
-        subject=subject, mri_subject=subject,
-        task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
-        single_trial_stc=True,
-        recreate_src_spacing='ico5',
-        # fwd_recreate_source_space=True,
-        # recreate_bem_solution=True,
-        remote_subject_meg_dir=meg_remote_dir,
-        remote_subject_dir=remote_subject_dir,
-        empty_fname=empty_fname,
-        cor_fname=cor_fname,
-        function=functions,
-        use_demi_events=use_demi_events,
-        windows_length=10000,
-        windows_shift=5000,
-        # overwrite_fwd=True,
-        # overwrite_inv=True,
-        # overwrite_labels_data=True,
-        using_auto_reject=False,
-        use_empty_room_for_noise_cov=True,
-        read_only_from_annot=False,
-        n_jobs=n_jobs
-    ))
-    return meg.call_main(meg_args)
+                       meg_remote_dir='', meg_epochs_dir='', empty_fname='', cor_fname='', use_demi_events=True, n_jobs=-1):
+    functions = 'make_forward_solution,calc_inverse_operator,calc_stc,calc_labels_avg_per_condition'
+
+    epochs_folders = glob.glob(op.join(meg_epochs_dir, '{}_{}_*'.format(args.subject, args.nmr)))
+    # remote_epo_fname = op.join(meg_epochs_dir, '{}_{}_{}'.format(args.subject, args.nmr, session),
+    #                            '{}_{}_{}_Resting_eeg_meg_Demi_ar-epo.fif'.format(args.subject, args.nmr, session))
+    output_files = glob.glob(op.join(
+        MMVT_DIR, subject, 'meg', 'labels_data_rest_electrodes_labels_dSPM_mean_flip_*.npz'))
+    for output_fname in output_files:
+        utils.remove_file(output_fname)
+
+    for epochs_fol in epochs_folders:
+        epo_fnames = glob.glob(op.join(epochs_fol, '*.fif'))
+        if len(epo_fnames) != 1:
+            print('********* No fif files in {}!!!'.format(epochs_fol))
+            continue
+        epo_fname = epo_fnames[0]
+        fol = utils.make_dir(op.join(MMVT_DIR, subject, 'meg', utils.namebase(epo_fname)))
+
+        # output_files = glob.glob(op.join(
+        #     fol, 'labels_data_rest_electrodes_labels_dSPM_mean_flip_*.npz'))
+        # if len(output_files) >= 1:
+        #     print('Already calculated for {}'.format(epochs_fol))
+        #     continue
+
+        meg_args = meg.read_cmd_args(dict(
+            subject=subject, mri_subject=subject,
+            task='rest', inverse_method=inv_method, extract_mode=em, atlas=atlas,
+            single_trial_stc=True,
+            recreate_src_spacing='ico5',
+            # fwd_recreate_source_space=True,
+            # recreate_bem_solution=True,
+            remote_subject_meg_dir=meg_remote_dir,
+            remote_subject_dir=remote_subject_dir,
+            epo_fname=epo_fname,
+            empty_fname=empty_fname,
+            cor_fname=cor_fname,
+            function=functions,
+            use_demi_events=use_demi_events,
+            # windows_length=10000,
+            # windows_shift=5000,
+            # overwrite_fwd=True,
+            # overwrite_inv=True,
+            # overwrite_labels_data=True,
+            using_auto_reject=False,
+            use_empty_room_for_noise_cov=True,
+            read_only_from_annot=False,
+            n_jobs=n_jobs
+        ))
+        meg.call_main(meg_args)
+
+        output_files = glob.glob(op.join(
+            MMVT_DIR, subject, 'meg', 'labels_data_rest_electrodes_labels_dSPM_mean_flip_*.npz'))
+        for otuput_fname in output_files:
+            shutil.copyfile(otuput_fname, op.join(fol, utils.namebase_with_ext(otuput_fname)))
 
 
 def meg_preproc(subject, inv_method='MNE', em='mean_flip', atlas='electrodes_labels', remote_subject_dir='',
@@ -247,11 +277,16 @@ def main(args):
         '/autofs/space/megraid_clinical/MEG-MRI/seder/freesurfer/{}'.format(args.subject),
         '/home/npeled/subjects/{}'.format(args.subject),
         op.join(SUBJECTS_DIR, args.subject)] if op.isdir(d)][0]
+    meg_epochs_dir = [d for d in [
+        '/autofs/space/karima_002/users/Machine_Learning_Clinical_MEG_EEG_Resting/epochs',
+        '/home/npeled/meg/{}'.format(args.subject),
+        op.join(MEG_DIR, args.subject)] if op.isdir(d)][0]
     meg_remote_dir = [d for d in [
         '/autofs/space/megraid_clinical/MEG/epilepsy/subj_6213848/171127',
         '/home/npeled/meg/{}'.format(args.subject),
         op.join(MEG_DIR, args.subject)] if op.isdir(d)][0]
-    raw_fnames = glob.glob(op.join(meg_remote_dir, '*_??_raw.fif'))
+    session_num = 1
+    # raw_fnames = glob.glob(op.join(meg_remote_dir, '*_??_raw.fif'))
     raw_fname =  '' #utils.select_one_file(raw_fnames) # raw_fnames[0] if len(raw_fnames) > 0 else ''
     cor_fname = '' #op.join(remote_subject_dir, 'mri', 'T1-neuromag', 'sets', 'COR-naoro-171130.fif') # Can be found automatically
     empty_fname = op.join(meg_remote_dir, 'empty_room_raw.fif')
@@ -288,7 +323,7 @@ def main(args):
             cor_fname, use_demi_events, calc_labels_avg, overwrite_meg, args.n_jobs)
     elif args.function == 'meg_calc_labels_ts':
         meg_calc_labels_ts(
-            args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir, empty_fname,
+            args.subject, inv_method, em, atlas, remote_subject_dir, meg_remote_dir, meg_epochs_dir, empty_fname,
             cor_fname, use_demi_events, args.n_jobs)
     elif args.function == 'calc_meg_power_spectrum':
         calc_meg_power_spectrum(
@@ -307,11 +342,14 @@ if __name__ == '__main__':
     import argparse
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
-    parser.add_argument('-s', '--subject', help='subject name', required=False, default='')
+    parser.add_argument('-s', '--subject', help='subject name', required=False, default='nmr00479')
+    parser.add_argument('-nmr', '--nmr', help='subject name', required=False, default='4994627')
     parser.add_argument('-f', '--function', help='function name', required=False, default='')
     parser.add_argument('--n_jobs', help='cpu num', required=False, default=-1)
+
     args = utils.Bag(au.parse_parser(parser))
     args.n_jobs = utils.get_n_jobs(args.n_jobs)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         main(args)
+    print('Done!')

@@ -42,11 +42,11 @@ def get_selected_fcurves_and_data():
         if selction_type not in SelectionMakerPanel.get_data:
             continue
         # fcurves = mu.get_fcurves(parent_obj, recursive=True, only_selected=True)
-        data, names, conditions = SelectionMakerPanel.get_data[selction_type]()
-        if data is None:
-            continue
         fcurves = SelectionMakerPanel.fcurves[selction_type]()
         if fcurves is None or len(fcurves) == 0:
+            continue
+        data, names, conditions = SelectionMakerPanel.get_data[selction_type]()
+        if data is None:
             continue
         fcurves_names = set([mu.get_fcurve_name(f) for f in fcurves])
         # todo: fix that for rois!
@@ -72,6 +72,8 @@ def curves_sep_update(self=None, context=None):
 
 
 def _curves_sep_update(force=False):
+    if len(bpy.context.selected_objects) == 1:
+        return
     fcurves, data = get_selected_fcurves_and_data()
     if len(fcurves) == 0:
         return
@@ -80,6 +82,10 @@ def _curves_sep_update(force=False):
         N, T, C = data.shape
     else:
         N, T = data.shape
+        if N - 10 < len(fcurves[0].keyframe_points) < N + 10:
+            N, T = T, N
+            # switch dims
+            data = data.T
         C = 1
     get_data = lambda ind, t, c : data[data_ind, t, c] if data.ndim == 3 else data[data_ind, t]
     sep_inds = np.tile(np.arange(0, N), (C, 1)).T.ravel()

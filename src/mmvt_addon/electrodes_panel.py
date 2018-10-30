@@ -182,6 +182,12 @@ def _electrodes_update():
     mu.change_selected_fcurves_colors(mu.OBJ_TYPE_ELECTRODE)
     _addon().show_electrodes()
 
+    # Ugly fix
+    # ani =  bpy.data.objects[current_electrode].animation_data
+    # if ani is not None:
+    #     for fcurve in ani.action.fcurves:
+    #         fcurve.keyframe_points[0].co[1] = fcurve.keyframe_points[1].co[1]
+
 
 def electrodes_selection_coloring():
     current_electrode = bpy.context.scene.electrodes
@@ -250,6 +256,7 @@ def electode_was_manually_selected(selected_electrode_name):
         return
     # It's enough to update the lead to update also the elecctrode, according to bpy.context.active_object
     try:
+        # This line will call _leads_update() that will call _electrodes_update()
         bpy.context.scene.leads = group
     except:
         print("Can't update the selected electrode ({})".format(selected_electrode_name))
