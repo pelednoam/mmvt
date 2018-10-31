@@ -1746,28 +1746,39 @@ def color_electrodes(threshold=None, data_minmax=None, condition=None):
         threshold = bpy.context.scene.coloring_lower_threshold
     if condition is not None:
         bpy.context.scene.electrodes_conditions = condition
+    data, data_max, data_min, names, conditions = _electrodes_conditions_update(data_minmax)
+    colors_ratio = 256 / (data_max - data_min)
+    color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
+
+
+def electrodes_conditions_update(self, context):
+    if ColoringMakerPanel.init:
+        _electrodes_conditions_update()
+
+
+def _electrodes_conditions_update(data_minmax=None):
     data, names, conditions = _addon().load_electrodes_data()
-    if data_minmax is not None:
-        data_max, data_min = -data_minmax, data_minmax
-        colors_ratio = 256 / (data_max - data_min)
-        _addon().set_colorbar_max_min(data_max, data_min)
-    elif not _addon().colorbar_values_are_locked():
-        norm_percs = (bpy.context.scene.electrodes_min_prec, bpy.context.scene.electrodes_max_prec)
-        data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
-        colors_ratio = 256 / (data_max - data_min)
-        _addon().set_colorbar_max_min(data_max, data_min)
-    else:
-        data_max, data_min = _addon().get_colorbar_max_min()
-        colors_ratio = 256 / (data_max - data_min)
     if bpy.context.scene.electrodes_conditions != 'diff':
         cond_ind = np.where(conditions == bpy.context.scene.electrodes_conditions)[0][0]
         data = data[:, :, cond_ind]
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('Electrodes {} condition'.format(conditions[cond_ind]))
     else:
+        data = np.diff(data)
         if not _addon().colorbar_values_are_locked():
             _addon().set_colorbar_title('Electrodes conditions difference')
-    color_objects_homogeneously(data, names, conditions, data_min, colors_ratio, threshold)
+
+    if data_minmax is not None:
+        data_max, data_min = -data_minmax, data_minmax
+        _addon().set_colorbar_max_min(data_max, data_min)
+    elif not _addon().colorbar_values_are_locked():
+        norm_percs = (bpy.context.scene.electrodes_min_prec, bpy.context.scene.electrodes_max_prec)
+        data_max, data_min = mu.get_data_max_min(data, True, norm_percs=norm_percs, data_per_hemi=False, symmetric=True)
+        _addon().set_colorbar_max_min(data_max, data_min)
+    else:
+        data_max, data_min = _addon().get_colorbar_max_min()
+
+    return data, data_max, data_min, names, conditions
 
 
 def what_is_colored():
@@ -2508,14 +2519,16 @@ def init_electrodes():
     if ColoringMakerPanel.electrodes_stim_files_exist:
         ColoringMakerPanel.activity_types.append('stim')
     if ColoringMakerPanel.electrodes_files_exist:
+        if bpy.context.scene.electrodes_max_prec <= bpy.context.scene.electrodes_min_prec:
+            bpy.context.scene.electrodes_min_prec = 3
+            bpy.context.scene.electrodes_max_prec = 97
         _, _, conditions = _addon().load_electrodes_data()
         items = [(c, c, '', ind + 1) for ind, c in enumerate(conditions)]
         items.append(('diff', 'Conditions difference', '', len(conditions) +1))
         bpy.types.Scene.electrodes_conditions = bpy.props.EnumProperty(items=items,
-            description='Selects the condition to plot the electrodes activity.\n\nCurrent condition')
+            description='Selects the condition to plot the electrodes activity.\n\nCurrent condition',
+            update=electrodes_conditions_update)
         bpy.context.scene.electrodes_conditions = 'diff'
-
-
 
 
 def init_meg_labels_coloring_type():

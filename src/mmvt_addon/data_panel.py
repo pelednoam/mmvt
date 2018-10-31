@@ -1167,8 +1167,6 @@ def load_meg_labels_data():
         return None, None, None
 
 
-
-
 def load_electrodes_dists():
     if DataMakerPanel.electrodes_dists is None:
         fol = op.join(mu.get_user_fol(), 'electrodes')
