@@ -70,13 +70,13 @@ def create_links(links_fol_name='links', gui=True, default_folders=False, only_v
 
     mmvt_message = 'Please select where do you want to put the blend files '
     subjects_message = \
-        'Please select where do you want to store the FreeSurfer recon-all files neccessary for MMVT.\n' + \
-        '(It is prefered to create a local folder, because MMVT is going to save files to this directory) '
-    blender_message = 'Please select where did you install Blender '
-    meg_message = 'Please select where do you want to put the MEG files (Cancel if you are not going to use MEG data) '
-    eeg_message = 'Please select where do you want to put the EEG files (Cancel if you are not going to use EEG data) '
-    fmri_message = 'Please select where do you want to put the fMRI files (Cancel if you are not going to use fMRI data) '
-    electrodes_message = 'Please select where do you want to put the electrodes files (Cancel if you are not going to use electrodes data) '
+        'Please select where you want to store the FreeSurfer recon-all files neccessary for MMVT.\n' + \
+        '(Creating a local folder is preferred, because MMVT is going to save files to this directory) '
+    blender_message = 'Please select the folder containing the Blender App'
+    meg_message = 'Please select where you want to put the MEG files (Cancel if you are not going to use MEG data) '
+    eeg_message = 'Please select where you want to put the EEG files (Cancel if you are not going to use EEG data) '
+    fmri_message = 'Please select where you want to put the fMRI files (Cancel if you are not going to use fMRI data) '
+    electrodes_message = 'Please select where you want to put the electrodes files (Cancel if you are not going to use electrodes data) '
 
     blender_fol = find_blender()
     if blender_fol != '':
@@ -253,6 +253,7 @@ def find_blender():
             blender_fol = find_blender_in_linux('~/')
     elif utils.is_osx():
         blender_fol = '/Applications/Blender/blender.app/Contents/MacOS'
+        blender_fol = blender_fol if op.isdir(blender_fol) else ''
         # output = utils.run_script("find ~/ -name 'blender' -type d")
         # if not isinstance(output, str):
         #     output = output.decode(sys.getfilesystemencoding(), 'ignore')
@@ -275,8 +276,7 @@ def create_fsaverage_link(links_fol_name='links'):
 
 
 def get_blender_python_exe(blender_fol, gui=True):
-    blender_parent_fol = utils.get_parent_fol(blender_fol)
-    bin_template = op.join(utils.get_parent_fol(blender_fol), 'Resources', '2.7?', 'python') if utils.is_osx() else \
+    bin_template = op.join(blender_fol, 'blender.app','Contents','Resources', '2.7?', 'python') if utils.is_osx() else \
         op.join(blender_fol, '2.7?', 'python')
     blender_bin_folders = sorted(glob.glob(bin_template))
     if len(blender_bin_folders) == 0:
