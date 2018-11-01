@@ -425,7 +425,7 @@ def create_annotation(subject, atlas='aparc250', fsaverage='fsaverage', remote_s
                 labels = []
             annot_ok = annot_ok and len(labels) > 1
         if annot_ok:
-            print('The annotation file is already exist ({})'.format(annotation_fname_template))
+            print('The annotation file already exists ({})'.format(annotation_fname_template))
             return True
 
     labels_files = glob.glob(op.join(SUBJECTS_DIR, subject, 'label', atlas, '*.label'))
