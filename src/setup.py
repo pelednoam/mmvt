@@ -138,6 +138,8 @@ def ask_and_create_link(links_fol, link_name, message, gui=True, create_default_
         if choose_folder:
             root_fol = utils.get_parent_fol(links_fol)
             fol = utils.choose_folder_gui(root_fol, message) if gui else input()
+            if link_name == 'blender' and utils.is_osx():
+                fol = op.join(fol,'blender.app','Contents','MacOS')
             if fol != '':
                 create_real_folder(fol)
                 ret = utils.create_folder_link(fol, op.join(links_fol, link_name), overwrite=overwrite)
@@ -276,7 +278,7 @@ def create_fsaverage_link(links_fol_name='links'):
 
 
 def get_blender_python_exe(blender_fol, gui=True):
-    bin_template = op.join(blender_fol, 'blender.app','Contents','Resources', '2.7?', 'python') if utils.is_osx() else \
+    bin_template = op.join(blender_fol, '..', 'Resources', '2.7?', 'python') if utils.is_osx() else \
         op.join(blender_fol, '2.7?', 'python')
     blender_bin_folders = sorted(glob.glob(bin_template))
     if len(blender_bin_folders) == 0:
@@ -427,7 +429,7 @@ def print_help():
         -v: If True, just check the setup without doing anything (default: False)
         -d: If True, the script will create the default mmvt folders (default: True)
         -o: If True, the scirpt will overwrite the resources files (default: True)
-        -f: Set which function (or functions) you want to run (use commas witout spacing) (deafult: all):
+        -f: Set which function (or functions) you want to run (use commas witout spacing) (default: all):
             install_reqs, create_links, copy_resources_files, install_addon, install_blender_reqs, create_links_csv
             and create_csv
     '''
