@@ -2,9 +2,11 @@ import os.path as op
 import glob
 import numpy as np
 import scipy.interpolate
+from mne.filter import high_pass_filter
 import matplotlib.pyplot as plt
 import shutil
 import warnings
+import time
 
 from src.utils import utils
 from src.preproc import meg as meg
@@ -153,6 +155,43 @@ def calc_electrodes_power_spectrum(subject, edf_name, overwrite=False):
         overwrite_power_spectrum=overwrite
     ))
     electrodes.call_main(elecs_args)
+
+
+def filter_meg_labels_ts(subject, inv_method='dSPM', em='mean_flip', atlas='electrodes_labels', low_freq_cut_off=10,
+                         fs=1000, do_plot=False, n_jobs=4):
+    folders = glob.glob(op.join(MMVT_DIR, subject, 'meg', '{}_*_*_Resting_eeg_meg_Demi_ar-epo'.format(subject)))
+    now = time.time()
+    for fol_ind, fol in enumerate(folders):
+        utils.time_to_go(now, fol_ind, len(folders), runs_num_to_print=1)
+        files = glob.glob(op.join(fol, 'labels_data_rest_{}_{}_{}_?h.npz'.format(atlas, inv_method, em)))
+        for fname in files:
+            hemi = lu.get_hemi_from_name(utils.namebase(fname))
+            d = utils.Bag(np.load(fname))
+            L = d.data.shape[0] # labels * time * epochs
+            filter_data = np.empty(d.data.shape)
+            params = [(d.data[label_ind], label_ind, fs,  low_freq_cut_off, do_plot) for label_ind in range(L)]
+            results = utils.run_parallel(_filter_meg_label_ts_parallel, params, n_jobs)
+            for filter_label_data, label_ind in results:
+                filter_data[label_ind] = filter_label_data
+            new_fname = op.join(fol, 'labels_data_rest_{}_{}_{}_filter_{}.npz'.format(atlas, inv_method, em, hemi))
+            np.savez(new_fname, data=filter_data, names=d.names, conditions=d.conditions)
+
+
+def _filter_meg_label_ts_parallel(p):
+    label_data, label_ind, fs,  low_freq_cut_off, do_plot = p
+    filter_label_data = np.empty(label_data.shape)
+    E = label_data.shape[1]
+    for epoch_ind in range(E):
+        x = label_data[:, epoch_ind]
+        if do_plot:
+            plt.psd(x, Fs=fs)
+            plt.show()
+        x_filter = high_pass_filter(x, Fs=fs, Fp=low_freq_cut_off, n_jobs=1, verbose=False)
+        if do_plot:
+            plt.psd(x_filter, Fs=fs)
+            plt.show()
+        filter_label_data[:, epoch_ind] = x_filter
+    return filter_label_data, label_ind
 
 
 def combine_meg_and_electrodes_power_spectrum(subject, inv_method='MNE', em='mean_flip', low_freq=None, high_freq=None,
@@ -336,6 +375,8 @@ def main(args):
         check_mmvt_file(args.subject)
     elif args.function == 'compare_ps_from_epochs_and_from_time_series':
         compare_ps_from_epochs_and_from_time_series(args.subject)
+    elif args.function == 'filter_meg_labels_ts':
+        filter_meg_labels_ts(args.subject, inv_method, em, atlas)
 
 
 if __name__ == '__main__':
