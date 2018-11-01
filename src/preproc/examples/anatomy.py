@@ -41,7 +41,7 @@ def create_annot_from_mad(args):
     remote_subject_dir_template = '/mnt/cashlab/Original Data/MG/{subject}/{subject}_Notes_and_Images/{subject}_SurferOutput'
     for subject in args.subject:
         remote_subject_dir = remote_subject_dir_template.format(subject=subject)
-        if utils.both_hemi_files_exist(op.join(remote_subject_dir, 'label', '{hemi}.aparc.DKTatlas40.annot')):
+        if utils.both_hemi_files_exist(op.join(remote_subject_dir, 'label', '{hemi}.aparc.DKTatlas.annot')):
             print('{} has already both annot files!'.format(subject))
             continue
         args = anat.read_cmd_args(dict(
@@ -52,14 +52,14 @@ def create_annot_from_mad(args):
             ignore_missing=True,
         ))
         pu.run_on_subjects(args, anat.main)
-        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject.lower(), 'label', '{hemi}.aparc.DKTatlas40.annot')):
+        if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject.lower(), 'label', '{hemi}.aparc.DKTatlas.annot')):
             print('Couldn\'t create annot files for {}!'.format(subject))
             continue
         local_annot_fol = utils.make_dir(op.join(SUBJECTS_DIR, 'annot_files', subject.lower()))
         for hemi in utils.HEMIS:
-            local_annot_fname = op.join(SUBJECTS_DIR, subject.lower(), 'label', '{}.aparc.DKTatlas40.annot'.format(hemi))
-            remote_annot_fname = op.join(remote_subject_dir, 'label', '{}.aparc.DKTatlas40.annot'.format(hemi))
-            local_temp_annot_fname = op.join(local_annot_fol, '{}.aparc.DKTatlas40.annot'.format(hemi))
+            local_annot_fname = op.join(SUBJECTS_DIR, subject.lower(), 'label', '{}.aparc.DKTatlas.annot'.format(hemi))
+            remote_annot_fname = op.join(remote_subject_dir, 'label', '{}.aparc.DKTatlas.annot'.format(hemi))
+            local_temp_annot_fname = op.join(local_annot_fol, '{}.aparc.DKTatlas.annot'.format(hemi))
             if not op.isfile(remote_annot_fname):
                 if op.isfile(local_annot_fname):
                     shutil.copyfile(local_annot_fname, local_temp_annot_fname)
@@ -185,7 +185,7 @@ def main():
     import collections
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas')
     parser.add_argument('-u', '--sftp_username', help='sftp username', required=False, default='npeled')
     parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')
     parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,

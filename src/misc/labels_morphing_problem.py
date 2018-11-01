@@ -132,7 +132,7 @@ def get_n_jobs(n_jobs):
 if __name__ == '__main__':
     subjects_dir = os.environ['SUBJECTS_DIR']
     subject = 'sample'
-    atlas = 'laus125' # 'aparc.DKTatlas40'
+    atlas = 'laus125' # 'aparc.DKTatlas'
     n_jobs = get_n_jobs(-1)
     morphed_labels = morph_labels_from_fsaverage(subject, subjects_dir, atlas=atlas, n_jobs=n_jobs)
     ret = labels_to_annot(subject, morphed_labels, subjects_dir, atlas, overwrite=True)

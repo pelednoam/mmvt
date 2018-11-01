@@ -1644,7 +1644,7 @@ def calc_stc_per_condition(events=None, task='', stc_t_min=None, stc_t_max=None,
                            overwrite_stc=False, stc_template='', raw_fname='', epo_fname='', evo_fname='', inv_fname='',
                            fwd_usingMEG=True, fwd_usingEEG=True, apply_on_raw=False, raw=None, epochs=None,
                            modality='meg', calc_stc_for_all=False, calc_stcs_diff=True,
-                           atlas='aparc.DKTatlas40', bands=None, calc_inducde_power_per_label=True,
+                           atlas='aparc.DKTatlas', bands=None, calc_inducde_power_per_label=True,
                            induced_power_normalize_proj=True, n_jobs=6):
     # todo: If the evoked is the raw (no events), we need to seperate it into N events with different ids, to avoid memory error
     # Other options is to use calc_labels_avg_for_rest
@@ -1838,9 +1838,9 @@ def dipoles_fit(dipoles_times, dipoloes_title, evokes=None, noise_cov_fname='', 
         head_to_mri_trans_mat_fname = COR
     evo_fname = get_evo_fname(evo_fname)
     if vol_atlas_fname == '':
-        vol_atlas_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlas40+aseg.mgz'))
+        vol_atlas_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlas+aseg.mgz'))
     if vol_atlas_lut_fname == '':
-        vol_atlas_lut_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlas40ColorLUT.txt'))
+        vol_atlas_lut_fname = op.join(op.join(MMVT_DIR, MRI_SUBJECT, 'freeview', 'aparc.DKTatlasColorLUT.txt'))
 
     if not op.isfile(noise_cov_fname):
         print("The noise covariance cannot be found in {}!".format(NOISE_COV))

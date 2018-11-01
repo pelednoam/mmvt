@@ -366,7 +366,7 @@ def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', 
     ----------
     subject: subject name
     atlas: One of the three atlases included with freesurfer:
-        Possible values are aparc.DKTatlas40, aparc.a2009s or aparc
+        Possible values are aparc.DKTatlas, aparc.a2009s or aparc
         https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
     subjects_dir: subjects dir. If empty, get it from the environ
     freesurfer_home: freesurfer home. If empty, get it from the environ
@@ -380,7 +380,7 @@ def create_annotation_file(subject, atlas, subjects_dir='', freesurfer_home='', 
     '''
     atlas_types = {'aparc': 'curvature.buckner40.filled.desikan_killiany',
                    'aparc.a2009s': 'destrieux.simple.2009-07-28',
-                   'aparc.DKTatlas40': 'DKTatlas40'}
+                   'aparc.DKTatlas': 'DKTatlas'}
     atlas_type = atlas_types[atlas]
     check_env_var('FREESURFER_HOME', freesurfer_home)
     check_env_var('SUBJECTS_DIR', subjects_dir)
@@ -749,7 +749,7 @@ def create_seghead(subject, subjects_dir=None, print_only=False, **kargs):
 
 
 def is_fs_atlas(atlas):
-    return atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
+    return atlas in ['aparc.DKTatlas', 'aparc', 'aparc.a2009s']
 
 
 def read_surface(subject, subjects_dir, surf_type='pial'):

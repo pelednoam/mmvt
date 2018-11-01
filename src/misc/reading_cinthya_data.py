@@ -44,15 +44,15 @@ def ttest(data, root_fol, output_name, two_tailed_test=True, alpha=0.05, is_grea
             welch_labels.append(label)
     title = output_name.replace('_', ' ')
     np.savez(op.join(root_fol, '{}_mean.npz'.format(output_name)), names=labels,
-             atlas='aparc.DKTatlas40', data=np.array(labels_means), title=title,
+             atlas='aparc.DKTatlas', data=np.array(labels_means), title=title,
              data_min=np.min(labels_means), data_max=np.max(labels_means), cmap='YlOrRd')
     print('{} ttest: {} significant labels were found'.format(title, len(ttest_stats)))
     print('{} welch: {} significant labels were found'.format(title, len(ttest_stats)))
     np.savez(op.join(root_fol, '{}_ttest.npz'.format(output_name)), names=np.array(ttest_labels),
-             atlas='aparc.DKTatlas40', data=np.array(ttest_stats), title='{} ttest'.format(title),
+             atlas='aparc.DKTatlas', data=np.array(ttest_stats), title='{} ttest'.format(title),
              data_min=0, data_max=0.05, cmap='RdOrYl')
     np.savez(op.join(root_fol, '{}_welch.npz'.format(output_name)), names=np.array(welch_labels),
-             atlas='aparc.DKTatlas40', data=np.array(welch_stats), title='{} welch'.format(title),
+             atlas='aparc.DKTatlas', data=np.array(welch_stats), title='{} welch'.format(title),
              data_min=0, data_max=0.05, cmap='RdOrYl')
     return ttest_stats, welch_stats
 

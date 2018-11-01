@@ -610,7 +610,7 @@ def create_spatial_connectivity(subject, surf_types=('pial', 'dural'), overwrite
     return ret
 
 
-def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', atlas='aparc.DKTatlas40', debug=False,
+def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', atlas='aparc.DKTatlas', debug=False,
                                  overwrite=False):
 
     def get_vertices_between_labels(label1_contours_verts_inds, label2_contours_verts_inds, vertices_neighbros):
@@ -672,7 +672,7 @@ def calc_three_rois_intersection(subject, rois, output_fol='', model_name='', at
     return intesection_points
 
 
-def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas40', overwrite=True):
+def calc_flat_patch_cut_vertices(subject, atlas='aparc.DKTatlas', overwrite=True):
     output_fname = op.join(MMVT_DIR, subject, 'flat_patch_cut_vertices.pkl')
     if op.isfile(output_fname) and not overwrite:
         return True
@@ -1073,9 +1073,9 @@ def calc_3d_atlas(subject, atlas, overwrite_aseg_file=True):
 
 
 @utils.tryit()
-def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas', base_atlas='aparc.DKTatlas40',
+def create_high_level_atlas(subject, high_level_atlas_name='high.level.atlas', base_atlas='aparc.DKTatlas',
                             overwrite=False):
-    if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas40.annot')):
+    if not utils.both_hemi_files_exist(op.join(SUBJECTS_DIR, subject, 'label', '{hemi}.aparc.DKTatlas.annot')):
         fu.create_annotation_file(
             subject, base_atlas, subjects_dir=SUBJECTS_DIR, freesurfer_home=FREESURFER_HOME)
     look = create_labels_names_lookup(subject, base_atlas)
@@ -1627,7 +1627,7 @@ def read_cmd_args(argv=None):
 
     pu.add_common_args(parser)
     args = utils.Bag(au.parse_parser(parser, argv))
-    existing_freesurfer_annotations = ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s']
+    existing_freesurfer_annotations = ['aparc.DKTatlas', 'aparc', 'aparc.a2009s']
     args.necessary_files = {'mri': ['aseg.mgz', 'norm.mgz', 'ribbon.mgz', 'T1.mgz', 'orig.mgz', 'brain.mgz'],
         'surf': ['rh.pial', 'lh.pial', 'rh.inflated', 'lh.inflated', 'lh.curv', 'rh.curv', 'rh.sphere.reg',
                  'lh.sphere.reg', 'rh.sphere', 'lh.sphere', 'lh.white', 'rh.white', 'rh.smoothwm','lh.smoothwm',

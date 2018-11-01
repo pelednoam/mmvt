@@ -44,7 +44,7 @@ if __name__ == '__main__':
     from src.utils import args_utils as au
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas')
     parser.add_argument('-q', '--quality', help='quality', required=False, default=20, type=int)
     parser.add_argument('-f', '--function', help='function name', required=False, default='render_perspectives')
     args = utils.Bag(au.parse_parser(parser))

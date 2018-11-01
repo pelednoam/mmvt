@@ -348,7 +348,7 @@ def export_into_csv(template_system, mmvt_dir, prefix=''):
     print('export_into_csv: {}'.format(op.isfile(csv_fname) and op.isfile(csv_fname2)))
 
 
-def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatlas40'):
+def compare_electrodes_labeling(electrodes, template_system, atlas='aparc.DKTatlas'):
     template = 'fsaverage' if template_system == 'ras' else 'colin27' if template_system == 'mni' else template_system
     template_elab_files = glob.glob(op.join(
         MMVT_DIR, template, 'electrodes', '{}_{}_electrodes_cigar_r_3_l_4.pkl'.format(template, atlas)))

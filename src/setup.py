@@ -14,7 +14,7 @@ BLENDER_WIN_DIR = 'C:\Program Files\Blender Foundation\Blender'
 def copy_resources_files(mmvt_root_dir, overwrite=True, only_verbose=False):
     resource_dir = utils.get_resources_fol()
     utils.make_dir(op.join(op.join(mmvt_root_dir, 'color_maps')))
-    files = ['aparc.DKTatlas40_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt', 'FreeSurferColorLUT.txt',
+    files = ['aparc.DKTatlas_groups.csv', 'atlas.csv', 'sub_cortical_codes.txt', 'FreeSurferColorLUT.txt',
              'empty_subject.blend', 'high_level_atlas.csv']
     cm_files = glob.glob(op.join(resource_dir, 'color_maps', '*.npy'))
     all_files_exist = utils.all([op.isfile(op.join(mmvt_root_dir, file_name)) for file_name in files])

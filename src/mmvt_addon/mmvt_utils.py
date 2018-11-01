@@ -2380,7 +2380,7 @@ def check_if_atlas_exist(labels_fol, atlas):
         len(glob.glob(op.join(labels_fol, atlas, '*.label'))) > 0
 
 
-def find_annot_labels(subjects_dir='', atlas='aparc.DKTatlas40'):
+def find_annot_labels(subjects_dir='', atlas='aparc.DKTatlas'):
     if subjects_dir == '':
         subjects_dir = get_link_dir(get_links_dir(), 'subjects')
     labels = []
@@ -2399,7 +2399,7 @@ def find_annot_labels(subjects_dir='', atlas='aparc.DKTatlas40'):
 
 def check_atlas_by_labels_names(labels_names):
     subjects_dir = get_link_dir(get_links_dir(), 'subjects')
-    for atlas in ['aparc.DKTatlas40', 'aparc', 'aparc.a2009s', 'aparc250', 'laus125', 'laus250', 'laus500']:
+    for atlas in ['aparc.DKTatlas', 'aparc', 'aparc.a2009s', 'aparc250', 'laus125', 'laus250', 'laus500']:
         atlas_labels = find_annot_labels(subjects_dir, atlas)
         atlas_labels_names = set([l.name for l in atlas_labels])
         if set(labels_names).issubset(atlas_labels_names):

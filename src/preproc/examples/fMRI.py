@@ -258,7 +258,7 @@ def get_subjects_files(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MMVT')
     parser.add_argument('-s', '--subject', help='subject name', required=False, type=au.str_arr_type, default='colin27')
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas')
     parser.add_argument('-u', '--sftp_username', help='sftp username', required=False, default='npeled')
     parser.add_argument('-d', '--sftp_domain', help='sftp domain', required=False, default='door.nmr.mgh.harvard.edu')
     parser.add_argument('--remote_subject_dir', help='remote_subjects_dir', required=False,

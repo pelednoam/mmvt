@@ -89,7 +89,7 @@ def get_elec_group(elec_name, bipolar):
 if __name__ == '__main__':
     subject = 'mg96'
     bipolar = True
-    atlas = 'aparc.DKTatlas40'
+    atlas = 'aparc.DKTatlas'
     error_radius, elec_length = 3, 4
     good_channels = get_good_channels()
     groups_ordering = get_groups_ordering()

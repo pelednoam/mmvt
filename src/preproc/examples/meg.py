@@ -338,7 +338,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject', help='subject name', required=True, type=au.str_arr_type)
     parser.add_argument('-m', '--mri_subject', help='mri subject name', required=False, default=None,
                         type=au.str_arr_type)
-    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas40')
+    parser.add_argument('-a', '--atlas', help='atlas name', required=False, default='aparc.DKTatlas')
     parser.add_argument('-i', '--inverse_method', help='inverse_method', required=False, default='MNE',
                         type=au.str_arr_type)
     parser.add_argument('-f', '--function', help='function name', required=True)
