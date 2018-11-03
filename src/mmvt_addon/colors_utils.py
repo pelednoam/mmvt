@@ -300,6 +300,8 @@ def get_activity_map_im(im,cmap):
     fig.savefig(fname)
     plt.close(fig)
     img = bpy.data.images.load(fname)
+    os.remove(fname)h
+    os.remove(tmp_dir)
     return img
 
 
