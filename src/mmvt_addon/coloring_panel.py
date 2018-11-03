@@ -1073,7 +1073,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     # Get the active mesh
     mesh = cur_obj.data
     # Project to UV Map
-    bpy.ops.uv.smart_project()
+    bpy.ops.uv.unwrap() #no cuts-- helmet-> no discontinuities
 
     bpy.ops.object.mode_set(mode='OBJECT')
     all_uvs = [mesh.uv_layers['activity_map'].data[loop.index].uv
@@ -1100,7 +1100,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     cTex = bpy.data.textures['ActivityTexture']
     cTex.image = cu.get_activity_map_im(im, cmap='jet')  # _addon().get_cm())
     mat.active_texture = cTex
-    cur_obj.active_material = mat
+    #cur_obj.active_material = mat
 
     '''
     if override_current_mat:
