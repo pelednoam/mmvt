@@ -286,13 +286,13 @@ def normalize_hex(hex_value):
 def symGauss2D(x0,y0,sigma):
     return lambda x,y: (1./(2*math.pi*sigma**2))*math.exp(-((x-x0)**2+(y-y0)**2)/(2*sigma**2))
 
-def save_activity_map_im(im):
+def get_activity_map_im(im,cmap):
     fig = plt.figure(frameon=False)
     fig.set_size_inches(6, 6)
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     fig.add_axes(ax)
-    ax.imshow(im, cmap='ocean')
+    ax.imshow(im, cmap=cmap)
     tmp_dir = op.join(os.getcwd(), 'tmp')
     if not op.isdir(tmp_dir):
         os.makedirs(tmp_dir)

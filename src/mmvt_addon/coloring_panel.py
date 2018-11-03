@@ -11,6 +11,7 @@ import traceback
 from functools import partial
 import re
 import shutil
+import matplotlib.pyplot as plt
 import math
 
 try:
@@ -1066,49 +1067,40 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     if not 'activity_map' in mesh.uv_textures:
         mesh.uv_textures.new('activity_map')
     mesh.uv_textures['activity_map'].active_render = True
-    # Create a Bmesh for texture
-    import bmesh
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    # Edit to unwrap object
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.uv.smart_project()
-    # Get UV layer newly made
-    uv_lay = bm.loops.layers.uv.active
+    mesh.uv_textures['activity_map'].active = True
 
-    all_uvs = [l[uv_lay].uv for f in bm.faces for l in f.loops]
+    bpy.ops.object.mode_set(mode='EDIT')
+    # Get the active mesh
+    mesh = cur_obj.data
+    # Project to UV Map
+    bpy.ops.uv.smart_project()
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    all_uvs = [mesh.uv_layers['activity_map'].data[loop.index].uv
+               for loop in mesh.loops]
 
     im = np.zeros((uv_size, uv_size))
-
-    # Blender stores UV coordinates by the face because when you
-    # unwrap vertices can be in more than one place
-    bm.faces.ensure_lookup_table()
-    for face in bm.faces:
-        for loop in face.loops:
-            if not loop.vert.index in valid_verts:
-                continue
-            x0, y0 = loop[uv_lay].uv
-            sigma = min([((x0 - this_uv.x) ** 2 + (y0 - this_uv.y) ** 2) ** (.5)
-                         for this_uv in all_uvs if
-                         ((x0 - this_uv.x) ** 2 + (y0 - this_uv.y) ** 2) ** (.5) > 1e-4])
+    for this_loop in mesh.loops:
+        if this_loop.vertex_index in valid_verts:
+            this_uv = mesh.uv_layers.active.data[this_loop.index].uv
+            x0, y0 = this_uv
+            sigma = min([(this_uv - other_uv).magnitude
+                         for other_uv in all_uvs if
+                         (this_uv - other_uv).magnitude > 1e-4])
             f = cu.symGauss2D(x0, y0, sigma)
             for i, x in enumerate(np.linspace(0, 1, uv_size)):
                 for j, y in enumerate(np.linspace(0, 1, uv_size)):
-                    im[i, j] += f(x, y) * vert_values[loop.vert.index] / f(x0, y0) # Normalize
+                    im[i, j] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
 
-    img = cu.save_activity_map_im(im)
-
-    cTex = bpy.data.textures.new('Texture', type='IMAGE')
-    cTex.image = img  # setup texture
-    mat = bpy.data.materials.new('ActivityMap')  # setup material
-    mtex = mat.texture_slots.add()
-    mtex.texture = cTex  # add texture to material
-    mtex.use_map_color_diffuse = True  # set color, emission maps
-    mtex.use_map_color_emission = True
-    mtex.mapping = 'FLAT'  # set material mapping
-    ob = bpy.data.objects.new('ActivityObj', mesh)
-    ob.data.materials.append(mat)
-    bpy.ops.object.mode_set(mode='OBJECT')
+    if not 'ActivityMap' in bpy.data.materials:
+        bpy.data.materials.new('ActivityMap')
+    mat = bpy.data.materials['ActivityMap']
+    if not 'ActivityTexture' in bpy.data.textures:
+        bpy.data.textures.new('ActivityTexture', type='IMAGE')
+    cTex = bpy.data.textures['ActivityTexture']
+    cTex.image = cu.get_activity_map_im(im, cmap='jet')  # _addon().get_cm())
+    mat.active_texture = cTex
+    cur_obj.active_material = mat
 
     '''
     if override_current_mat:
