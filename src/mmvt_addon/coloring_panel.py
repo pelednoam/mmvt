@@ -11,6 +11,7 @@ import traceback
 from functools import partial
 import re
 import shutil
+import math
 
 try:
     import bpy
@@ -1027,7 +1028,7 @@ def set_activity_values(cur_obj, values):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col', check_valid_verts=True):
+                              coloring_layer='Col', check_valid_verts=True, uv_size = 100):
     if isinstance(cur_obj, str):
         cur_obj = bpy.data.objects[cur_obj]
     if lookup is None:
@@ -1062,6 +1063,54 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
+    if not 'activity_map' in mesh.uv_textures:
+        mesh.uv_textures.new('activity_map')
+    mesh.uv_textures['activity_map'].active_render = True
+    # Create a Bmesh for texture
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    # Edit to unwrap object
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.uv.smart_project()
+    # Get UV layer newly made
+    uv_lay = bm.loops.layers.uv.active
+
+    all_uvs = [l[uv_lay].uv for f in bm.faces for l in f.loops]
+
+    im = np.zeros((uv_size, uv_size))
+
+    # Blender stores UV coordinates by the face because when you
+    # unwrap vertices can be in more than one place
+    bm.faces.ensure_lookup_table()
+    for face in bm.faces:
+        for loop in face.loops:
+            if not loop.vert.index in valid_verts:
+                continue
+            x0, y0 = loop[uv_lay].uv
+            sigma = min([((x0 - this_uv.x) ** 2 + (y0 - this_uv.y) ** 2) ** (.5)
+                         for this_uv in all_uvs if
+                         ((x0 - this_uv.x) ** 2 + (y0 - this_uv.y) ** 2) ** (.5) > 1e-4])
+            f = cu.symGauss2D(x0, y0, sigma)
+            for i, x in enumerate(np.linspace(0, 1, uv_size)):
+                for j, y in enumerate(np.linspace(0, 1, uv_size)):
+                    im[i, j] += f(x, y) * vert_values[loop.vert.index] / f(x0, y0) # Normalize
+
+    img = cu.save_activity_map_im(im)
+
+    cTex = bpy.data.textures.new('Texture', type='IMAGE')
+    cTex.image = img  # setup texture
+    mat = bpy.data.materials.new('ActivityMap')  # setup material
+    mtex = mat.texture_slots.add()
+    mtex.texture = cTex  # add texture to material
+    mtex.use_map_color_diffuse = True  # set color, emission maps
+    mtex.use_map_color_emission = True
+    mtex.mapping = 'FLAT'  # set material mapping
+    ob = bpy.data.objects.new('ActivityObj', mesh)
+    ob.data.materials.append(mat)
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    '''
     if override_current_mat:
         recreate_coloring_layers(mesh, coloring_layer)
         # vcol_layer = mesh.vertex_colors["Col"]
@@ -1082,7 +1131,7 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     else:
         verts_lookup_loop_coloring(
             valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:], cur_obj.name, save_prev_colors)
-
+    '''
 
 def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur_obj_name, save_prev_colors=False):
     if save_prev_colors:
