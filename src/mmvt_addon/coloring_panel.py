@@ -1092,15 +1092,14 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
                 for j, y in enumerate(np.linspace(0, 1, uv_size)):
                     im[i, j] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
 
-    if not 'ActivityMap' in bpy.data.materials:
-        bpy.data.materials.new('ActivityMap')
-    mat = bpy.data.materials['ActivityMap']
+    #if not 'ActivityMap' in bpy.data.materials:
+    #    bpy.data.materials.new('ActivityMap')
+    #mat = bpy.data.materials['ActivityMap']
     if not 'ActivityTexture' in bpy.data.textures:
         bpy.data.textures.new('ActivityTexture', type='IMAGE')
     cTex = bpy.data.textures['ActivityTexture']
     cTex.image = cu.get_activity_map_im(im, cmap='jet')  # _addon().get_cm())
-    mat.active_texture = cTex
-    #cur_obj.active_material = mat
+    cur_obj.active_material.active_texture = cTex #probably delete, needs to be added node style
 
     '''
     if override_current_mat:

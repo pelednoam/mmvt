@@ -293,15 +293,13 @@ def get_activity_map_im(im,cmap):
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(im, cmap=cmap)
-    tmp_dir = op.join(os.getcwd(), 'tmp')
-    if not op.isdir(tmp_dir):
-        os.makedirs(tmp_dir)
-    fname = op.join(tmp_dir, 'activity_map.png')
+    map_dir = op.join(os.getcwd(), 'examples')
+    fname = op.join(map_dir, 'activity_map.png')
+    if op.isfile(fname):
+        os.remove(fname)
     fig.savefig(fname)
     plt.close(fig)
     img = bpy.data.images.load(fname)
-    os.remove(fname)h
-    os.remove(tmp_dir)
     return img
 
 
