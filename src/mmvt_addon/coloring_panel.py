@@ -1064,6 +1064,13 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
+    if len(mesh.vertices) < 1e3:
+        uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size)
+    else:
+        vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, verts_colors, vert_values,
+                               lookup, override_current_mat, save_prev_colors, colors_picked_from_cm)
+
+def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size):
     if not 'activity_map' in mesh.uv_textures:
         mesh.uv_textures.new('activity_map')
     mesh.uv_textures['activity_map'].active_render = True
@@ -1101,7 +1108,8 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     cTex.image = cu.get_activity_map_im(im, cmap='jet')  # _addon().get_cm())
     cur_obj.active_material.active_texture = cTex #probably delete, needs to be added node style
 
-    '''
+def vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, verts_colors, vert_values,
+                           lookup, override_current_mat, save_prev_colors, colors_picked_from_cm):
     if override_current_mat:
         recreate_coloring_layers(mesh, coloring_layer)
         # vcol_layer = mesh.vertex_colors["Col"]
@@ -1122,7 +1130,6 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     else:
         verts_lookup_loop_coloring(
             valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:], cur_obj.name, save_prev_colors)
-    '''
 
 def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur_obj_name, save_prev_colors=False):
     if save_prev_colors:
