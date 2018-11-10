@@ -1086,6 +1086,7 @@ def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size):
     all_uvs = [mesh.uv_layers['activity_map'].data[loop.index].uv
                for loop in mesh.loops]
 
+    im = np.zeros((uv_size, uv_size))
     for this_loop in mesh.loops:
         if this_loop.vertex_index in valid_verts:
             this_uv = mesh.uv_layers.active.data[this_loop.index].uv
