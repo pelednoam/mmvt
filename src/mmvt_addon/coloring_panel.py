@@ -1029,7 +1029,7 @@ def set_activity_values(cur_obj, values):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col', check_valid_verts=True, uv_size = 100):
+                              coloring_layer='Col', check_valid_verts=True, uv_size = 1000):
     if isinstance(cur_obj, str):
         cur_obj = bpy.data.objects[cur_obj]
     if lookup is None:
@@ -1094,10 +1094,10 @@ def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size):
             sigma = min([(this_uv - other_uv).magnitude
                          for other_uv in all_uvs if
                          (this_uv - other_uv).magnitude > 1e-4])
-            f = cu.symGauss2D(x0, y0, sigma)
+            f = cu.sym_gauss_2D(x0, y0, sigma)
             for i, x in enumerate(np.linspace(0, 1, uv_size)):
                 for j, y in enumerate(np.linspace(0, 1, uv_size)):
-                    im[i, j] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
+                    im[j, i] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
 
     #if not 'ActivityMap' in bpy.data.materials:
     #    bpy.data.materials.new('ActivityMap')
@@ -1107,6 +1107,7 @@ def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size):
     cTex = bpy.data.textures['ActivityTexture']
     cTex.image = cu.get_activity_map_im(im, cmap='jet')  # _addon().get_cm())
     cur_obj.active_material.active_texture = cTex #probably delete, needs to be added node style
+
 
 def vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, verts_colors, vert_values,
                            lookup, override_current_mat, save_prev_colors, colors_picked_from_cm):
@@ -1130,6 +1131,7 @@ def vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, verts_col
     else:
         verts_lookup_loop_coloring(
             valid_verts, lookup, vcol_layer, lambda vert:vert_values[vert, 1:], cur_obj.name, save_prev_colors)
+
 
 def verts_lookup_loop_coloring(valid_verts, lookup, vcol_layer, colors_func, cur_obj_name, save_prev_colors=False):
     if save_prev_colors:

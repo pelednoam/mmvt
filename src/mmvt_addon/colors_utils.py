@@ -2,7 +2,12 @@ import re
 from collections import OrderedDict
 import numpy as np
 from itertools import cycle
-import matplotlib.pyplot as plt
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+except:
+    print('Unable to import matplotlib')
 import os
 import os.path as op
 import math
@@ -283,8 +288,10 @@ def normalize_hex(hex_value):
         hex_digits = u''.join(2 * s for s in hex_digits)
     return u'#{}'.format(hex_digits.lower())
 
-def symGauss2D(x0,y0,sigma):
+
+def sym_gauss_2D(x0,y0,sigma):
     return lambda x,y: (1./(2*math.pi*sigma**2))*math.exp(-((x-x0)**2+(y-y0)**2)/(2*sigma**2))
+
 
 def get_activity_map_im(im,cmap):
     fig = plt.figure(frameon=False)
@@ -293,7 +300,7 @@ def get_activity_map_im(im,cmap):
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(im, cmap=cmap)
-    #x.invert_xaxis()
+    ax.invert_xaxis()
     ax.invert_yaxis()
     map_dir = op.join(os.getcwd(), 'examples')
     fname = op.join(map_dir, 'activity_map.png')
