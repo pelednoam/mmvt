@@ -1029,7 +1029,7 @@ def set_activity_values(cur_obj, values):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col', check_valid_verts=True, uv_size = 1000):
+                              coloring_layer='Col', check_valid_verts=True, uv_size = 200):
     if isinstance(cur_obj, str):
         cur_obj = bpy.data.objects[cur_obj]
     if lookup is None:

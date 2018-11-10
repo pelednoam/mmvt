@@ -300,7 +300,6 @@ def get_activity_map_im(im,cmap):
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(im, cmap=cmap)
-    ax.invert_xaxis()
     ax.invert_yaxis()
     map_dir = op.join(os.getcwd(), 'examples')
     fname = op.join(map_dir, 'activity_map.png')
