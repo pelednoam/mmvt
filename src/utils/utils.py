@@ -924,6 +924,12 @@ def prepare_subject_folder(necessary_files, subject, remote_subject_dir, local_s
                     local_fname = op.join(local_subject_dir, fol, file_name)
                     remote_fname = op.join(remote_subject_dir, fol, file_name)
                     local_files = glob.glob(local_fname)
+                    # fs53 DKT atlas backward compatibility fix
+                    if 'DKTatlas' in file_name and not op.isfile(remote_fname):
+                        fs53_fname = file_name.replace('DKTatlas', 'DKTatlas40')
+                        fs53_remote_fname = op.join(remote_subject_dir, fol, fs53_fname)
+                        if op.isfile(fs53_remote_fname):
+                            shutil.copyfile(fs53_remote_fname, remote_fname)
                     if len(local_files) == 0 or overwrite_files:
                         remote_files = glob.glob(remote_fname)
                         if len(remote_files) > 0:
