@@ -995,6 +995,8 @@ def calc_colors(vert_values, min_data=None, colors_ratio=None, cm=None):
         colors_ratio = 256 / (max_data - min_data)
     return mu.calc_colors_from_cm(vert_values, min_data, colors_ratio, cm)
 
+def sym_gauss_2D(x0,y0,sigma):
+    return lambda x,y: (1./(2*math.pi*sigma**2))*math.exp(-((x-x0)**2+(y-y0)**2)/(2*sigma**2))
 
 def find_valid_verts(values, threshold, use_abs, bigger_or_equall):
     if use_abs is None:
@@ -1029,7 +1031,7 @@ def set_activity_values(cur_obj, values):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col', check_valid_verts=True, uv_size = 200):
+                              coloring_layer='Col', check_valid_verts=True, uv_size = 300):
     if isinstance(cur_obj, str):
         cur_obj = bpy.data.objects[cur_obj]
     if lookup is None:
@@ -1058,19 +1060,17 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     # cm = _addon().get_cm()
     if vert_values.ndim > 1 and vert_values.squeeze().ndim == 1:
         vert_values = vert_values.squeeze()
-    if vert_values.ndim == 1 and data_min is not None:
-        verts_colors = calc_colors(vert_values, data_min, colors_ratio)
-        colors_picked_from_cm = True
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
     if len(mesh.vertices) < 1e3:
-        uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size)
+        uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size, data_min, colors_ratio)
     else:
-        vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, verts_colors, vert_values,
-                               lookup, override_current_mat, save_prev_colors, colors_picked_from_cm)
+        vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, vert_values, lookup,
+                               override_current_mat, save_prev_colors, colors_picked_from_cm,
+                               data_min, colors_ratio)
 
-def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size):
+def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size, data_min, colors_ratio):
     if not 'activity_map' in mesh.uv_textures:
         mesh.uv_textures.new('activity_map')
     mesh.uv_textures['activity_map'].active_render = True
@@ -1087,30 +1087,53 @@ def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size):
                for loop in mesh.loops]
 
     im = np.zeros((uv_size, uv_size))
+    '''import matplotlib.pyplot as plt
+    fig,a = plt.subplots()
+    a.set_xlim([0,1])
+    a.set_ylim([0,1])'''
     for this_loop in mesh.loops:
         if this_loop.vertex_index in valid_verts:
             this_uv = mesh.uv_layers.active.data[this_loop.index].uv
             x0, y0 = this_uv
+            #a.scatter(x0, y0)
             sigma = min([(this_uv - other_uv).magnitude
                          for other_uv in all_uvs if
                          (this_uv - other_uv).magnitude > 1e-4])
-            f = cu.sym_gauss_2D(x0, y0, sigma)
+            f = sym_gauss_2D(x0, y0, sigma)
             for i, x in enumerate(np.linspace(0, 1, uv_size)):
                 for j, y in enumerate(np.linspace(0, 1, uv_size)):
-                    im[-j-1,i] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
+                    im[j,i] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
+    '''fig.savefig('test.png')
+    fig,a = plt.subplots()
+    a.imshow(im)
+    fig.savefig('test2.png')'''
 
-    #if not 'ActivityMap' in bpy.data.materials:
-    #    bpy.data.materials.new('ActivityMap')
-    #mat = bpy.data.materials['ActivityMap']
+    # https://blender.stackexchange.com/questions/643/is-it-possible-to-create-image-data-and-save-to-a-file-from-a-script
+    map_dir = op.join(os.getcwd(), 'examples')
+    fname = op.join(map_dir, 'activity_map.png')
+    fig = bpy.data.images.new('Activity Map', uv_size, uv_size)
+    for ind, (r,g,b) in enumerate(calc_colors(im.flatten(), data_min, colors_ratio)):
+        fig.pixels[(4*ind) + 0] = r # R
+        fig.pixels[(4*ind) + 1] = g # G
+        fig.pixels[(4*ind) + 2] = b # B
+        fig.pixels[(4*ind) + 3] = 1.0 # A = 1.0
+    fig.filepath_raw = fname
+    fig.file_format = 'PNG'
+    fig.save()
+
     if not 'ActivityTexture' in bpy.data.textures:
         bpy.data.textures.new('ActivityTexture', type='IMAGE')
     cTex = bpy.data.textures['ActivityTexture']
-    cTex.image = cu.get_activity_map_im(im, cmap='jet')  # _addon().get_cm())
+    cTex.image = fig
     cur_obj.active_material.active_texture = cTex #probably delete, needs to be added node style
 
 
-def vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, verts_colors, vert_values,
-                           lookup, override_current_mat, save_prev_colors, colors_picked_from_cm):
+def vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, vert_values, lookup,
+                           override_current_mat, save_prev_colors, colors_picked_from_cm,
+                           data_min, colors_ratio):
+    if vert_values.ndim == 1 and data_min is not None:
+        verts_colors = calc_colors(vert_values, data_min, colors_ratio)
+        colors_picked_from_cm = True
     if override_current_mat:
         recreate_coloring_layers(mesh, coloring_layer)
         # vcol_layer = mesh.vertex_colors["Col"]

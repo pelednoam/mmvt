@@ -289,26 +289,3 @@ def normalize_hex(hex_value):
     return u'#{}'.format(hex_digits.lower())
 
 
-def sym_gauss_2D(x0,y0,sigma):
-    return lambda x,y: (1./(2*math.pi*sigma**2))*math.exp(-((x-x0)**2+(y-y0)**2)/(2*sigma**2))
-
-
-def get_activity_map_im(im,cmap):
-    fig = plt.figure(frameon=False)
-    fig.set_size_inches(6, 6)
-    ax = plt.Axes(fig, [0., 0., 1., 1.])
-    ax.set_axis_off()
-    fig.add_axes(ax)
-    ax.imshow(im, cmap=cmap)
-    ax.invert_yaxis()
-    map_dir = op.join(os.getcwd(), 'examples')
-    fname = op.join(map_dir, 'activity_map.png')
-    if op.isfile(fname):
-        os.remove(fname)
-    print('Saving UV map to {}'.format(fname))
-    fig.savefig(fname)
-    plt.close(fig)
-    img = bpy.data.images.load(fname)
-    return img
-
-
