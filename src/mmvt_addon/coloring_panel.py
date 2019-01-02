@@ -1027,7 +1027,7 @@ def set_activity_values(cur_obj, values):
 # @mu.timeit
 def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, override_current_mat=True, data_min=None,
                               colors_ratio=None, use_abs=None, bigger_or_equall=False, save_prev_colors=False,
-                              coloring_layer='Col', check_valid_verts=True):
+                              coloring_layer='Col', check_valid_verts=True, uv_size=500):
     if isinstance(cur_obj, str):
         cur_obj = bpy.data.objects[cur_obj]
     if lookup is None:
@@ -1062,6 +1062,74 @@ def activity_map_obj_coloring(cur_obj, vert_values, lookup=None, threshold=0, ov
     #check if our mesh already has Vertex Colors, and if not add some... (first we need to make sure it's the active object)
     scn.objects.active = cur_obj
     cur_obj.select = True
+    if len(mesh.vertices) < 1e3:
+        uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size, data_min, colors_ratio)
+    else:
+        vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, vert_values, lookup,
+                               override_current_mat, save_prev_colors, colors_picked_from_cm,
+                               data_min, colors_ratio, verts_colors)
+
+
+def sym_gauss_2D(x0,y0,sigma):
+    return lambda x,y: (1./(2*np.pi*sigma**2))*np.exp(-((x-x0)**2+(y-y0)**2)/(2*sigma**2))
+
+
+def uv_map_obj_coloring(cur_obj, mesh, valid_verts, vert_values, uv_size, data_min, colors_ratio):
+    if not 'activity_map' in mesh.uv_textures:
+        mesh.uv_textures.new('activity_map')
+    mesh.uv_textures['activity_map'].active_render = True
+    mesh.uv_textures['activity_map'].active = True
+
+    bpy.ops.object.mode_set(mode='EDIT')
+    # Get the active mesh
+    mesh = cur_obj.data
+    # Project to UV Map
+    bpy.ops.uv.unwrap() #no cuts-- helmet-> no discontinuities
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    all_uvs = [mesh.uv_layers['activity_map'].data[loop.index].uv
+               for loop in mesh.loops]
+
+    im = np.zeros((uv_size, uv_size))
+    '''import matplotlib.pyplot as plt
+    fig,a = plt.subplots()
+    a.set_xlim([0,1])
+    a.set_ylim([0,1])'''
+    for this_loop in mesh.loops:
+        if this_loop.vertex_index in valid_verts:
+            this_uv = mesh.uv_layers.active.data[this_loop.index].uv
+            x0, y0 = this_uv
+            #a.scatter(x0, y0)
+            sigma = min([(this_uv - other_uv).magnitude
+                         for other_uv in all_uvs if
+                         (this_uv - other_uv).magnitude > 1e-4])
+            f = sym_gauss_2D(x0, y0, sigma)
+            for i, x in enumerate(np.linspace(0, 1, uv_size)):
+                for j, y in enumerate(np.linspace(0, 1, uv_size)):
+                    im[j,i] += f(x, y)/f(x0, y0)*vert_values[this_loop.vertex_index]
+    '''fig.savefig('test.png')
+    fig,a = plt.subplots()
+    a.imshow(im)
+    fig.savefig('test2.png')'''
+
+    # https://blender.stackexchange.com/questions/643/is-it-possible-to-create-image-data-and-save-to-a-file-from-a-script
+    fig = bpy.data.images.new('Activity Map', uv_size, uv_size)
+    for ind, (r,g,b) in enumerate(calc_colors(im.flatten(), data_min, colors_ratio)):
+        fig.pixels[(4*ind) + 0] = r # R
+        fig.pixels[(4*ind) + 1] = g # G
+        fig.pixels[(4*ind) + 2] = b # B
+        fig.pixels[(4*ind) + 3] = 1.0 # A = 1.0
+
+    uv_maps = [node for node in cur_obj.active_material.node_tree.nodes if node.type == 'TEX_IMAGE']
+    if len(uv_maps) != 1: # may be a better way to search for UV node but idk
+        raise ValueError('No/more than one UV texture node found in %s' %(cur_obj.name))
+    uv_map = uv_maps[0]
+    uv_map.image = fig
+
+
+def vertex_object_coloring(cur_obj, mesh, coloring_layer, valid_verts, vert_values, lookup,
+                           override_current_mat, save_prev_colors, colors_picked_from_cm,
+                           data_min, colors_ratio, verts_colors):
     if override_current_mat:
         recreate_coloring_layers(mesh, coloring_layer)
         # vcol_layer = mesh.vertex_colors["Col"]
