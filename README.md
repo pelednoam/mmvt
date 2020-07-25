@@ -1,6 +1,7 @@
 <img src=https://user-images.githubusercontent.com/35853195/42889397-52f9c75e-8a78-11e8-9da8-86ccc3a30a80.png align="right" hight=120 width=120/>
 
-The project’s code is still under active development, but temporarily going off-grid. If you want to download/clone it, please contact me at npeled@mgh.harvard.edu
+The project’s code is still under active development, but temporarily going off-grid. 
+If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
 
 ## Multi-Modality Visualization Tool
 
