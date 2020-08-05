@@ -2,6 +2,7 @@
 
 The project’s code is still under active development, but temporarily going off-grid. 
 If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
+The manuscript can be found here: https://arxiv.org/abs/1912.10079
 
 ## Multi-Modality Visualization Tool
 
