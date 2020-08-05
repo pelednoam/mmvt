@@ -4,6 +4,7 @@ The project’s code is still under active development, but temporarily going of
 If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079
+
 Our website: https://mmvt.mgh.harvard.edu/
 
 ## Multi-Modality Visualization Tool
