@@ -1,5 +1,7 @@
 <img src=https://user-images.githubusercontent.com/35853195/42889397-52f9c75e-8a78-11e8-9da8-86ccc3a30a80.png align="right" hight=120 width=120/>
 
+## Setup
+
 The project’s code is still under active development, but temporarily going off-grid. 
 If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
 When you can access the private repo (https://github.com/mmvt/mmvt), run:
@@ -18,9 +20,8 @@ cd $HOME/mmvt_root/mmvt_code
 python3 -m src.setup  
 4) Run MMVT: $HOME/mmvt_root/launch_mmvt.sh  
 
-The manuscript can be found here: https://arxiv.org/abs/1912.10079
-
-Our website: https://mmvt.mgh.harvard.edu/
+The manuscript can be found here: https://arxiv.org/abs/1912.10079  
+Our website: https://mmvt.mgh.harvard.edu/  
 
 ## Multi-Modality Visualization Tool
 
