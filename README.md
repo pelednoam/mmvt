@@ -10,7 +10,7 @@ After you are added to the private repo, run:
 5) cd mmvt_root/mmvt_code
 6) sh ubuntu_setup_scripts/install_blender.sh
 7) sh ubuntu_setup_scripts/install_freesurfer.sh
-8) sh ubuntu_setup_scripts/install_anaconda.sh
+8) sh ubuntu_setup_scripts/install_pip.sh
 9) python3 -m src.setup
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079
