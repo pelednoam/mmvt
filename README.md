@@ -12,7 +12,7 @@ When you can access the private repo (https://github.com/mmvt/mmvt), run:
 7) Install FreeSurfer 7.1: sh ubuntu_setup_scripts/install_freesurfer.sh
 8) Install pip: sh ubuntu_setup_scripts/install_pip.sh
 9) Setup MMVT: python3 -m src.setup
-10) Run MMVT: sh $HOME/mmvt_root/launch.sh
+10) Run MMVT: $HOME/mmvt_root/launch_mmvt.sh
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079
 
