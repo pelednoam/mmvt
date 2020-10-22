@@ -6,7 +6,7 @@ The project’s code is still under active development, but temporarily going of
 If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
 When you can access the private repo (https://github.com/mmvt/mmvt), run:
 1) Download the code:  
-* wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh (update the script with your github username  
+* wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh (update the script with your github username)  
 * sh download_mmvt.sh  
 2) Install 3rd party dependencies:  
 * cd $HOME/mmvt_root/mmvt_code  
