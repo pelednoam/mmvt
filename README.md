@@ -2,6 +2,10 @@
 
 The project’s code is still under active development, but temporarily going off-grid. 
 If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
+After you are added to the private repo, run:
+1) wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh
+2) Update the script with your github username
+3) sh download_mmvt.sh
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079
 
