@@ -12,7 +12,7 @@ sh download_mmvt.sh
 2) Install 3rd party dependencies:  
 cd $HOME/mmvt_root/mmvt_code  
 sudo apt-get update  
-Install Blender: sh setup_scripts/install_blender.sh  
+Install Blender 2.279b: sh setup_scripts/install_blender.sh  
 Install FreeSurfer 7.1: sh setup_scripts/install_freesurfer.sh  
 Install pip: sh setup_scripts/install_pip.sh  
 3) Setup MMVT:  
