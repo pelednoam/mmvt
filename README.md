@@ -17,6 +17,8 @@ When you can access the private repo (https://github.com/mmvt/mmvt), run:
 ### Setup MMVT:  
 * cd $HOME/mmvt_root/mmvt_code  
 * python3 -m src.setup  
+### Optional: Download template brains
+* Download colin27: sh setup_scripts/download_colin27.sh  
 ### Run MMVT: 
 * $HOME/mmvt_root/launch_mmvt.sh  
 
