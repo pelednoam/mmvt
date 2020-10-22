@@ -6,6 +6,11 @@ After you are added to the private repo, run:
 1) wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh
 2) Update the script with your github username
 3) sh download_mmvt.sh
+4) cd mmvt_root/mmvt_code
+5) sh ubuntu_setup_scripts/install_blender.sh
+6) sh ubuntu_setup_scripts/install_freesurfer.sh
+7) sh ubuntu_setup_scripts/install_anaconda.sh
+8) python3 -m src.setup
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079
 
