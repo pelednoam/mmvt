@@ -8,9 +8,9 @@ When you can access the private repo (https://github.com/mmvt/mmvt), run:
 3) sh download_mmvt.sh
 4) sudo apt-get update
 5) cd $HOME/mmvt_root/mmvt_code
-6) Install Blender: sh ubuntu_setup_scripts/install_blender.sh
-7) Install FreeSurfer 7.1: sh ubuntu_setup_scripts/install_freesurfer.sh
-8) Install pip: sh ubuntu_setup_scripts/install_pip.sh
+6) Install Blender: sh setup_scripts/install_blender.sh
+7) Install FreeSurfer 7.1: sh setup_scripts/install_freesurfer.sh
+8) Install pip: sh setup_scripts/install_pip.sh
 9) Setup MMVT: python3 -m src.setup
 10) Run MMVT: $HOME/mmvt_root/launch_mmvt.sh
 
