@@ -3,16 +3,18 @@
 The project’s code is still under active development, but temporarily going off-grid. 
 If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
 When you can access the private repo (https://github.com/mmvt/mmvt), run:
-1) wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh
-2) Update the script with your github username
-3) sh download_mmvt.sh
-4) sudo apt-get update
-5) cd $HOME/mmvt_root/mmvt_code
-6) Install Blender: sh setup_scripts/install_blender.sh
-7) Install FreeSurfer 7.1: sh setup_scripts/install_freesurfer.sh
-8) Install pip: sh setup_scripts/install_pip.sh
-9) Setup MMVT: python3 -m src.setup
-10) Run MMVT: $HOME/mmvt_root/launch_mmvt.sh
+1) Download the code: 
+wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh
+Update the script with your github username
+sh download_mmvt.sh
+cd $HOME/mmvt_root/mmvt_code
+2) Install 3rd party dependencies:
+sudo apt-get update
+Install Blender: sh setup_scripts/install_blender.sh
+Install FreeSurfer 7.1: sh setup_scripts/install_freesurfer.sh
+Install pip: sh setup_scripts/install_pip.sh
+3) Setup MMVT: python3 -m src.setup
+4) Run MMVT: $HOME/mmvt_root/launch_mmvt.sh
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079
 
