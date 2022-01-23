@@ -2,25 +2,17 @@
 
 ## Setup (Linux & Mac)
 
-The project’s code is still under active development, but temporarily going off-grid. 
-If you want to download/clone it, please contact me here or at npeled@mgh.harvard.edu.
-When you can access the private repo (https://github.com/mmvt/mmvt), run:
+MMVT code is stored in a private repository. 
+If you intend to use it for academic/research purposes, please send us an email from your academic server with your GitHub username, and we will send you an invitation. 
+If you intend to use it for commercial purposes, please contact us for pricing.
+Email: npeled@mgh.harvard.edu.
+
 ### Download the code:  
+When you can access the private repo (https://github.com/mmvt/mmvt), run:
 * wget https://raw.githubusercontent.com/pelednoam/mmvt/master/download_mmvt.sh (update the script with your github username)  
 * sh download_mmvt.sh  
-### Install 3rd party dependencies:  
-* cd $HOME/mmvt_root/mmvt_code  
-* sudo apt-get update  
-* Install Blender 2.79b: sh setup_scripts/install_blender.sh  
-* Install FreeSurfer 7.1: sh setup_scripts/install_freesurfer.sh  
-* Install pip: sh setup_scripts/install_pip.sh  
-### Setup MMVT:  
-* cd $HOME/mmvt_root/mmvt_code  
-* python3 -m src.setup  
-### Optional: Download template brains
-* Download colin27: sh setup_scripts/download_colin27.sh  
-### Run MMVT: 
-* $HOME/mmvt_root/launch_mmvt.sh  
+
+And continue using the following tutorial: https://github.com/mmvt/mmvt/blob/master/tutorials/installation.md 
 
 The manuscript can be found here: https://arxiv.org/abs/1912.10079  
 Our website: https://mmvt.mgh.harvard.edu/  
