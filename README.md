@@ -1,7 +1,5 @@
 <img src=https://user-images.githubusercontent.com/35853195/42889397-52f9c75e-8a78-11e8-9da8-86ccc3a30a80.png align="right" hight=120 width=120/>
 
-## Setup (Linux & Mac)
-
 MMVT code is stored in a private repository. 
 If you intend to use it for academic/research purposes, please send us an email from your academic server with your GitHub username, and we will send you an invitation. 
 If you intend to use it for commercial purposes, please contact us for pricing.
