@@ -1,9 +1,11 @@
 <img src=https://user-images.githubusercontent.com/35853195/42889397-52f9c75e-8a78-11e8-9da8-86ccc3a30a80.png align="right" hight=120 width=120/>
 
-MMVT code is stored in a private repository. 
-If you intend to use it for academic/research purposes, please send us an email from your academic server with your GitHub username, and we will send you an invitation. 
-If you intend to use it for commercial purposes, please contact us for pricing.
-Email: npeled@mgh.harvard.edu.
+MMVT code is stored in a private repository. </br>
+If you intend to use it for academic/research purposes, please send us an <a href="mailto:npeled@mgh.harvard.edu">email</a> from your academic server with your GitHub username, and we will send you an invitation. </br>
+If you intend to use it for commercial purposes, please contact us for pricing. </br>
+Unfortunately, the full repository is currently supported only on Linux or Windows with <a href="https://learn.microsoft.com/en-us/windows/wsl/about">WSL</a>. </br>
+You can also check out our <a href="https://github.com/pelednoam/mmvt_lite">public repository</a> to analyze and integrate multimodal datasets without the visualization component.
+
 
 ### Download the code:  
 When you can access the private repo (https://github.com/mmvt/mmvt), run:
