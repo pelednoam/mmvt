@@ -7,6 +7,7 @@ Unfortunately, the full repository is currently supported only on Linux or Windo
 You can also check out our <a href="https://github.com/pelednoam/mmvt_lite">public repository</a> to <a href="https://mmvt.mgh.harvard.edu/preprocessing/">analyze and integrate</a> multimodal datasets without the visualization component. </br>
 The manuscript can be found here: https://arxiv.org/abs/1912.10079  
 Our website: https://mmvt.mgh.harvard.edu/  
+<a href="https://github.com/pelednoam/mmvt/blob/master/MMVT-rap">MMVT as a rap song</a> <br/>
 
 ### Download the code:  
 When you can access the private repo (https://github.com/mmvt/mmvt), run:
